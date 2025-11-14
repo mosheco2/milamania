@@ -1,0 +1,13 @@
+{
+  "name": "cohens-multi",
+  "version": "1.0.0",
+  "description": "Cohens - multi-player alias-style game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.0",
+    "socket.io": "^4.8.0"
+  }
+}
