@@ -2,88 +2,184 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <title>כהנ'ס - כניסה למשחק</title>
+  <title>כהנ'ס - בחירת מצב משחק</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
     body {
       margin: 0;
       padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #000 100%);
+      background: radial-gradient(circle at top, #0f172a, #020617 55%);
       color: #e5e7eb;
       min-height: 100vh;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
+    }
+    .app {
+      max-width: 480px;
+      width: 100%;
+      padding: 24px 16px 40px;
     }
     .card {
-      background: rgba(15,23,42,0.95);
-      border-radius: 24px;
-      padding: 24px 20px;
-      max-width: 420px;
-      width: 100%;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.9);
-      border: 1px solid rgba(148,163,184,0.4);
-      text-align: center;
+      background: rgba(15,23,42,0.96);
+      border-radius: 22px;
+      padding: 20px 18px 22px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.85);
+      border: 1px solid rgba(148,163,184,0.35);
     }
     h1 {
-      margin: 0 0 8px;
-      letter-spacing: 0.12em;
+      margin: 0 0 4px;
       font-size: 1.8rem;
+      text-align: center;
+      letter-spacing: 0.08em;
     }
-    p {
-      margin: 0 0 16px;
-      color: #9ca3af;
+    .subtitle {
+      margin: 0 0 18px;
       font-size: 0.9rem;
+      text-align: center;
+      color: #9ca3af;
+    }
+    .logo-badge {
+      display: inline-flex;
+      margin: 0 auto 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(56,189,248,0.5);
+      color: #bae6fd;
+      font-size: 0.8rem;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15,23,42,0.9);
+    }
+    .mode-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    @media (min-width: 640px) {
+      .mode-grid {
+        flex-direction: row;
+      }
+    }
+    .mode-card {
+      flex: 1;
+      border-radius: 18px;
+      border: 1px solid rgba(148,163,184,0.35);
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.16), transparent 55%);
+      padding: 12px 12px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .mode-card.player {
+      background: radial-gradient(circle at top left, rgba(34,197,94,0.18), transparent 55%);
+    }
+    .mode-title {
+      font-size: 1rem;
+      margin: 0 0 2px;
+    }
+    .mode-desc {
+      font-size: 0.82rem;
+      color: #9ca3af;
+      margin: 0 0 8px;
     }
     .btn {
-      display: block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       width: 100%;
-      padding: 10px 18px;
+      padding: 8px 12px;
       border-radius: 999px;
       border: none;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 600;
-      margin-bottom: 10px;
       transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
+      text-decoration: none;
+      text-align: center;
+      gap: 6px;
     }
-    .btn-primary {
+    .btn-host {
       background: linear-gradient(135deg, #38bdf8, #0ea5e9);
       color: #020617;
-      box-shadow: 0 10px 25px rgba(56,189,248,0.35);
+      box-shadow: 0 10px 28px rgba(56,189,248,0.4);
     }
-    .btn-primary:hover {
+    .btn-host:hover {
       transform: translateY(-1px);
-      box-shadow: 0 14px 35px rgba(56,189,248,0.5);
+      box-shadow: 0 14px 36px rgba(56,189,248,0.55);
     }
-    .btn-ghost {
-      background: transparent;
-      color: #e5e7eb;
-      border: 1px solid #4b5563;
+    .btn-player {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #022c22;
+      box-shadow: 0 10px 28px rgba(34,197,94,0.45);
     }
-    .btn-ghost:hover {
-      background: rgba(55,65,81,0.7);
+    .btn-player:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 36px rgba(34,197,94,0.6);
     }
-    .hint {
-      margin-top: 12px;
+    .helper-text {
+      margin-top: 14px;
       font-size: 0.8rem;
       color: #9ca3af;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .helper-text strong {
+      color: #e5e7eb;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>כהנ'ס</h1>
-    <p>בחרו איך אתם נכנסים למשחק:</p>
-    <button class="btn btn-primary" onclick="location.href='host.html'">
-      🎮 אני המנהל / המסך המרכזי
-    </button>
-    <button class="btn btn-ghost" onclick="location.href='player.html'">
-      📱 אני שחקן עם טלפון
-    </button>
-    <div class="hint">
-      המנהל יוצר חדר ומשתף קוד. השחקנים נכנסים מהטלפון ומצטרפים עם הקוד.
+  <div class="app">
+    <div class="card">
+      <div style="text-align:center; margin-bottom:6px;">
+        <div class="logo-badge">
+          <span>🎲</span>
+          <span>כהנ'ס - Alias Party</span>
+        </div>
+      </div>
+      <h1>כהנ'ס</h1>
+      <p class="subtitle">בחרו מצב משחק לפי התפקיד שלכם</p>
+
+      <div class="mode-grid">
+        <!-- מצב מנהל -->
+        <div class="mode-card">
+          <div>
+            <h3 class="mode-title">🧑‍💼 אני מנהל – פתיחת משחק</h3>
+            <p class="mode-desc">
+              יצירת חדר משחק חדש, הגדרת קבוצות וניקוד יעד, צפייה בכל השחקנים והתחלת סיבובים.
+            </p>
+          </div>
+          <a class="btn btn-host" href="/host.html">
+            להיכנס כמנהל
+          </a>
+        </div>
+
+        <!-- מצב שחקן -->
+        <div class="mode-card player">
+          <div>
+            <h3 class="mode-title">🎮 אני שחקן – הצטרפות למשחק</h3>
+            <p class="mode-desc">
+              מצטרף למשחק קיים עם קוד שמנהל נותן, בוחר שם וקבוצה, ומשחק מהטלפון.
+            </p>
+          </div>
+          <a class="btn btn-player" href="/player.html">
+            להיכנס כשחקן
+          </a>
+        </div>
+      </div>
+
+      <div class="helper-text">
+        <div><strong>איך משחקים?</strong></div>
+        <div>המנהל נכנס מהטלפון / מחשב לכתובת הזו, לוחץ על "אני מנהל" ופותח משחק חדש.</div>
+        <div>כל השחקנים נכנסים לאותה כתובת, לוחצים על "אני שחקן" ומקלידים את קוד המשחק.</div>
+      </div>
     </div>
   </div>
 </body>
