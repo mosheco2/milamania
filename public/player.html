@@ -130,6 +130,21 @@
     .score-me {
       color: #22c55e;
     }
+    /* באנר לשחקן */
+    .ad-banner {
+      display: block;
+      margin-top: 8px;
+      border-radius: 18px;
+      padding: 4px;
+      background: radial-gradient(circle at top left, rgba(34,197,94,0.22), rgba(15,23,42,0.98));
+      border: 1px solid rgba(74,222,128,0.55);
+      text-decoration: none;
+    }
+    .ad-banner img {
+      width: 100%;
+      display: block;
+      border-radius: 14px;
+    }
   </style>
 </head>
 <body>
@@ -196,6 +211,8 @@
       <h3 style="margin:0 0 8px; font-size:1rem;">ניקוד</h3>
       <div id="scoreboardDynamic"></div>
       <div class="status-text" id="scoreTarget" style="margin-top:6px;"></div>
+
+      <div id="player-banner-slot"></div>
     </div>
   </div>
 
@@ -238,7 +255,6 @@
     const scoreboardDynamic = document.getElementById("scoreboardDynamic");
     const scoreTarget = document.getElementById("scoreTarget");
 
-    // קריאה ראשונית מ-localStorage + יצירת clientId קבוע
     (function loadFromStorage() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -252,9 +268,7 @@
             if (saved.teamId) teamIdSelect.value = saved.teamId;
           }
         }
-      } catch (e) {
-        // מתעלמים
-      }
+      } catch (e) {}
       if (!clientId) {
         clientId = "c-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
       }
@@ -262,8 +276,6 @@
 
     socket.on("connect", () => {
       mySocketId = socket.id;
-
-      // אם יש מצב שמור – מנסים להתחבר אוטומטית למשחק
       if (
         !hasJoined &&
         savedStateForAutoJoin &&
@@ -286,9 +298,7 @@
             clientId
           })
         );
-      } catch (e) {
-        // מתעלמים
-      }
+      } catch (e) {}
     }
 
     function updatePlayerInfo() {
@@ -379,7 +389,6 @@
         },
         (res) => {
           if (!res || !res.ok) {
-            // אם המשך המשחק נכשל (לדוגמה: המשחק נסגר) – מנקים סטייט
             try {
               localStorage.removeItem(STORAGE_KEY);
             } catch (e) {}
@@ -456,7 +465,7 @@
       renderScoresFromGame(lastGameState);
 
       const isMyTeamTurn = (myTeamId === payload.teamId);
-      isExplainer = (mySocketId && mySocketId === payload.explainerId);
+      isExplainer = (clientId && clientId === payload.explainerId);
 
       let txt = "סיבוב התחיל לקבוצה " +
         (lastGameState.teams?.[payload.teamId]?.name || payload.teamId) + ".";
@@ -536,7 +545,6 @@
       isExplainer = false;
       explainerCard.classList.add("hidden");
 
-      // מנקים את ה-localStorage כדי שהמשחק הבא יתחיל נקי
       try {
         localStorage.removeItem(STORAGE_KEY);
       } catch (e) {}
@@ -551,6 +559,31 @@
       if (!isExplainer || !joinedGameCode) return;
       socket.emit("skipWord", { gameCode: joinedGameCode });
     });
+
+    // טעינת באנר לשחקן
+    (function loadPlayerBanner() {
+      const slot = document.getElementById("player-banner-slot");
+      if (!slot) return;
+      fetch("/api/banners")
+        .then(res => res.json())
+        .then(data => {
+          const cfg = data && data.player;
+          if (!cfg || !cfg.imageUrl || !cfg.linkUrl) return;
+          const a = document.createElement("a");
+          a.className = "ad-banner";
+          a.href = cfg.linkUrl;
+          a.target = "_blank";
+          a.rel = "noopener";
+
+          const img = document.createElement("img");
+          img.src = cfg.imageUrl;
+          img.alt = "Banner";
+
+          a.appendChild(img);
+          slot.appendChild(a);
+        })
+        .catch(() => {});
+    })();
   </script>
 </body>
 </html>
