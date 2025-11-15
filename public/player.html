@@ -5,7 +5,10 @@
   <title>כהנ'ס - שחקן</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
     body {
       margin: 0;
       padding: 0;
@@ -29,7 +32,9 @@
       border: 1px solid rgba(148,163,184,0.25);
       margin-bottom: 16px;
     }
-    h1, h2, h3 { margin-top: 0; }
+    h1, h2, h3 {
+      margin-top: 0;
+    }
     label {
       display: block;
       margin-bottom: 2px;
@@ -89,7 +94,9 @@
       box-shadow: none;
       transform: none;
     }
-    .hidden { display: none !important; }
+    .hidden {
+      display: none !important;
+    }
     .status-text {
       font-size: 0.85rem;
       color: #9ca3af;
@@ -118,7 +125,7 @@
     }
     .score-val {
       font-weight: 700;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
     }
     .score-me {
       color: #22c55e;
@@ -143,8 +150,11 @@
       <div style="margin-bottom:10px;">
         <label for="teamId">לאיזו קבוצה אתה מצטרף?</label>
         <select id="teamId">
-          <option value="A">קבוצה A</option>
-          <option value="B">קבוצה B</option>
+          <option value="A">קבוצה 1 (A)</option>
+          <option value="B">קבוצה 2 (B)</option>
+          <option value="C">קבוצה 3 (C)</option>
+          <option value="D">קבוצה 4 (D)</option>
+          <option value="E">קבוצה 5 (E)</option>
         </select>
       </div>
       <button id="joinBtn" class="btn btn-primary">הצטרף למשחק</button>
@@ -184,14 +194,7 @@
 
     <div class="card hidden" id="score-card">
       <h3 style="margin:0 0 8px; font-size:1rem;">ניקוד</h3>
-      <div class="score-row">
-        <span id="scoreTeamALabel">קבוצה A</span>
-        <span id="scoreTeamAVal" class="score-val">0</span>
-      </div>
-      <div class="score-row">
-        <span id="scoreTeamBLabel">קבוצה B</span>
-        <span id="scoreTeamBVal" class="score-val">0</span>
-      </div>
+      <div id="scoreboardDynamic"></div>
       <div class="status-text" id="scoreTarget" style="margin-top:6px;"></div>
     </div>
   </div>
@@ -199,6 +202,8 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
+    const STORAGE_KEY = "cohens-player-state";
+
     let mySocketId = null;
     let joinedGameCode = null;
     let myName = null;
@@ -227,21 +232,33 @@
     const roundStatus = document.getElementById("roundStatus");
 
     const scoreCard = document.getElementById("score-card");
-    const scoreTeamALabel = document.getElementById("scoreTeamALabel");
-    const scoreTeamAVal = document.getElementById("scoreTeamAVal");
-    const scoreTeamBLabel = document.getElementById("scoreTeamBLabel");
-    const scoreTeamBVal = document.getElementById("scoreTeamBVal");
+    const scoreboardDynamic = document.getElementById("scoreboardDynamic");
     const scoreTarget = document.getElementById("scoreTarget");
 
     socket.on("connect", () => {
       mySocketId = socket.id;
     });
 
+    // מילוי אוטומטי מה-localStorage
+    (function prefillFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        if (!saved) return;
+        if (saved.gameCode) joinCodeInput.value = saved.gameCode;
+        if (saved.playerName) playerNameInput.value = saved.playerName;
+        if (saved.teamId) teamIdSelect.value = saved.teamId;
+      } catch (e) {
+        // מתעלמים
+      }
+    })();
+
     joinBtn.addEventListener("click", () => {
       joinError.textContent = "";
       const code = (joinCodeInput.value || "").trim().toUpperCase();
       const name = (playerNameInput.value || "").trim();
-      const teamId = teamIdSelect.value === "B" ? "B" : "A";
+      const teamId = (teamIdSelect.value || "A").toUpperCase();
 
       if (!code) {
         joinError.textContent = "צריך להזין קוד משחק.";
@@ -258,7 +275,7 @@
         teamId
       }, (res) => {
         if (!res || !res.ok) {
-          joinError.textContent = (res && res.error) ? res.error : "לא удалось להצטרף למשחק.";
+          joinError.textContent = (res && res.error) ? res.error : "לא הצלחנו להצטרף למשחק.";
           return;
         }
 
@@ -267,28 +284,65 @@
         myTeamId = teamId;
         lastGameState = res.game;
 
+        // שמירה לטעינה מחדש
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            gameCode: joinedGameCode,
+            playerName: myName,
+            teamId: myTeamId
+          }));
+        } catch (e) {}
+
         joinCard.classList.add("hidden");
         playerCard.classList.remove("hidden");
         roundStatusCard.classList.remove("hidden");
         scoreCard.classList.remove("hidden");
 
         tagGameCode.textContent = "קוד: " + joinedGameCode;
-        playerInfo.textContent = "מחובר כ-" + myName + " בקבוצה " + myTeamId + ".";
         renderScoresFromGame(res.game);
+        updatePlayerInfo();
       });
     });
+
+    function updatePlayerInfo() {
+      if (!myName || !myTeamId || !lastGameState || !lastGameState.teams) {
+        playerInfo.textContent = "מחובר כ-" + (myName || "שחקן") + ".";
+        return;
+      }
+      const team = lastGameState.teams[myTeamId];
+      const teamName = team ? team.name || ("קבוצה " + myTeamId) : ("קבוצה " + myTeamId);
+      playerInfo.textContent = "מחובר כ-" + myName + " בקבוצה " + teamName + " (" + myTeamId + ").";
+    }
 
     function renderScoresFromGame(game) {
       if (!game || !game.teams) return;
       lastGameState = game;
 
-      const teamA = game.teams.A;
-      const teamB = game.teams.B;
+      const teams = game.teams;
+      scoreboardDynamic.innerHTML = "";
 
-      scoreTeamALabel.textContent = teamA.name || "קבוצה A";
-      scoreTeamBLabel.textContent = teamB.name || "קבוצה B";
-      scoreTeamAVal.textContent = teamA.score;
-      scoreTeamBVal.textContent = teamB.score;
+      const ids = Object.keys(teams);
+      ids.forEach(id => {
+        const t = teams[id];
+        const score = t.score || 0;
+
+        const row = document.createElement("div");
+        row.className = "score-row";
+
+        const left = document.createElement("span");
+        left.textContent = t.name || ("קבוצה " + id);
+
+        const right = document.createElement("span");
+        right.className = "score-val";
+        if (myTeamId === id) {
+          right.classList.add("score-me");
+        }
+        right.textContent = score;
+
+        row.appendChild(left);
+        row.appendChild(right);
+        scoreboardDynamic.appendChild(row);
+      });
 
       if (game.targetScore) {
         scoreTarget.textContent = "משחק ל-" + game.targetScore + " נקודות.";
@@ -296,8 +350,7 @@
         scoreTarget.textContent = "";
       }
 
-      scoreTeamAVal.classList.toggle("score-me", myTeamId === "A");
-      scoreTeamBVal.classList.toggle("score-me", myTeamId === "B");
+      updatePlayerInfo();
     }
 
     socket.on("gameUpdated", (game) => {
@@ -308,24 +361,34 @@
     socket.on("roundStarted", (payload) => {
       if (!joinedGameCode || !payload) return;
 
+      if (!lastGameState) lastGameState = {};
+      if (payload.teams) {
+        lastGameState.teams = payload.teams;
+      }
+      if (payload.scores && lastGameState.teams) {
+        Object.entries(payload.scores).forEach(([id, s]) => {
+          if (!lastGameState.teams[id]) {
+            lastGameState.teams[id] = { id, name: "קבוצה " + id, score: 0 };
+          }
+          lastGameState.teams[id].score = s;
+        });
+      }
+      if (payload.targetScore) {
+        lastGameState.targetScore = payload.targetScore;
+      }
+
+      renderScoresFromGame(lastGameState);
+
       const isMyTeamTurn = (myTeamId === payload.teamId);
       isExplainer = (mySocketId && mySocketId === payload.explainerId);
 
-      let txt = "סיבוב התחיל לקבוצה " + payload.teamId + ".";
+      let txt = "סיבוב התחיל לקבוצה " + (lastGameState.teams?.[payload.teamId]?.name || payload.teamId) + ".";
       if (isMyTeamTurn) {
         txt += " זה התור של הקבוצה שלך.";
       } else {
         txt += " כרגע זו קבוצה אחרת.";
       }
       roundStatus.textContent = txt;
-
-      if (payload.scores) {
-        scoreTeamAVal.textContent = payload.scores.A;
-        scoreTeamBVal.textContent = payload.scores.B;
-      }
-      if (payload.targetScore) {
-        scoreTarget.textContent = "משחק ל-" + payload.targetScore + " נקודות.";
-      }
 
       if (isExplainer) {
         explainerCard.classList.remove("hidden");
@@ -343,27 +406,81 @@
     });
 
     socket.on("scoreUpdated", (payload) => {
-      if (!payload || !payload.scores) return;
-      scoreTeamAVal.textContent = payload.scores.A;
-      scoreTeamBVal.textContent = payload.scores.B;
-      if (payload.targetScore) {
-        scoreTarget.textContent = "משחק ל-" + payload.targetScore + " נקודות.";
+      if (!payload) return;
+      if (!lastGameState) lastGameState = {};
+      if (payload.teams) {
+        lastGameState.teams = payload.teams;
       }
+      if (payload.scores && lastGameState.teams) {
+        Object.entries(payload.scores).forEach(([id, s]) => {
+          if (!lastGameState.teams[id]) {
+            lastGameState.teams[id] = { id, name: "קבוצה " + id, score: 0 };
+          }
+          lastGameState.teams[id].score = s;
+        });
+      }
+      if (payload.targetScore) {
+        lastGameState.targetScore = payload.targetScore;
+      }
+      renderScoresFromGame(lastGameState);
     });
 
     socket.on("roundEnded", (payload) => {
       let txt = "הסיבוב הסתיים.";
-      if (payload && payload.teamId) {
-        txt = "הסיבוב של קבוצה " + payload.teamId + " הסתיים.";
+      if (payload && payload.teamId && lastGameState && lastGameState.teams) {
+        const teamName = lastGameState.teams[payload.teamId]?.name || payload.teamId;
+        txt = "הסיבוב של " + teamName + " הסתיים.";
       }
       roundStatus.textContent = txt;
       isExplainer = false;
       explainerCard.classList.add("hidden");
 
-      if (payload && payload.scores) {
-        scoreTeamAVal.textContent = payload.scores.A;
-        scoreTeamBVal.textContent = payload.scores.B;
+      if (payload && payload.scores && lastGameState) {
+        Object.entries(payload.scores).forEach(([id, s]) => {
+          if (!lastGameState.teams[id]) {
+            lastGameState.teams[id] = { id, name: "קבוצה " + id, score: 0 };
+          }
+          lastGameState.teams[id].score = s;
+        });
+        renderScoresFromGame(lastGameState);
       }
+    });
+
+    socket.on("gameEnded", (payload) => {
+      if (!payload) return;
+
+      if (!lastGameState) lastGameState = {};
+      if (payload.teams) {
+        lastGameState.teams = payload.teams;
+      }
+      if (payload.scores && lastGameState.teams) {
+        Object.entries(payload.scores).forEach(([id, s]) => {
+          if (!lastGameState.teams[id]) {
+            lastGameState.teams[id] = { id, name: "קבוצה " + id, score: 0 };
+          }
+          lastGameState.teams[id].score = s;
+        });
+      }
+      renderScoresFromGame(lastGameState);
+
+      let msg = "המשחק הסתיים.";
+      if (payload.teams && payload.winnerTeamIds && payload.winnerTeamIds.length) {
+        const names = payload.winnerTeamIds
+          .map(id => payload.teams[id]?.name || ("קבוצה " + id));
+        if (names.length === 1) {
+          msg = "המשחק הסתיים! כל הכבוד ל-" + names[0] + " 🚀";
+        } else {
+          msg = "המשחק הסתיים! תיקו בין: " + names.join(", ");
+        }
+      }
+      roundStatus.textContent = msg;
+      isExplainer = false;
+      explainerCard.classList.add("hidden");
+
+      // מנקים את ה-localStorage כדי שהמשחק הבא יתחיל נקי
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {}
     });
 
     correctBtn.addEventListener("click", () => {
