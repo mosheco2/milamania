@@ -150,7 +150,6 @@
     .score-me {
       color: #22c55e;
     }
-    /* באנר לשחקן */
     .ad-banner {
       display: block;
       margin-top: 8px;
@@ -164,6 +163,13 @@
       width: 100%;
       display: block;
       border-radius: 14px;
+    }
+    /* לוגו קטן */
+    .logo-small {
+      height: 28px;
+      width: auto;
+      border-radius: 10px;
+      object-fit: contain;
     }
     /* Popup סוף סיבוב */
     .modal-backdrop {
@@ -191,7 +197,10 @@
   <div class="app">
     <!-- כרטיס הצטרפות -->
     <div class="card" id="join-card">
-      <h2 style="margin-bottom:8px;">כהנ'ס - הצטרפות למשחק</h2>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <img id="player-logo-join" class="logo-small hidden" alt="כהנ'ס לוגו" />
+        <h2 style="margin:0;">כהנ'ס - הצטרפות למשחק</h2>
+      </div>
       <p style="margin:0 0 10px; font-size:0.85rem; color:#9ca3af;">
         קבלו מהמנהל קוד משחק, בחרו שם וקבוצה, והצטרפו.
       </p>
@@ -221,7 +230,10 @@
     <!-- כרטיס שחקן לאחר הצטרפות -->
     <div class="card hidden" id="player-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-        <h3 style="margin:0; font-size:1.1rem;">כהנ'ס - משחק פעיל</h3>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <img id="player-logo-main" class="logo-small hidden" alt="כהנ'ס לוגו" />
+          <h3 style="margin:0; font-size:1.1rem;">כהנ'ס - משחק פעיל</h3>
+        </div>
         <span class="tag">
           <span id="tagGameCode">קוד: ----</span>
         </span>
@@ -322,6 +334,9 @@
     const popupTitleEl = document.getElementById("roundPopupTitle");
     const popupTextEl = document.getElementById("roundPopupText");
     const popupCloseBtn = document.getElementById("roundPopupClose");
+
+    const logoJoin = document.getElementById("player-logo-join");
+    const logoMain = document.getElementById("player-logo-main");
 
     (function loadFromStorage() {
       try {
@@ -713,18 +728,36 @@
     leaveBtn.addEventListener("click", () => {
       const ok = confirm("לצאת מהמשחק? תוכל להצטרף שוב עם קוד חדש.");
       if (!ok) return;
+      if (joinedGameCode && clientId) {
+        socket.emit("leaveGame", { gameCode: joinedGameCode, clientId });
+      }
       clearStateAndReload();
     });
 
-    // טעינת באנר לשחקן
-    (function loadPlayerBanner() {
+    // טעינת לוגו + באנר לשחקן
+    (function loadPlayerBranding() {
       const slot = document.getElementById("player-banner-slot");
-      if (!slot) return;
       fetch("/api/banners")
         .then(res => res.json())
         .then(data => {
-          const cfg = data && data.player;
+          if (!data) return;
+
+          // לוגו
+          const logoCfg = data.logo;
+          if (logoCfg && logoCfg.imageUrl) {
+            [logoJoin, logoMain].forEach(el => {
+              if (!el) return;
+              el.src = logoCfg.imageUrl;
+              el.alt = logoCfg.altText || "כהנ'ס";
+              el.classList.remove("hidden");
+            });
+          }
+
+          // באנר שחקן
+          if (!slot) return;
+          const cfg = data.player;
           if (!cfg || !cfg.imageUrl || !cfg.linkUrl) return;
+
           const a = document.createElement("a");
           a.className = "ad-banner";
           a.href = cfg.linkUrl;
