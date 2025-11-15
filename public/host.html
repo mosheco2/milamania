@@ -261,6 +261,45 @@
       display: block;
       border-radius: 14px;
     }
+    .wordpack-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      margin-top: 4px;
+      font-size: 0.8rem;
+    }
+    .wordpack-grid label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      color: #cbd5f5;
+    }
+    .wordpack-grid input[type="checkbox"] {
+      width: auto;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+    /* Popup סיום סיבוב */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .modal {
+      background: #020617;
+      border-radius: 18px;
+      padding: 16px 18px 18px;
+      border: 1px solid rgba(148,163,184,0.65);
+      max-width: 320px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.9);
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -323,17 +362,26 @@
           <input id="teamNameE" type="text" placeholder="אופציונלי" />
         </div>
       </div>
+
+      <!-- בחירת קטגוריות מילים -->
       <div class="row">
         <div>
-          <label for="wordPack">חבילת מילים</label>
-          <select id="wordPack">
-            <option value="classic">קלאסי / יום־יום</option>
-            <option value="family">משפחתי / ילדים</option>
-            <option value="hard">קשה / מופשט</option>
-            <option value="all">הכל ביחד</option>
-          </select>
+          <label>קטגוריות מילים</label>
+          <div class="wordpack-grid">
+            <label><input type="checkbox" class="wordPackOption" value="classic" checked /> קלאסי / יום־יום</label>
+            <label><input type="checkbox" class="wordPackOption" value="family" /> משפחתי / ילדים</label>
+            <label><input type="checkbox" class="wordPackOption" value="food" /> אוכל</label>
+            <label><input type="checkbox" class="wordPackOption" value="sports" /> ספורט</label>
+            <label><input type="checkbox" class="wordPackOption" value="professions" /> מקצועות</label>
+            <label><input type="checkbox" class="wordPackOption" value="hard" /> מופשט / קשה</label>
+            <label><input type="checkbox" class="wordPackOption" value="all" /> הכל</label>
+          </div>
+          <div style="font-size:0.75rem; color:#9ca3af; margin-top:4px;">
+            אפשר לסמן כמה קטגוריות יחד או לסמן "הכל".
+          </div>
         </div>
       </div>
+
       <button id="createGameBtn" class="btn btn-primary">צור משחק</button>
     </div>
 
@@ -421,6 +469,15 @@
     </div>
   </div>
 
+  <!-- Popup סוף סיבוב -->
+  <div id="roundPopup" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3 id="roundPopupTitle" style="margin:0 0 8px;">סיום סיבוב</h3>
+      <p id="roundPopupText" style="font-size:0.9rem; margin:8px 0 16px;"></p>
+      <button id="roundPopupClose" class="btn btn-primary">סגור</button>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -430,6 +487,7 @@
     let targetScore = 30;
     let currentScores = {};
     let currentTeams = {};
+    let currentPlayers = [];
     let roundTimerId = null;
     let roundTimeLeft = 0;
     let gameEnded = false;
@@ -443,7 +501,6 @@
     const hostNameInput = document.getElementById("hostName");
     const teamCountSelect = document.getElementById("teamCount");
     const targetScoreInput = document.getElementById("targetScore");
-    const wordPackSelect = document.getElementById("wordPack");
     const createGameBtn = document.getElementById("createGameBtn");
 
     const teamNameAInput = document.getElementById("teamNameA");
@@ -451,6 +508,8 @@
     const teamNameCInput = document.getElementById("teamNameC");
     const teamNameDInput = document.getElementById("teamNameD");
     const teamNameEInput = document.getElementById("teamNameE");
+
+    const wordPackCheckboxes = Array.from(document.querySelectorAll(".wordPackOption"));
 
     const gameCodeBox = document.getElementById("gameCodeBox");
     const teamsLobbyContainer = document.getElementById("teamsLobbyContainer");
@@ -470,6 +529,11 @@
 
     const timerDisplay = document.getElementById("timerDisplay");
     const timerLabel = document.getElementById("timerLabel");
+
+    const popupEl = document.getElementById("roundPopup");
+    const popupTitleEl = document.getElementById("roundPopupTitle");
+    const popupTextEl = document.getElementById("roundPopupText");
+    const popupCloseBtn = document.getElementById("roundPopupClose");
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -509,6 +573,26 @@
         opt.value = id;
         opt.textContent = currentTeams[id].name || ("קבוצה " + id);
         roundTeamSelect.appendChild(opt);
+      });
+      rebuildExplainerOptions();
+    }
+
+    function rebuildExplainerOptions() {
+      roundExplainerSelect.innerHTML = "";
+      const defaultOpt = document.createElement("option");
+      defaultOpt.value = "";
+      defaultOpt.textContent = "ייבחר אוטומטית מהקבוצה";
+      roundExplainerSelect.appendChild(defaultOpt);
+
+      const selectedTeamId = roundTeamSelect.value || Object.keys(currentTeams)[0];
+      if (!selectedTeamId) return;
+
+      currentPlayers.forEach(p => {
+        if (p.teamId !== selectedTeamId) return;
+        const opt = document.createElement("option");
+        opt.value = p.id; // clientId
+        opt.textContent = p.name + " (" + p.teamId + ")";
+        roundExplainerSelect.appendChild(opt);
       });
     }
 
@@ -561,11 +645,7 @@
 
     function renderPlayers(game) {
       teamsLobbyContainer.innerHTML = "";
-      roundExplainerSelect.innerHTML = "";
-      const defaultOpt = document.createElement("option");
-      defaultOpt.value = "";
-      defaultOpt.textContent = "ייבחר אוטומטית מהקבוצה";
-      roundExplainerSelect.appendChild(defaultOpt);
+      currentPlayers = game.players || [];
 
       const teams = game.teams || {};
       const players = game.players || [];
@@ -607,17 +687,42 @@
             chip.appendChild(badgeOff);
           }
           list.appendChild(chip);
-
-          const opt = document.createElement("option");
-          opt.value = p.id; // clientId
-          opt.textContent = p.name + " (" + id + ")";
-          roundExplainerSelect.appendChild(opt);
         });
 
         block.appendChild(list);
         teamsLobbyContainer.appendChild(block);
       });
+
+      rebuildExplainerOptions();
     }
+
+    function getSelectedWordPacks() {
+      const checked = wordPackCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+      if (checked.includes("all")) {
+        return ["all"];
+      }
+      return checked;
+    }
+
+    function showRoundPopup(roundScore, teamName) {
+      if (!popupEl) return;
+      const score = typeof roundScore === "number" ? roundScore : 0;
+      let msg;
+      if (score < 5) {
+        msg = "אתם חלשים";
+      } else if (score <= 10) {
+        msg = "צוות נחמד הייתי אומר";
+      } else {
+        msg = "אתם חזקים במילים אה? מקווה שגם במעשים";
+      }
+      popupTitleEl.textContent = "סיום סיבוב - " + (teamName || "");
+      popupTextEl.textContent = msg + " (" + score + " נקודות בסיבוב הזה)";
+      popupEl.classList.remove("hidden");
+    }
+
+    popupCloseBtn.addEventListener("click", () => {
+      popupEl.classList.add("hidden");
+    });
 
     // יצירת משחק חדש
     createGameBtn.addEventListener("click", () => {
@@ -625,7 +730,6 @@
       let ts = parseInt(targetScoreInput.value, 10);
       if (Number.isNaN(ts) || ts < 5) ts = 30;
       if (ts > 200) ts = 200;
-      const packKey = wordPackSelect.value || "classic";
 
       let teamCount = parseInt(teamCountSelect.value, 10);
       if (Number.isNaN(teamCount) || teamCount < 2) teamCount = 2;
@@ -639,12 +743,17 @@
         E: teamNameEInput.value
       };
 
+      let packs = getSelectedWordPacks();
+      if (!packs.length) {
+        packs = ["classic"];
+      }
+
       socket.emit("createGame", {
         hostName,
         teamCount,
         teamNames,
         targetScore: ts,
-        wordPack: packKey
+        wordPackKeys: packs
       }, (res) => {
         if (!res || !res.ok) {
           alert(res && res.error ? res.error : "שגיאה ביצירת משחק");
@@ -750,11 +859,18 @@
           currentScores = payload.scores;
         }
         updateScoreboardUI();
-      }
 
-      if (payload && payload.teamId) {
-        const teamName = currentTeams[payload.teamId]?.name || ("קבוצה " + payload.teamId);
-        roundStatus.textContent = "הסיבוב של " + teamName + " הסתיים.";
+        const teamName = payload.teamId
+          ? (currentTeams[payload.teamId]?.name || ("קבוצה " + payload.teamId))
+          : "";
+        const rs = typeof payload.roundScore === "number" ? payload.roundScore : 0;
+        showRoundPopup(rs, teamName);
+
+        if (payload.teamId) {
+          roundStatus.textContent = "הסיבוב של " + teamName + " הסתיים.";
+        } else {
+          roundStatus.textContent = "הסיבוב הסתיים.";
+        }
       } else {
         roundStatus.textContent = "הסיבוב הסתיים.";
       }
@@ -811,6 +927,11 @@
         explainerId,
         roundTime
       });
+    });
+
+    // שינוי קבוצה בסיבוב -> לעדכן את רשימת המסבירים
+    roundTeamSelect.addEventListener("change", () => {
+      rebuildExplainerOptions();
     });
 
     // סיום סיבוב ידני
