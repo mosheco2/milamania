@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <title>כהנ'ס - בחירת מצב משחק</title>
+  <title>כהנ'ס - Alias Party</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     * {
@@ -12,132 +12,131 @@
     body {
       margin: 0;
       padding: 0;
-      background: radial-gradient(circle at top, #0f172a, #020617 55%);
+      background: #020617;
       color: #e5e7eb;
-      min-height: 100vh;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
+      min-height: 100vh;
     }
     .app {
-      max-width: 480px;
+      max-width: 960px;
       width: 100%;
-      padding: 24px 16px 40px;
+      padding: 20px 16px 40px;
     }
     .card {
-      background: rgba(15,23,42,0.96);
-      border-radius: 22px;
-      padding: 20px 18px 22px;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.85);
-      border: 1px solid rgba(148,163,184,0.35);
+      background: #020617;
+      border-radius: 24px;
+      padding: 18px 18px 20px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.85);
+      border: 1px solid rgba(148,163,184,0.25);
+      margin-bottom: 16px;
     }
-    h1 {
-      margin: 0 0 4px;
-      font-size: 1.8rem;
-      text-align: center;
-      letter-spacing: 0.08em;
+    h1, h2, h3 {
+      margin-top: 0;
     }
-    .subtitle {
-      margin: 0 0 18px;
-      font-size: 0.9rem;
-      text-align: center;
-      color: #9ca3af;
-    }
-    .logo-badge {
+    .chip {
       display: inline-flex;
-      margin: 0 auto 12px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(56,189,248,0.5);
-      color: #bae6fd;
-      font-size: 0.8rem;
       align-items: center;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.45);
+      font-size: 0.78rem;
+      color: #cbd5f5;
       gap: 6px;
-      background: rgba(15,23,42,0.9);
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.22), rgba(15,23,42,0.96));
     }
-    .mode-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 6px;
-    }
-    @media (min-width: 640px) {
-      .mode-grid {
-        flex-direction: row;
-      }
-    }
-    .mode-card {
-      flex: 1;
+    .logo-main {
+      max-width: 140px;
+      height: auto;
       border-radius: 18px;
-      border: 1px solid rgba(148,163,184,0.35);
-      background: radial-gradient(circle at top left, rgba(56,189,248,0.16), transparent 55%);
-      padding: 12px 12px 14px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 6px;
+      margin: 10px auto 4px;
+      display: none;
+      box-shadow: 0 10px 25px rgba(15,23,42,0.9);
     }
-    .mode-card.player {
-      background: radial-gradient(circle at top left, rgba(34,197,94,0.18), transparent 55%);
+    .section-title {
+      font-size: 1.05rem;
+      margin-bottom: 4px;
     }
-    .mode-title {
-      font-size: 1rem;
-      margin: 0 0 2px;
-    }
-    .mode-desc {
-      font-size: 0.82rem;
+    .section-text {
+      font-size: 0.9rem;
       color: #9ca3af;
-      margin: 0 0 8px;
+      margin-bottom: 10px;
     }
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 100%;
-      padding: 8px 12px;
+      padding: 10px 18px;
       border-radius: 999px;
       border: none;
       cursor: pointer;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       font-weight: 600;
       transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
-      text-decoration: none;
-      text-align: center;
-      gap: 6px;
+      white-space: nowrap;
     }
-    .btn-host {
+    .btn-wide {
+      width: 100%;
+    }
+    .btn-primary {
       background: linear-gradient(135deg, #38bdf8, #0ea5e9);
       color: #020617;
-      box-shadow: 0 10px 28px rgba(56,189,248,0.4);
+      box-shadow: 0 12px 30px rgba(56,189,248,0.4);
     }
-    .btn-host:hover {
+    .btn-primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 14px 36px rgba(56,189,248,0.55);
+      box-shadow: 0 16px 40px rgba(56,189,248,0.55);
     }
-    .btn-player {
+    .btn-success {
       background: linear-gradient(135deg, #22c55e, #16a34a);
       color: #022c22;
-      box-shadow: 0 10px 28px rgba(34,197,94,0.45);
+      box-shadow: 0 12px 30px rgba(34,197,94,0.4);
     }
-    .btn-player:hover {
+    .btn-success:hover {
       transform: translateY(-1px);
-      box-shadow: 0 14px 36px rgba(34,197,94,0.6);
+      box-shadow: 0 16px 40px rgba(34,197,94,0.55);
     }
-    .helper-text {
-      margin-top: 14px;
-      font-size: 0.8rem;
-      color: #9ca3af;
-      text-align: center;
-      line-height: 1.5;
-    }
-    .helper-text strong {
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid #4b5563;
       color: #e5e7eb;
     }
-    /* באנר דינמי */
+    .btn-ghost:hover {
+      background: rgba(15,23,42,0.9);
+    }
+    .btn-small {
+      padding: 6px 10px;
+      font-size: 0.8rem;
+    }
+    .roles-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    @media (min-width: 720px) {
+      .roles-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .how-card {
+      font-size: 0.85rem;
+      color: #cbd5f5;
+    }
+    .how-card p {
+      margin: 0 0 4px;
+    }
+    .how-card ul {
+      margin: 0 0 4px 0;
+      padding-right: 1.1rem;
+    }
+    .how-card li {
+      margin-bottom: 2px;
+    }
     .ad-banner {
       display: block;
-      margin-top: 16px;
-      border-radius: 18px;
+      margin-top: 6px;
+      border-radius: 20px;
       padding: 4px;
       background: radial-gradient(circle at top left, rgba(56,189,248,0.25), rgba(15,23,42,0.98));
       border: 1px solid rgba(148,163,184,0.6);
@@ -146,73 +145,217 @@
     .ad-banner img {
       width: 100%;
       display: block;
-      border-radius: 14px;
+      border-radius: 16px;
+    }
+    .small-muted {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+    /* מודל הוראות */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .modal {
+      background: #020617;
+      border-radius: 18px;
+      padding: 16px 18px 18px;
+      border: 1px solid rgba(148,163,184,0.65);
+      max-width: 520px;
+      width: 92%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.9);
+      font-size: 0.85rem;
+    }
+    .modal h3 {
+      margin-top: 0;
+    }
+    .modal ul {
+      margin: 0 0 4px;
+      padding-right: 1.1rem;
+    }
+    .modal li {
+      margin-bottom: 2px;
+    }
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
 <body>
   <div class="app">
+    <!-- כותרת עליונה + לוגו + כפתור הוראות -->
     <div class="card">
-      <div style="text-align:center; margin-bottom:6px;">
-        <div class="logo-badge">
-          <span>🎲</span>
-          <span>כהנ'ס - Alias Party</span>
-        </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
+        <span class="chip">
+          Alias Party - כהנ'ס 🎲
+        </span>
+        <button id="howToBtnTop" class="btn btn-ghost btn-small">📜 הוראות המשחק</button>
       </div>
-      <h1>כהנ'ס</h1>
-      <p class="subtitle">בחרו מצב משחק לפי התפקיד שלכם</p>
 
-      <div class="mode-grid">
-        <!-- מצב מנהל -->
-        <div class="mode-card">
-          <div>
-            <h3 class="mode-title">🧑‍💼 אני מנהל – פתיחת משחק</h3>
-            <p class="mode-desc">
-              יצירת חדר משחק חדש, הגדרת קבוצות וניקוד יעד, צפייה בכל השחקנים והתחלת סיבובים.
-            </p>
-          </div>
-          <a class="btn btn-host" href="/host.html">
+      <img id="mainLogo" class="logo-main" alt="כהנ'ס לוגו" />
+
+      <h1 style="text-align:center; margin:6px 0 4px; font-size:2rem;">כהנ'ס</h1>
+      <p style="text-align:center; margin:0 0 6px; font-size:0.95rem; color:#9ca3af;">
+        בחרו מצב משחק לפי התפקיד שלכם.
+      </p>
+    </div>
+
+    <!-- בחירת תפקיד: מנהל / שחקן -->
+    <div class="card">
+      <div class="roles-grid">
+        <!-- מנהל -->
+        <div>
+          <div class="section-title">אני מנהל – פתיחת משחק 👨‍✈️</div>
+          <p class="section-text">
+            יצירת חדר משחק חדש, הגדרת קבוצות וניקוד יעד, צפייה בכל השחקנים והתחלת סיבובים.
+          </p>
+          <button class="btn btn-primary btn-wide" onclick="location.href='host.html'">
             להיכנס כמנהל
-          </a>
+          </button>
         </div>
 
-        <!-- מצב שחקן -->
-        <div class="mode-card player">
-          <div>
-            <h3 class="mode-title">🎮 אני שחקן – הצטרפות למשחק</h3>
-            <p class="mode-desc">
-              מצטרף למשחק קיים עם קוד שמנהל נותן, בוחר שם וקבוצה, ומשחק מהטלפון.
-            </p>
-          </div>
-          <a class="btn btn-player" href="/player.html">
+        <!-- שחקן -->
+        <div>
+          <div class="section-title">אני שחקן – הצטרפות למשחק 🎮</div>
+          <p class="section-text">
+            מצטרף למשחק קיים עם קוד שמנהל נותן, בוחר שם וקבוצה, ומשחק מהטלפון.
+          </p>
+          <button class="btn btn-success btn-wide" onclick="location.href='player.html'">
             להיכנס כשחקן
-          </a>
+          </button>
         </div>
       </div>
+    </div>
 
-      <div class="helper-text">
-        <div><strong>איך משחקים?</strong></div>
-        <div>המנהל נכנס מהטלפון / מחשב לכתובת הזו, לוחץ על "אני מנהל" ופותח משחק חדש.</div>
-        <div>כל השחקנים נכנסים לאותה כתובת, לוחצים על "אני שחקן" ומקלידים את קוד המשחק.</div>
+    <!-- איך משחקים + קיצור -->
+    <div class="card how-card">
+      <h3 style="margin-bottom:4px;">איך משחקים?</h3>
+      <p>הגרסה המקוצרת למי שאין לו כוח לקרוא:</p>
+      <ul>
+        <li>המנהל פותח משחק, בוחר כמה קבוצות ונקודות לניצחון.</li>
+        <li>השחקנים נכנסים מהטלפון לכתובת הזו, לוחצים "אני שחקן" ומקלידים קוד.</li>
+        <li>בכל סיבוב יש מסביר אחד לקבוצה – "נכון" = +1 נקודה, "דילוג" = −1 נקודה.</li>
+        <li>יש טיימר, צעקות, מלא צחוקים – וקבוצה אחת שמנצחת (או יותר, אם יצא תיקו).</li>
+      </ul>
+      <button id="howToBtnBottom" class="btn btn-ghost btn-small">למדריך המלא 📜</button>
+    </div>
+
+    <!-- באנר לעמוד הבית -->
+    <div class="card">
+      <h3 style="margin:0 0 6px;">באנר / פרסומת</h3>
+      <div id="index-banner-slot" class="small-muted">
+        אם הגדרת באנר בניהול – הוא יופיע כאן.
       </div>
+    </div>
+  </div>
 
-      <!-- כאן יתופיע הבאנר הדינמי -->
-      <div id="index-banner-slot"></div>
+  <!-- מודל הוראות מלאות -->
+  <div id="howToModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>כהנ'ס – הוראות המשחק</h3>
+
+      <h4>איך נכנסים למשחק?</h4>
+      <ul>
+        <li>כולם גולשים מהטלפון לכתובת הזאת.</li>
+        <li>המנהל לוחץ <strong>"אני מנהל"</strong> ופותח משחק חדש.</li>
+        <li>השחקנים לוחצים <strong>"אני שחקן"</strong>, מכניסים את קוד המשחק, שם וקבוצה.</li>
+      </ul>
+
+      <h4>תפקיד המנהל</h4>
+      <ul>
+        <li>מגדיר מספר קבוצות ויעד נקודות לניצחון.</li>
+        <li>בוחר בכל סיבוב איזו קבוצה משחקת ומי המסביר.</li>
+        <li>מפעיל טיימר לסיבוב, רואה את הניקוד של כל הקבוצות, וסוגר את המשחק כשמספיק.</li>
+      </ul>
+
+      <h4>איך משחקים?</h4>
+      <ul>
+        <li>בכל סיבוב יש <strong>מסביר אחד</strong> מקבוצה אחת.</li>
+        <li>המסביר רואה בטלפון שלו מילים סודיות.</li>
+        <li>המטרה: לגרום לקבוצה שלו לנחש את המילה בלי להגיד אותה.</li>
+      </ul>
+
+      <h4>מה אסור למסביר?</h4>
+      <ul>
+        <li>להגיד את המילה עצמה או חלקים ממנה.</li>
+        <li>לתרגם לשפה אחרת את המילה עצמה.</li>
+        <li>לאיית / לשיר חרוזים ישירים על המילה.</li>
+      </ul>
+
+      <h4>ומה מותר?</h4>
+      <ul>
+        <li>לתאר, לספר סיפור, לעשות חיקויים, להשתמש בידיים – כל עוד לא אומרים את המילה.</li>
+      </ul>
+
+      <h4>הכפתורים אצל המסביר</h4>
+      <ul>
+        <li><strong>✅ "נכון"</strong> – הקבוצה ניחשה, מקבלים +1 נקודה ועוברים למילה הבאה.</li>
+        <li><strong>⏭ "דילוג"</strong> – קופצים למילה הבאה אבל מקבלים −1 נקודה.</li>
+      </ul>
+
+      <h4>סיום סיבוב ומשחק</h4>
+      <ul>
+        <li>כשנגמר הזמן – הסיבוב נעצר, וכל הקבוצה מקבלת הודעה צינית לפי כמה נקודות עשיתם.</li>
+        <li>כשקבוצה מגיעה ליעד הנקודות – היא מנצחת. המנהל יכול גם לסגור משחק ידנית.</li>
+      </ul>
+
+      <button id="howToClose" class="btn btn-primary btn-wide" style="margin-top:8px;">הבנתי, בא לי לשחק 🎉</button>
     </div>
   </div>
 
   <script>
-    (function () {
-      const slot = document.getElementById("index-banner-slot");
-      if (!slot) return;
+    const howToModal = document.getElementById("howToModal");
+    const howToBtnTop = document.getElementById("howToBtnTop");
+    const howToBtnBottom = document.getElementById("howToBtnBottom");
+    const howToClose = document.getElementById("howToClose");
+    const mainLogoEl = document.getElementById("mainLogo");
+    const indexBannerSlot = document.getElementById("index-banner-slot");
 
+    function openHowTo() {
+      howToModal.classList.remove("hidden");
+    }
+    function closeHowTo() {
+      howToModal.classList.add("hidden");
+    }
+
+    if (howToBtnTop) howToBtnTop.addEventListener("click", openHowTo);
+    if (howToBtnBottom) howToBtnBottom.addEventListener("click", openHowTo);
+    if (howToClose) howToClose.addEventListener("click", closeHowTo);
+    if (howToModal) {
+      howToModal.addEventListener("click", (e) => {
+        if (e.target === howToModal) {
+          closeHowTo();
+        }
+      });
+    }
+
+    // טעינת לוגו ובאנר לעמוד הבית
+    (function loadBranding() {
       fetch("/api/banners")
-        .then((res) => res.json())
-        .then((data) => {
-          const cfg = data && data.index;
-          if (!cfg || !cfg.imageUrl || !cfg.linkUrl) {
-            return;
+        .then(res => res.json())
+        .then(data => {
+          if (!data) return;
+
+          // לוגו
+          const logoCfg = data.logo;
+          if (logoCfg && logoCfg.imageUrl && mainLogoEl) {
+            mainLogoEl.src = logoCfg.imageUrl;
+            mainLogoEl.alt = logoCfg.altText || "כהנ'ס";
+            mainLogoEl.style.display = "block";
           }
+
+          // באנר
+          const cfg = data.index;
+          if (!cfg || !cfg.imageUrl || !cfg.linkUrl || !indexBannerSlot) return;
+
+          indexBannerSlot.innerHTML = "";
           const a = document.createElement("a");
           a.className = "ad-banner";
           a.href = cfg.linkUrl;
@@ -224,7 +367,7 @@
           img.alt = "Banner";
 
           a.appendChild(img);
-          slot.appendChild(a);
+          indexBannerSlot.appendChild(a);
         })
         .catch(() => {});
     })();
