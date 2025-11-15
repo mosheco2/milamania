@@ -98,6 +98,16 @@
     .btn-exit:hover {
       background: rgba(248,113,113,0.18);
     }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid #4b5563;
+      color: #e5e7eb;
+      width: 100%;
+      margin-top: 8px;
+    }
+    .btn-secondary:hover {
+      background: rgba(15,23,42,0.8);
+    }
     .btn[disabled] {
       opacity: 0.5;
       cursor: default;
@@ -204,6 +214,7 @@
         </select>
       </div>
       <button id="joinBtn" class="btn btn-primary">הצטרף למשחק</button>
+      <button id="backHomeBtn" class="btn btn-secondary">⬅ חזרה למסך הבית</button>
       <p id="joinError" class="status-text" style="color:#f97373; margin-top:8px;"></p>
     </div>
 
@@ -285,6 +296,7 @@
     const playerNameInput = document.getElementById("playerName");
     const teamIdSelect = document.getElementById("teamId");
     const joinBtn = document.getElementById("joinBtn");
+    const backHomeBtn = document.getElementById("backHomeBtn");
     const joinError = document.getElementById("joinError");
 
     const playerCard = document.getElementById("player-card");
@@ -529,6 +541,12 @@
         }
       );
     });
+
+    if (backHomeBtn) {
+      backHomeBtn.addEventListener("click", () => {
+        window.location.href = "/";
+      });
+    }
 
     function ensureLastGameStateFromPayload(payload) {
       if (!lastGameState) {
