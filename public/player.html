@@ -210,6 +210,9 @@
     let myTeamId = null;
     let isExplainer = false;
     let lastGameState = null;
+    let clientId = null;
+    let savedStateForAutoJoin = null;
+    let hasJoined = false;
 
     const joinCard = document.getElementById("join-card");
     const joinCodeInput = document.getElementById("joinCode");
@@ -235,74 +238,58 @@
     const scoreboardDynamic = document.getElementById("scoreboardDynamic");
     const scoreTarget = document.getElementById("scoreTarget");
 
-    socket.on("connect", () => {
-      mySocketId = socket.id;
-    });
-
-    // מילוי אוטומטי מה-localStorage
-    (function prefillFromStorage() {
+    // קריאה ראשונית מ-localStorage + יצירת clientId קבוע
+    (function loadFromStorage() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-        const saved = JSON.parse(raw);
-        if (!saved) return;
-        if (saved.gameCode) joinCodeInput.value = saved.gameCode;
-        if (saved.playerName) playerNameInput.value = saved.playerName;
-        if (saved.teamId) teamIdSelect.value = saved.teamId;
+        if (raw) {
+          const saved = JSON.parse(raw);
+          if (saved) {
+            savedStateForAutoJoin = saved;
+            if (saved.clientId) clientId = saved.clientId;
+            if (saved.gameCode) joinCodeInput.value = saved.gameCode;
+            if (saved.playerName) playerNameInput.value = saved.playerName;
+            if (saved.teamId) teamIdSelect.value = saved.teamId;
+          }
+        }
       } catch (e) {
         // מתעלמים
       }
+      if (!clientId) {
+        clientId = "c-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      }
     })();
 
-    joinBtn.addEventListener("click", () => {
-      joinError.textContent = "";
-      const code = (joinCodeInput.value || "").trim().toUpperCase();
-      const name = (playerNameInput.value || "").trim();
-      const teamId = (teamIdSelect.value || "A").toUpperCase();
+    socket.on("connect", () => {
+      mySocketId = socket.id;
 
-      if (!code) {
-        joinError.textContent = "צריך להזין קוד משחק.";
-        return;
+      // אם יש מצב שמור – מנסים להתחבר אוטומטית למשחק
+      if (
+        !hasJoined &&
+        savedStateForAutoJoin &&
+        savedStateForAutoJoin.gameCode &&
+        savedStateForAutoJoin.playerName &&
+        savedStateForAutoJoin.teamId
+      ) {
+        autoRejoin(savedStateForAutoJoin);
       }
-      if (!name) {
-        joinError.textContent = "צריך להזין שם.";
-        return;
-      }
+    });
 
-      socket.emit("joinGame", {
-        gameCode: code,
-        playerName: name,
-        teamId
-      }, (res) => {
-        if (!res || !res.ok) {
-          joinError.textContent = (res && res.error) ? res.error : "לא הצלחנו להצטרף למשחק.";
-          return;
-        }
-
-        joinedGameCode = res.gameCode;
-        myName = name;
-        myTeamId = teamId;
-        lastGameState = res.game;
-
-        // שמירה לטעינה מחדש
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    function saveStateToStorage() {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
             gameCode: joinedGameCode,
             playerName: myName,
-            teamId: myTeamId
-          }));
-        } catch (e) {}
-
-        joinCard.classList.add("hidden");
-        playerCard.classList.remove("hidden");
-        roundStatusCard.classList.remove("hidden");
-        scoreCard.classList.remove("hidden");
-
-        tagGameCode.textContent = "קוד: " + joinedGameCode;
-        renderScoresFromGame(res.game);
-        updatePlayerInfo();
-      });
-    });
+            teamId: myTeamId,
+            clientId
+          })
+        );
+      } catch (e) {
+        // מתעלמים
+      }
+    }
 
     function updatePlayerInfo() {
       if (!myName || !myTeamId || !lastGameState || !lastGameState.teams) {
@@ -353,15 +340,94 @@
       updatePlayerInfo();
     }
 
-    socket.on("gameUpdated", (game) => {
-      if (!joinedGameCode || !game || game.code !== joinedGameCode) return;
-      renderScoresFromGame(game);
+    function onJoinSuccess(res, code, name, teamId) {
+      hasJoined = true;
+      joinedGameCode = res.gameCode;
+      myName = name;
+      myTeamId = teamId;
+      lastGameState = res.game;
+      if (res.clientId) {
+        clientId = res.clientId;
+      }
+
+      saveStateToStorage();
+
+      joinCard.classList.add("hidden");
+      playerCard.classList.remove("hidden");
+      roundStatusCard.classList.remove("hidden");
+      scoreCard.classList.remove("hidden");
+
+      tagGameCode.textContent = "קוד: " + joinedGameCode;
+      renderScoresFromGame(res.game);
+      updatePlayerInfo();
+    }
+
+    function autoRejoin(saved) {
+      const code = (saved.gameCode || "").trim().toUpperCase();
+      const name = (saved.playerName || "").trim();
+      const team = (saved.teamId || "A").toUpperCase();
+
+      if (!code || !name) return;
+
+      socket.emit(
+        "joinGame",
+        {
+          gameCode: code,
+          playerName: name,
+          teamId: team,
+          clientId
+        },
+        (res) => {
+          if (!res || !res.ok) {
+            // אם המשך המשחק נכשל (לדוגמה: המשחק נסגר) – מנקים סטייט
+            try {
+              localStorage.removeItem(STORAGE_KEY);
+            } catch (e) {}
+            return;
+          }
+          onJoinSuccess(res, code, name, team);
+        }
+      );
+    }
+
+    joinBtn.addEventListener("click", () => {
+      joinError.textContent = "";
+      const code = (joinCodeInput.value || "").trim().toUpperCase();
+      const name = (playerNameInput.value || "").trim();
+      const teamId = (teamIdSelect.value || "A").toUpperCase();
+
+      if (!code) {
+        joinError.textContent = "צריך להזין קוד משחק.";
+        return;
+      }
+      if (!name) {
+        joinError.textContent = "צריך להזין שם.";
+        return;
+      }
+
+      socket.emit(
+        "joinGame",
+        {
+          gameCode: code,
+          playerName: name,
+          teamId,
+          clientId
+        },
+        (res) => {
+          if (!res || !res.ok) {
+            joinError.textContent =
+              (res && res.error) ? res.error : "לא הצלחנו להצטרף למשחק.";
+            return;
+          }
+          onJoinSuccess(res, code, name, teamId);
+        }
+      );
     });
 
-    socket.on("roundStarted", (payload) => {
-      if (!joinedGameCode || !payload) return;
-
-      if (!lastGameState) lastGameState = {};
+    function ensureLastGameStateFromPayload(payload) {
+      if (!lastGameState) {
+        lastGameState = {};
+      }
       if (payload.teams) {
         lastGameState.teams = payload.teams;
       }
@@ -376,13 +442,24 @@
       if (payload.targetScore) {
         lastGameState.targetScore = payload.targetScore;
       }
+    }
 
+    socket.on("gameUpdated", (game) => {
+      if (!joinedGameCode || !game || game.code !== joinedGameCode) return;
+      renderScoresFromGame(game);
+    });
+
+    socket.on("roundStarted", (payload) => {
+      if (!joinedGameCode || !payload) return;
+
+      ensureLastGameStateFromPayload(payload);
       renderScoresFromGame(lastGameState);
 
       const isMyTeamTurn = (myTeamId === payload.teamId);
       isExplainer = (mySocketId && mySocketId === payload.explainerId);
 
-      let txt = "סיבוב התחיל לקבוצה " + (lastGameState.teams?.[payload.teamId]?.name || payload.teamId) + ".";
+      let txt = "סיבוב התחיל לקבוצה " +
+        (lastGameState.teams?.[payload.teamId]?.name || payload.teamId) + ".";
       if (isMyTeamTurn) {
         txt += " זה התור של הקבוצה שלך.";
       } else {
@@ -393,7 +470,8 @@
       if (isExplainer) {
         explainerCard.classList.remove("hidden");
         currentWordEl.textContent = "מילה נטענת...";
-        explainerHint.textContent = "אתה המסביר! המתן למילה והתחל לתאר בלי לומר אותה.";
+        explainerHint.textContent =
+          "אתה המסביר! המתן למילה והתחל לתאר בלי לומר אותה.";
       } else {
         explainerCard.classList.add("hidden");
       }
@@ -407,21 +485,7 @@
 
     socket.on("scoreUpdated", (payload) => {
       if (!payload) return;
-      if (!lastGameState) lastGameState = {};
-      if (payload.teams) {
-        lastGameState.teams = payload.teams;
-      }
-      if (payload.scores && lastGameState.teams) {
-        Object.entries(payload.scores).forEach(([id, s]) => {
-          if (!lastGameState.teams[id]) {
-            lastGameState.teams[id] = { id, name: "קבוצה " + id, score: 0 };
-          }
-          lastGameState.teams[id].score = s;
-        });
-      }
-      if (payload.targetScore) {
-        lastGameState.targetScore = payload.targetScore;
-      }
+      ensureLastGameStateFromPayload(payload);
       renderScoresFromGame(lastGameState);
     });
 
@@ -435,13 +499,8 @@
       isExplainer = false;
       explainerCard.classList.add("hidden");
 
-      if (payload && payload.scores && lastGameState) {
-        Object.entries(payload.scores).forEach(([id, s]) => {
-          if (!lastGameState.teams[id]) {
-            lastGameState.teams[id] = { id, name: "קבוצה " + id, score: 0 };
-          }
-          lastGameState.teams[id].score = s;
-        });
+      if (payload && payload.scores) {
+        ensureLastGameStateFromPayload(payload);
         renderScoresFromGame(lastGameState);
       }
     });
