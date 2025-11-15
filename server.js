@@ -39,6 +39,8 @@ const wordPacks = {
   ]
 };
 
+const TEAM_LETTERS = ["A","B","C","D","E"];
+
 // מחזיר רשימת מילים לפי חבילה (או הכל)
 function getWordList(packKey) {
   if (packKey && wordPacks[packKey]) {
@@ -103,6 +105,15 @@ function getPublicGameSummary(game) {
   };
 }
 
+// בונה אובייקט ניקוד {A: מספר, B: מספר, ...}
+function buildScoresObject(game) {
+  const scores = {};
+  for (const [id, team] of Object.entries(game.teams)) {
+    scores[id] = team.score;
+  }
+  return scores;
+}
+
 io.on("connection", socket => {
   console.log("לקוח התחבר:", socket.id);
 
@@ -113,20 +124,29 @@ io.on("connection", socket => {
       code = generateGameCode();
     } while (games[code]);
 
-    const teamAName = data.teamAName || "קבוצה A";
-    const teamBName = data.teamBName || "קבוצה B";
     const targetScore = Number(data.targetScore) || 30;
     const wordPack = data.wordPack || "classic";
+
+    let teamCount = Number(data.teamCount) || 2;
+    if (teamCount < 2) teamCount = 2;
+    if (teamCount > 5) teamCount = 5;
+
+    const teamNames = data.teamNames || {};
+    const teams = {};
+
+    for (let i = 0; i < teamCount; i++) {
+      const id = TEAM_LETTERS[i];
+      const fallbackName = "קבוצה " + (i + 1);
+      const nameFromClient = teamNames[id];
+      teams[id] = { id, name: nameFromClient && nameFromClient.trim() ? nameFromClient.trim() : fallbackName, score: 0 };
+    }
 
     const game = {
       code,
       hostId: socket.id,
       wordPack,
       targetScore,
-      teams: {
-        A: { id: "A", name: teamAName, score: 0 },
-        B: { id: "B", name: teamBName, score: 0 }
-      },
+      teams,
       players: {},
       state: {
         phase: "lobby", // lobby | playing
@@ -141,7 +161,7 @@ io.on("connection", socket => {
     game.players[socket.id] = {
       id: socket.id,
       name: data.hostName || "מנהל",
-      teamId: "A",
+      teamId: TEAM_LETTERS[0], // ברירת מחדל: הקבוצה הראשונה
       isHost: true
     };
 
@@ -159,9 +179,8 @@ io.on("connection", socket => {
   socket.on("joinGame", (data, cb) => {
     const code = (data.gameCode || "").toUpperCase().trim();
     const name = (data.playerName || "").trim();
-    const teamId = data.teamId === "B" ? "B" : "A";
-
     const game = games[code];
+
     if (!game) {
       cb && cb({ ok: false, error: "המשחק לא נמצא" });
       return;
@@ -170,6 +189,11 @@ io.on("connection", socket => {
       cb && cb({ ok: false, error: "חייבים שם שחקן" });
       return;
     }
+
+    const requestedTeamId = (data.teamId || "").toUpperCase();
+    const teamId = game.teams[requestedTeamId]
+      ? requestedTeamId
+      : Object.keys(game.teams)[0];
 
     game.players[socket.id] = {
       id: socket.id,
@@ -184,7 +208,7 @@ io.on("connection", socket => {
     cb && cb({ ok: true, gameCode: code, game: summary });
     io.to(code).emit("gameUpdated", summary);
 
-    console.log(`שחקן ${name} הצטרף למשחק ${code}`);
+    console.log(`שחקן ${name} הצטרף למשחק ${code} לקבוצה ${teamId}`);
   });
 
   // התחלת סיבוב (רק המנהל)
@@ -194,7 +218,11 @@ io.on("connection", socket => {
     if (!game) return;
     if (socket.id !== game.hostId) return;
 
-    const teamId = data.teamId === "B" ? "B" : "A";
+    const requestedTeamId = (data.teamId || "").toUpperCase();
+    const teamId = game.teams[requestedTeamId]
+      ? requestedTeamId
+      : Object.keys(game.teams)[0];
+
     let explainerId = data.explainerId;
     const roundTime = Number(data.roundTime) || 60;
 
@@ -220,11 +248,9 @@ io.on("connection", socket => {
       teamId,
       explainerId,
       roundTime,
-      scores: {
-        A: game.teams.A.score,
-        B: game.teams.B.score
-      },
-      targetScore: game.targetScore
+      scores: buildScoresObject(game),
+      targetScore: game.targetScore,
+      teams: game.teams
     };
 
     io.to(code).emit("roundStarted", payload);
@@ -244,17 +270,15 @@ io.on("connection", socket => {
     if (socket.id !== game.state.explainerId) return;
 
     const teamId = game.state.currentTeamId;
-    if (!teamId) return;
+    if (!teamId || !game.teams[teamId]) return;
 
     game.teams[teamId].score += 1;
     game.state.currentWord = pickRandomWord(game);
 
     io.to(code).emit("scoreUpdated", {
-      scores: {
-        A: game.teams.A.score,
-        B: game.teams.B.score
-      },
-      targetScore: game.targetScore
+      scores: buildScoresObject(game),
+      targetScore: game.targetScore,
+      teams: game.teams
     });
 
     io.to(game.state.explainerId).emit("wordForExplainer", {
@@ -291,12 +315,35 @@ io.on("connection", socket => {
     game.state.currentWord = null;
 
     io.to(code).emit("roundEnded", {
-      scores: {
-        A: game.teams.A.score,
-        B: game.teams.B.score
-      },
-      teamId
+      scores: buildScoresObject(game),
+      teamId,
+      teams: game.teams
     });
+  });
+
+  // סיום משחק (רק המנהל)
+  socket.on("endGame", data => {
+    const code = (data.gameCode || "").toUpperCase().trim();
+    const game = games[code];
+    if (!game) return;
+    if (socket.id !== game.hostId) return;
+
+    let maxScore = -Infinity;
+    for (const t of Object.values(game.teams)) {
+      if (t.score > maxScore) maxScore = t.score;
+    }
+    const winners = Object.values(game.teams).filter(t => t.score === maxScore);
+
+    const payload = {
+      scores: buildScoresObject(game),
+      teams: game.teams,
+      winnerTeamIds: winners.map(t => t.id)
+    };
+
+    io.to(code).emit("gameEnded", payload);
+    delete games[code];
+
+    console.log("משחק הסתיים ונמחק:", code);
   });
 
   // ניתוק שחקן
