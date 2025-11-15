@@ -370,10 +370,11 @@
         <div class="status-bar" id="roundStatus">
           טרם התחיל סיבוב.
         </div>
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
           <button id="startRoundBtn" class="btn btn-primary">התחל סיבוב</button>
           <button id="endRoundBtn" class="btn btn-ghost" disabled>סיים סיבוב</button>
           <button id="endGameBtn" class="btn btn-danger">סגור משחק</button>
+          <button id="newGameBtn" class="btn btn-ghost" disabled>משחק חדש</button>
         </div>
       </div>
     </div>
@@ -439,6 +440,7 @@
     const startRoundBtn = document.getElementById("startRoundBtn");
     const endRoundBtn = document.getElementById("endRoundBtn");
     const endGameBtn = document.getElementById("endGameBtn");
+    const newGameBtn = document.getElementById("newGameBtn");
 
     const scoreboardContainer = document.getElementById("scoreboardContainer");
     const targetInfo = document.getElementById("targetInfo");
@@ -573,10 +575,18 @@
             badge.textContent = "מנהל";
             chip.appendChild(badge);
           }
+          if (!p.isConnected) {
+            const badgeOff = document.createElement("span");
+            badgeOff.className = "badge";
+            badgeOff.style.backgroundColor = "rgba(127,29,29,0.35)";
+            badgeOff.style.borderColor = "rgba(248,113,113,0.7)";
+            badgeOff.textContent = "מנותק";
+            chip.appendChild(badgeOff);
+          }
           list.appendChild(chip);
 
           const opt = document.createElement("option");
-          opt.value = p.id;
+          opt.value = p.id; // clientId
           opt.textContent = p.name + " (" + id + ")";
           roundExplainerSelect.appendChild(opt);
         });
@@ -618,6 +628,8 @@
           return;
         }
         gameEnded = false;
+        newGameBtn.disabled = true;
+
         currentGameCode = res.gameCode;
         targetScore = res.game.targetScore || ts;
         currentTeams = res.game.teams || {};
@@ -636,6 +648,14 @@
         rebuildRoundTeamOptions();
         updateScoreboardUI();
         renderPlayers(res.game);
+
+        lobbyStatus.textContent = "מחכים לשחקנים שיצטרפו...";
+        roundStatus.textContent = "טרם התחיל סיבוב.";
+        clearInterval(roundTimerId);
+        roundTimeLeft = 0;
+        updateTimerUI();
+        startRoundBtn.disabled = false;
+        endRoundBtn.disabled = true;
       });
     });
 
@@ -670,7 +690,10 @@
       targetScore = payload.targetScore || targetScore;
       updateScoreboardUI();
 
-      roundStatus.textContent = "סיבוב פעיל - תור " + (currentTeams[payload.teamId]?.name || ("קבוצה " + payload.teamId)) + ".";
+      roundStatus.textContent =
+        "סיבוב פעיל - תור " +
+        (currentTeams[payload.teamId]?.name || ("קבוצה " + payload.teamId)) +
+        ".";
       startRoundBtn.disabled = true;
       endRoundBtn.disabled = false;
 
@@ -721,6 +744,7 @@
       updateTimerUI();
       startRoundBtn.disabled = true;
       endRoundBtn.disabled = true;
+      newGameBtn.disabled = false;
 
       if (payload && payload.teams && payload.scores) {
         currentTeams = payload.teams;
@@ -751,7 +775,10 @@
       if (roundTime > 240) roundTime = 240;
       const explainerId = roundExplainerSelect.value || null;
 
-      roundStatus.textContent = "מתחיל סיבוב ל-" + (currentTeams[teamId]?.name || ("קבוצה " + teamId)) + "...";
+      roundStatus.textContent =
+        "מתחיל סיבוב ל-" +
+        (currentTeams[teamId]?.name || ("קבוצה " + teamId)) +
+        "...";
       startRoundBtn.disabled = true;
       endRoundBtn.disabled = false;
 
@@ -775,6 +802,36 @@
       const ok = confirm("לסגור את המשחק? כל השחקנים יקבלו הודעת סיום.");
       if (!ok) return;
       socket.emit("endGame", { gameCode: currentGameCode });
+    });
+
+    // התחלת משחק חדש אחרי סגירה
+    newGameBtn.addEventListener("click", () => {
+      // איפוס מצב ל־"לפני משחק"
+      gameEnded = false;
+      currentGameCode = null;
+      currentTeams = {};
+      currentScores = {};
+      targetScore = 30;
+
+      gameCodeBox.textContent = "----";
+      teamsLobbyContainer.innerHTML = "";
+      scoreboardContainer.innerHTML = "";
+      targetInfo.textContent = "";
+      lobbyStatus.textContent = "מחכים לשחקנים שיצטרפו...";
+      roundStatus.textContent = "טרם התחיל סיבוב.";
+      clearInterval(roundTimerId);
+      roundTimeLeft = 0;
+      updateTimerUI();
+      startRoundBtn.disabled = false;
+      endRoundBtn.disabled = true;
+      newGameBtn.disabled = true;
+
+      // מציגים שוב את כרטיס יצירת המשחק ומסתירים את שאר הכרטיסים
+      createSection.classList.remove("hidden");
+      lobbySection.classList.add("hidden");
+      roundSection.classList.add("hidden");
+      scoreSection.classList.add("hidden");
+      timerSection.classList.add("hidden");
     });
   </script>
 </body>
