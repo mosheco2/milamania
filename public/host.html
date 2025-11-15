@@ -100,6 +100,14 @@
     .btn-ghost:hover {
       background: rgba(55,65,81,0.7);
     }
+    .btn-danger {
+      background: #ef4444;
+      color: #fee2e2;
+      border: 1px solid #b91c1c;
+    }
+    .btn-danger:hover {
+      background: #b91c1c;
+    }
     .btn[disabled] {
       opacity: 0.5;
       cursor: default;
@@ -131,6 +139,22 @@
       text-align: center;
       direction: ltr;
     }
+    .teams-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .team-block {
+      flex: 1 1 170px;
+      border-radius: 14px;
+      border: 1px solid rgba(148,163,184,0.4);
+      padding: 8px 10px;
+      background: rgba(15,23,42,0.9);
+    }
+    .team-block h4 {
+      margin: 0 0 4px;
+      font-size: 0.9rem;
+    }
     .players-list {
       display: flex;
       flex-wrap: wrap;
@@ -154,12 +178,6 @@
       background: rgba(37,99,235,0.25);
       border: 1px solid rgba(59,130,246,0.7);
       color: #bfdbfe;
-    }
-    .player-chip.teamA {
-      border-color: rgba(59,130,246,0.7);
-    }
-    .player-chip.teamB {
-      border-color: rgba(236,72,153,0.7);
     }
     .timer {
       font-size: 2.2rem;
@@ -253,19 +271,44 @@
           <input id="hostName" type="text" placeholder="לדוגמה: משה" />
         </div>
         <div>
-          <label for="teamAName">שם קבוצה 1 (A)</label>
-          <input id="teamAName" type="text" placeholder="לדוגמה: כחולים" />
+          <label for="teamCount">כמה קבוצות?</label>
+          <select id="teamCount">
+            <option value="2">2 קבוצות</option>
+            <option value="3">3 קבוצות</option>
+            <option value="4">4 קבוצות</option>
+            <option value="5">5 קבוצות</option>
+          </select>
         </div>
-        <div>
-          <label for="teamBName">שם קבוצה 2 (B)</label>
-          <input id="teamBName" type="text" placeholder="לדוגמה: אדומים" />
-        </div>
-      </div>
-      <div class="row">
         <div>
           <label for="targetScore">ניצחון ב־ (נקודות)</label>
           <input id="targetScore" type="number" min="5" max="200" value="30" />
         </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="teamNameA">שם קבוצה 1 (A)</label>
+          <input id="teamNameA" type="text" placeholder="לדוגמה: כחולים" />
+        </div>
+        <div>
+          <label for="teamNameB">שם קבוצה 2 (B)</label>
+          <input id="teamNameB" type="text" placeholder="לדוגמה: אדומים" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="teamNameC">שם קבוצה 3 (C)</label>
+          <input id="teamNameC" type="text" placeholder="אופציונלי" />
+        </div>
+        <div>
+          <label for="teamNameD">שם קבוצה 4 (D)</label>
+          <input id="teamNameD" type="text" placeholder="אופציונלי" />
+        </div>
+        <div>
+          <label for="teamNameE">שם קבוצה 5 (E)</label>
+          <input id="teamNameE" type="text" placeholder="אופציונלי" />
+        </div>
+      </div>
+      <div class="row">
         <div>
           <label for="wordPack">חבילת מילים</label>
           <select id="wordPack">
@@ -295,16 +338,7 @@
         </div>
       </div>
 
-      <div class="row">
-        <div>
-          <h4 style="margin:0 0 4px; font-size:0.95rem;">קבוצה A</h4>
-          <div id="teamAPlayers" class="players-list"></div>
-        </div>
-        <div>
-          <h4 style="margin:0 0 4px; font-size:0.95rem;">קבוצה B</h4>
-          <div id="teamBPlayers" class="players-list"></div>
-        </div>
-      </div>
+      <div id="teamsLobbyContainer" class="teams-grid"></div>
 
       <div class="status-bar" id="lobbyStatus">
         מחכים לשחקנים שיצטרפו...
@@ -319,10 +353,7 @@
       <div class="row">
         <div>
           <label for="roundTeam">באיזו קבוצה הסיבוב?</label>
-          <select id="roundTeam">
-            <option value="A">קבוצה A</option>
-            <option value="B">קבוצה B</option>
-          </select>
+          <select id="roundTeam"></select>
         </div>
         <div>
           <label for="roundExplainer">מי המסביר?</label>
@@ -339,9 +370,10 @@
         <div class="status-bar" id="roundStatus">
           טרם התחיל סיבוב.
         </div>
-        <div>
+        <div style="display:flex; gap:8px;">
           <button id="startRoundBtn" class="btn btn-primary">התחל סיבוב</button>
           <button id="endRoundBtn" class="btn btn-ghost" disabled>סיים סיבוב</button>
+          <button id="endGameBtn" class="btn btn-danger">סגור משחק</button>
         </div>
       </div>
     </div>
@@ -351,26 +383,7 @@
       <div class="card-header">
         <h3>ניקוד</h3>
       </div>
-      <div class="scoreboard">
-        <div class="score-card">
-          <div class="score-title">
-            <span class="score-name" id="scoreTeamAName">קבוצה A</span>
-          </div>
-          <div id="scoreTeamA" class="score-value">0</div>
-          <div class="score-progress">
-            <div id="progressTeamA" class="score-progress-inner"></div>
-          </div>
-        </div>
-        <div class="score-card">
-          <div class="score-title">
-            <span class="score-name" id="scoreTeamBName">קבוצה B</span>
-          </div>
-          <div id="scoreTeamB" class="score-value">0</div>
-          <div class="score-progress">
-            <div id="progressTeamB" class="score-progress-inner"></div>
-          </div>
-        </div>
-      </div>
+      <div id="scoreboardContainer" class="scoreboard"></div>
       <div style="margin-top:6px; font-size:0.8rem; color:#9ca3af;" id="targetInfo"></div>
     </div>
 
@@ -387,11 +400,15 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
+    const TEAM_LETTERS = ["A","B","C","D","E"];
+
     let currentGameCode = null;
     let targetScore = 30;
-    let currentScores = { A: 0, B: 0 };
+    let currentScores = {};
+    let currentTeams = {};
     let roundTimerId = null;
     let roundTimeLeft = 0;
+    let gameEnded = false;
 
     const createSection = document.getElementById("create-section");
     const lobbySection = document.getElementById("lobby-section");
@@ -400,15 +417,19 @@
     const timerSection = document.getElementById("timer-section");
 
     const hostNameInput = document.getElementById("hostName");
-    const teamANameInput = document.getElementById("teamAName");
-    const teamBNameInput = document.getElementById("teamBName");
+    const teamCountSelect = document.getElementById("teamCount");
     const targetScoreInput = document.getElementById("targetScore");
     const wordPackSelect = document.getElementById("wordPack");
     const createGameBtn = document.getElementById("createGameBtn");
 
+    const teamNameAInput = document.getElementById("teamNameA");
+    const teamNameBInput = document.getElementById("teamNameB");
+    const teamNameCInput = document.getElementById("teamNameC");
+    const teamNameDInput = document.getElementById("teamNameD");
+    const teamNameEInput = document.getElementById("teamNameE");
+
     const gameCodeBox = document.getElementById("gameCodeBox");
-    const teamAPlayersDiv = document.getElementById("teamAPlayers");
-    const teamBPlayersDiv = document.getElementById("teamBPlayers");
+    const teamsLobbyContainer = document.getElementById("teamsLobbyContainer");
     const lobbyStatus = document.getElementById("lobbyStatus");
 
     const roundTeamSelect = document.getElementById("roundTeam");
@@ -417,13 +438,9 @@
     const roundStatus = document.getElementById("roundStatus");
     const startRoundBtn = document.getElementById("startRoundBtn");
     const endRoundBtn = document.getElementById("endRoundBtn");
+    const endGameBtn = document.getElementById("endGameBtn");
 
-    const scoreTeamANameEl = document.getElementById("scoreTeamAName");
-    const scoreTeamBNameEl = document.getElementById("scoreTeamBName");
-    const scoreTeamAEl = document.getElementById("scoreTeamA");
-    const scoreTeamBEl = document.getElementById("scoreTeamB");
-    const progressTeamA = document.getElementById("progressTeamA");
-    const progressTeamB = document.getElementById("progressTeamB");
+    const scoreboardContainer = document.getElementById("scoreboardContainer");
     const targetInfo = document.getElementById("targetInfo");
 
     const timerDisplay = document.getElementById("timerDisplay");
@@ -450,7 +467,7 @@
           roundTimeLeft = 0;
           clearInterval(roundTimerId);
           updateTimerUI();
-          if (currentGameCode) {
+          if (currentGameCode && !gameEnded) {
             socket.emit("endRound", { gameCode: currentGameCode });
           }
         } else {
@@ -459,72 +476,140 @@
       }, 1000);
     }
 
+    function rebuildRoundTeamOptions() {
+      roundTeamSelect.innerHTML = "";
+      const ids = Object.keys(currentTeams);
+      ids.forEach(id => {
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = currentTeams[id].name || ("קבוצה " + id);
+        roundTeamSelect.appendChild(opt);
+      });
+    }
+
     function updateScoreboardUI() {
-      scoreTeamAEl.textContent = currentScores.A;
-      scoreTeamBEl.textContent = currentScores.B;
+      scoreboardContainer.innerHTML = "";
+      const ids = Object.keys(currentTeams);
+      if (!ids.length) {
+        targetInfo.textContent = "";
+        return;
+      }
 
-      const ratioA = Math.max(0, Math.min(1, targetScore ? currentScores.A / targetScore : 0));
-      const ratioB = Math.max(0, Math.min(1, targetScore ? currentScores.B / targetScore : 0));
-      progressTeamA.style.width = (ratioA * 100) + "%";
-      progressTeamB.style.width = (ratioB * 100) + "%";
+      ids.forEach(id => {
+        const team = currentTeams[id];
+        const score = currentScores[id] || 0;
+        const card = document.createElement("div");
+        card.className = "score-card";
 
-      scoreTeamAEl.classList.toggle("winner", currentScores.A >= targetScore && targetScore > 0);
-      scoreTeamBEl.classList.toggle("winner", currentScores.B >= targetScore && targetScore > 0);
+        const title = document.createElement("div");
+        title.className = "score-title";
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "score-name";
+        nameSpan.textContent = team.name || ("קבוצה " + id);
+
+        title.appendChild(nameSpan);
+        card.appendChild(title);
+
+        const val = document.createElement("div");
+        val.className = "score-value";
+        val.textContent = score;
+        if (targetScore > 0 && score >= targetScore) {
+          val.classList.add("winner");
+        }
+        card.appendChild(val);
+
+        const prog = document.createElement("div");
+        prog.className = "score-progress";
+        const inner = document.createElement("div");
+        inner.className = "score-progress-inner";
+        const ratio = Math.max(0, Math.min(1, targetScore ? score / targetScore : 0));
+        inner.style.width = (ratio * 100) + "%";
+        prog.appendChild(inner);
+        card.appendChild(prog);
+
+        scoreboardContainer.appendChild(card);
+      });
 
       targetInfo.textContent = "יעד הניקוד: " + targetScore + " נקודות.";
     }
 
     function renderPlayers(game) {
-      teamAPlayersDiv.innerHTML = "";
-      teamBPlayersDiv.innerHTML = "";
+      teamsLobbyContainer.innerHTML = "";
       roundExplainerSelect.innerHTML = "";
       const defaultOpt = document.createElement("option");
       defaultOpt.value = "";
       defaultOpt.textContent = "ייבחר אוטומטית מהקבוצה";
       roundExplainerSelect.appendChild(defaultOpt);
 
+      const teams = game.teams || {};
       const players = game.players || [];
+
+      const ids = Object.keys(teams);
       lobbyStatus.textContent = players.length
         ? ("שחקנים מחוברים: " + players.length)
         : "טרם הצטרפו שחקנים.";
 
-      players.forEach(p => {
-        const chip = document.createElement("div");
-        chip.className = "player-chip " + (p.teamId === "B" ? "teamB" : "teamA");
-        chip.textContent = p.name + " ";
-        if (p.isHost) {
-          const b = document.createElement("span");
-          b.className = "badge";
-          b.textContent = "מנהל";
-          chip.appendChild(b);
-        }
-        if (p.teamId === "B") {
-          teamBPlayersDiv.appendChild(chip);
-        } else {
-          teamAPlayersDiv.appendChild(chip);
-        }
+      ids.forEach(id => {
+        const team = teams[id];
+        const block = document.createElement("div");
+        block.className = "team-block";
 
-        const opt = document.createElement("option");
-        opt.value = p.id;
-        opt.textContent = p.name + " (" + p.teamId + ")";
-        roundExplainerSelect.appendChild(opt);
+        const h = document.createElement("h4");
+        h.textContent = team.name || ("קבוצה " + id);
+        block.appendChild(h);
+
+        const list = document.createElement("div");
+        list.className = "players-list";
+
+        players.forEach(p => {
+          if (p.teamId !== id) return;
+          const chip = document.createElement("div");
+          chip.className = "player-chip";
+          chip.textContent = p.name + " ";
+          if (p.isHost) {
+            const badge = document.createElement("span");
+            badge.className = "badge";
+            badge.textContent = "מנהל";
+            chip.appendChild(badge);
+          }
+          list.appendChild(chip);
+
+          const opt = document.createElement("option");
+          opt.value = p.id;
+          opt.textContent = p.name + " (" + id + ")";
+          roundExplainerSelect.appendChild(opt);
+        });
+
+        block.appendChild(list);
+        teamsLobbyContainer.appendChild(block);
       });
     }
 
     // יצירת משחק חדש
     createGameBtn.addEventListener("click", () => {
       const hostName = hostNameInput.value.trim() || "מנהל";
-      const teamAName = teamANameInput.value.trim() || "קבוצה A";
-      const teamBName = teamBNameInput.value.trim() || "קבוצה B";
       let ts = parseInt(targetScoreInput.value, 10);
       if (Number.isNaN(ts) || ts < 5) ts = 30;
       if (ts > 200) ts = 200;
       const packKey = wordPackSelect.value || "classic";
 
+      let teamCount = parseInt(teamCountSelect.value, 10);
+      if (Number.isNaN(teamCount) || teamCount < 2) teamCount = 2;
+      if (teamCount > 5) teamCount = 5;
+
+      const teamNames = {
+        A: teamNameAInput.value,
+        B: teamNameBInput.value,
+        C: teamNameCInput.value,
+        D: teamNameDInput.value,
+        E: teamNameEInput.value
+      };
+
       socket.emit("createGame", {
         hostName,
-        teamAName,
-        teamBName,
+        teamCount,
+        teamNames,
         targetScore: ts,
         wordPack: packKey
       }, (res) => {
@@ -532,12 +617,14 @@
           alert(res && res.error ? res.error : "שגיאה ביצירת משחק");
           return;
         }
+        gameEnded = false;
         currentGameCode = res.gameCode;
         targetScore = res.game.targetScore || ts;
-        currentScores = {
-          A: res.game.teams.A.score,
-          B: res.game.teams.B.score
-        };
+        currentTeams = res.game.teams || {};
+        currentScores = {};
+        Object.entries(currentTeams).forEach(([id, t]) => {
+          currentScores[id] = t.score || 0;
+        });
 
         createSection.classList.add("hidden");
         lobbySection.classList.remove("hidden");
@@ -546,23 +633,125 @@
         timerSection.classList.remove("hidden");
 
         gameCodeBox.textContent = currentGameCode;
-        scoreTeamANameEl.textContent = res.game.teams.A.name;
-        scoreTeamBNameEl.textContent = res.game.teams.B.name;
+        rebuildRoundTeamOptions();
         updateScoreboardUI();
         renderPlayers(res.game);
       });
     });
 
+    function applyGameSummary(game) {
+      if (!game || !game.code) return;
+      currentGameCode = game.code;
+      targetScore = game.targetScore || targetScore;
+      currentTeams = game.teams || {};
+      currentScores = {};
+      Object.entries(currentTeams).forEach(([id, t]) => {
+        currentScores[id] = t.score || 0;
+      });
+      gameCodeBox.textContent = game.code;
+      rebuildRoundTeamOptions();
+      updateScoreboardUI();
+      renderPlayers(game);
+    }
+
+    socket.on("gameUpdated", (game) => {
+      if (!game || !game.code) return;
+      applyGameSummary(game);
+    });
+
+    socket.on("roundStarted", (payload) => {
+      if (!payload) return;
+      if (payload.teams) {
+        currentTeams = payload.teams;
+      }
+      if (payload.scores) {
+        currentScores = payload.scores;
+      }
+      targetScore = payload.targetScore || targetScore;
+      updateScoreboardUI();
+
+      roundStatus.textContent = "סיבוב פעיל - תור " + (currentTeams[payload.teamId]?.name || ("קבוצה " + payload.teamId)) + ".";
+      startRoundBtn.disabled = true;
+      endRoundBtn.disabled = false;
+
+      startLocalRoundTimer(payload.roundTime || 60);
+    });
+
+    socket.on("scoreUpdated", (payload) => {
+      if (!payload) return;
+      if (payload.teams) {
+        currentTeams = payload.teams;
+      }
+      if (payload.scores) {
+        currentScores = payload.scores;
+      }
+      targetScore = payload.targetScore || targetScore;
+      updateScoreboardUI();
+    });
+
+    socket.on("roundEnded", (payload) => {
+      clearInterval(roundTimerId);
+      roundTimeLeft = 0;
+      updateTimerUI();
+      startRoundBtn.disabled = false;
+      endRoundBtn.disabled = true;
+
+      if (payload) {
+        if (payload.teams) {
+          currentTeams = payload.teams;
+        }
+        if (payload.scores) {
+          currentScores = payload.scores;
+        }
+        updateScoreboardUI();
+      }
+
+      if (payload && payload.teamId) {
+        const teamName = currentTeams[payload.teamId]?.name || ("קבוצה " + payload.teamId);
+        roundStatus.textContent = "הסיבוב של " + teamName + " הסתיים.";
+      } else {
+        roundStatus.textContent = "הסיבוב הסתיים.";
+      }
+    });
+
+    socket.on("gameEnded", (payload) => {
+      gameEnded = true;
+      clearInterval(roundTimerId);
+      roundTimeLeft = 0;
+      updateTimerUI();
+      startRoundBtn.disabled = true;
+      endRoundBtn.disabled = true;
+
+      if (payload && payload.teams && payload.scores) {
+        currentTeams = payload.teams;
+        currentScores = payload.scores;
+        updateScoreboardUI();
+      }
+
+      let msg = "המשחק הסתיים.";
+      if (payload && payload.teams && payload.winnerTeamIds && payload.winnerTeamIds.length) {
+        const names = payload.winnerTeamIds
+          .map(id => payload.teams[id]?.name || ("קבוצה " + id));
+        if (names.length === 1) {
+          msg = "המשחק הסתיים! כל הכבוד ל-" + names[0] + " 🚀";
+        } else {
+          msg = "המשחק הסתיים! תיקו בין: " + names.join(", ");
+        }
+      }
+      roundStatus.textContent = msg;
+      lobbyStatus.textContent = msg;
+    });
+
     // התחלת סיבוב
     startRoundBtn.addEventListener("click", () => {
-      if (!currentGameCode) return;
-      const teamId = roundTeamSelect.value === "B" ? "B" : "A";
+      if (!currentGameCode || gameEnded) return;
+      const teamId = roundTeamSelect.value || Object.keys(currentTeams)[0];
       let roundTime = parseInt(roundTimeInput.value, 10);
       if (Number.isNaN(roundTime) || roundTime < 20) roundTime = 60;
       if (roundTime > 240) roundTime = 240;
       const explainerId = roundExplainerSelect.value || null;
 
-      roundStatus.textContent = "מתחיל סיבוב לקבוצה " + teamId + "...";
+      roundStatus.textContent = "מתחיל סיבוב ל-" + (currentTeams[teamId]?.name || ("קבוצה " + teamId)) + "...";
       startRoundBtn.disabled = true;
       endRoundBtn.disabled = false;
 
@@ -576,64 +765,16 @@
 
     // סיום סיבוב ידני
     endRoundBtn.addEventListener("click", () => {
-      if (!currentGameCode) return;
+      if (!currentGameCode || gameEnded) return;
       socket.emit("endRound", { gameCode: currentGameCode });
     });
 
-    // עדכון משחק מהשרת
-    socket.on("gameUpdated", (game) => {
-      if (!game || !game.code) return;
-      currentGameCode = game.code;
-      targetScore = game.targetScore || targetScore;
-      currentScores = {
-        A: game.teams.A.score,
-        B: game.teams.B.score
-      };
-      scoreTeamANameEl.textContent = game.teams.A.name;
-      scoreTeamBNameEl.textContent = game.teams.B.name;
-      gameCodeBox.textContent = game.code;
-      updateScoreboardUI();
-      renderPlayers(game);
-    });
-
-    // התחלת סיבוב מהשרת
-    socket.on("roundStarted", (payload) => {
-      if (!payload) return;
-      currentScores = {
-        A: payload.scores.A,
-        B: payload.scores.B
-      };
-      targetScore = payload.targetScore || targetScore;
-      updateScoreboardUI();
-
-      roundStatus.textContent = "סיבוב פעיל - תור קבוצה " + payload.teamId + ".";
-      startRoundBtn.disabled = true;
-      endRoundBtn.disabled = false;
-
-      startLocalRoundTimer(payload.roundTime || 60);
-    });
-
-    // עדכון ניקוד
-    socket.on("scoreUpdated", (payload) => {
-      if (!payload) return;
-      currentScores = {
-        A: payload.scores.A,
-        B: payload.scores.B
-      };
-      targetScore = payload.targetScore || targetScore;
-      updateScoreboardUI();
-    });
-
-    // סיום סיבוב
-    socket.on("roundEnded", (payload) => {
-      clearInterval(roundTimerId);
-      roundTimeLeft = 0;
-      updateTimerUI();
-      startRoundBtn.disabled = false;
-      endRoundBtn.disabled = true;
-      roundStatus.textContent = payload && payload.teamId
-        ? ("הסיבוב של קבוצה " + payload.teamId + " הסתיים.")
-        : "הסיבוב הסתיים.";
+    // סגירת משחק
+    endGameBtn.addEventListener("click", () => {
+      if (!currentGameCode || gameEnded) return;
+      const ok = confirm("לסגור את המשחק? כל השחקנים יקבלו הודעת סיום.");
+      if (!ok) return;
+      socket.emit("endGame", { gameCode: currentGameCode });
     });
   </script>
 </body>
