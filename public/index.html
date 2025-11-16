@@ -10,7 +10,8 @@
     }
     * {
       box-sizing: border-box;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
     }
     body {
       margin: 0;
@@ -56,7 +57,11 @@
       font-size: 0.8rem;
       color: #cbd5f5;
       gap: 6px;
-      background: radial-gradient(circle at top left, rgba(56,189,248,0.22), rgba(15,23,42,0.95));
+      background: radial-gradient(
+        circle at top left,
+        rgba(56,189,248,0.22),
+        rgba(15,23,42,0.95)
+      );
       margin-bottom: 4px;
     }
     .logo-main {
@@ -71,26 +76,3 @@
     .btn {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      padding: 11px 18px;
-      border-radius: 999px;
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 600;
-      transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
-      white-space: nowrap;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
-      color: #020617;
-      box-shadow: 0 12px 30px rgba(56,189,248,0.4);
-    }
-    .btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 16px 40px rgba(56,189,248,0.6);
-    }
-    .btn-success {
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      color: #022c22;
-      box-shadow: 0 12px 30px rgba(34,197,94,0.4);
