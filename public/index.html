@@ -40,4 +40,162 @@
       margin: 4px 0;
     }
     .chip {
-      display
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.5);
+      font-size: 0.8rem;
+      color: #cbd5f5;
+      background: radial-gradient(circle at top left,
+        rgba(56,189,248,0.2),
+        rgba(15,23,42,0.95));
+    }
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .logo-main {
+      height: 56px;
+      width: auto;
+      border-radius: 14px;
+      object-fit: contain;
+      background: #020617;
+      padding: 4px 6px;
+      border: 1px solid rgba(148,163,184,0.5);
+    }
+    .btn {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      padding: 11px 18px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      width: 100%;
+      margin-top: 6px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: #020617;
+      box-shadow: 0 12px 30px rgba(56,189,248,0.45);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #022c22;
+      box-shadow: 0 12px 30px rgba(34,197,94,0.45);
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid #4b5563;
+      color: #e5e7eb;
+      width: auto;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+    }
+    .mode-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .mode-text {
+      font-size: 0.9rem;
+      color: #9ca3af;
+      margin-bottom: 6px;
+    }
+    .mode-card {
+      background: radial-gradient(circle at top,
+        rgba(56,189,248,0.07),
+        rgba(15,23,42,0.98));
+      border-radius: 18px;
+      padding: 12px 14px 14px;
+      border: 1px solid rgba(148,163,184,0.35);
+      margin-bottom: 10px;
+    }
+    .small-text {
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+    .banner-wrapper {
+      border-radius: 20px;
+      padding: 4px;
+      background: radial-gradient(circle at top left,
+        rgba(56,189,248,0.25),
+        rgba(15,23,42,0.98));
+      border: 1px solid rgba(148,163,184,0.65);
+    }
+    .banner-wrapper img {
+      width: 100%;
+      display: block;
+      border-radius: 16px;
+    }
+    @media (max-width: 640px) {
+      h1 { font-size: 1.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- כרטיס כותרת + לוגו -->
+    <div class="card">
+      <div class="top-row">
+        <div>
+          <div class="chip">Alias Party · כהנ'ס 🎲</div>
+          <h1>כהנ'ס</h1>
+          <p class="small-text">
+            בחרו מצב משחק לפי התפקיד שלכם, ותנו לאליאס המשפחתי להתחיל לעבוד.
+          </p>
+        </div>
+        <img src="logo.png" alt="כהנ'ס לוגו" class="logo-main" />
+      </div>
+    </div>
+
+    <!-- כרטיס מצבי משחק -->
+    <div class="card">
+      <div class="mode-card">
+        <div class="mode-title">אני מנהל – פתיחת משחק 👑</div>
+        <div class="mode-text">
+          יצירת חדר משחק חדש, הגדרת קבוצות וניקוד יעד, צפייה בכל השחקנים והתחלת סיבובים.
+        </div>
+        <button class="btn btn-primary" onclick="location.href='host.html'">
+          להיכנס כמנהל
+        </button>
+      </div>
+
+      <div class="mode-card">
+        <div class="mode-title">אני שחקן – הצטרפות למשחק 🎮</div>
+        <div class="mode-text">
+          מצטרף למשחק קיים עם קוד שמנהל נותן, בוחר שם וקבוצה, ומתחיל לשחק מהטלפון.
+        </div>
+        <button class="btn btn-success" onclick="location.href='player.html'">
+          להיכנס כשחקן
+        </button>
+      </div>
+
+      <div style="margin-top: 6px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <button class="btn-ghost" onclick="location.href='instructions.html'">
+          ❔ הוראות משחק
+        </button>
+        <span class="small-text">
+          המנהל פותח משחק חדש → השחקנים נכנסים כ"שחקן" ומקלידים את קוד המשחק.
+        </span>
+      </div>
+    </div>
+
+    <!-- כרטיס באנר -->
+    <div class="card">
+      <p class="small-text" style="margin-bottom:4px;">שותף המשחק להיום:</p>
+      <div class="banner-wrapper">
+        <!-- הקובץ שנמצא בתיקיית public -->
+        <a href="#" target="_blank" rel="noopener">
+          <img src="madanei-karmela-banner.png.png" alt="מעדני כרמלה - באנר" />
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
