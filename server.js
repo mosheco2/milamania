@@ -179,6 +179,127 @@ const WORD_SETS = {
     "אופטימיזציה",
     "היפר אקטיבי",
   ],
+  // קטגוריות חדשות
+  sports: [
+    "כדורגל",
+    "כדורסל",
+    "טניס",
+    "ריצה",
+    "שחייה",
+    "כדורעף",
+    "אופניים",
+    "אימון כושר",
+    "כדוריד",
+    "כדורגל שולחן",
+  ],
+  technology: [
+    "מחשב נייד",
+    "סמארטפון",
+    "אפליקציה",
+    "ענן",
+    "אינטרנט",
+    "אוזניות",
+    "מטען",
+    "מסך מגע",
+    "וייפיי",
+    "רשת חברתית",
+  ],
+  travel: [
+    "מטוס",
+    "שדה תעופה",
+    "מלון",
+    "צימר",
+    "חוף ים",
+    "מזוודה",
+    "טיול מאורגן",
+    "כרטיס טיסה",
+    "דרכון",
+    "טיול שטח",
+  ],
+  school: [
+    "מורה",
+    "כיתה",
+    "בחינה",
+    "מחברת",
+    "יומן",
+    "הפסקה",
+    "שיעורי בית",
+    "לוח",
+    "טוש מחיק",
+    "מנהל בית ספר",
+  ],
+  entertainment: [
+    "נטפליקס",
+    "קולנוע",
+    "סדרה",
+    "סרט אימה",
+    "קומדיה",
+    "פופקורן",
+    "כרטיסים",
+    "במה",
+    "הופעה",
+    "פסטיבל",
+  ],
+  music: [
+    "גיטרה",
+    "תופים",
+    "פסנתר",
+    "מיקרופון",
+    "שיר אהבה",
+    "פזמון",
+    "זמר",
+    "להקה",
+    "אוזניות",
+    "קונצרט",
+  ],
+  nature: [
+    "יער",
+    "ים",
+    "הר",
+    "מדבר",
+    "ציפור",
+    "פרח",
+    "עץ",
+    "גשם",
+    "שמש",
+    "ענן",
+  ],
+  holidays: [
+    "חנוכה",
+    "פורים",
+    "ראש השנה",
+    "סוכה",
+    "פסח",
+    "מימונה",
+    "ליל סדר",
+    "תחפושת",
+    "סביבון",
+    "מתנות לחג",
+  ],
+  animals: [
+    "כלב",
+    "חתול",
+    "סוס",
+    "פרה",
+    "גמל",
+    "פיל",
+    "אריה",
+    "קוף",
+    "דג זהב",
+    "תוכי",
+  ],
+  objects: [
+    "כיסא",
+    "שולחן",
+    "מנעול",
+    "מפתח",
+    "שעון יד",
+    "טלוויזיה",
+    "מנורה",
+    "תיק גב",
+    "בקבוק מים",
+    "מצלמה",
+  ],
 };
 
 // ----------------------
@@ -206,7 +327,6 @@ function pickWordForGame(game) {
     return "מילה";
   }
 
-  // נסיון לכסות כמה קטגוריות
   const cat =
     categories[Math.floor(Math.random() * categories.length)] || "general";
   const words = WORD_SETS[cat] || WORD_SETS.general || ["מילה"];
@@ -215,7 +335,6 @@ function pickWordForGame(game) {
     game.usedWords = new Set();
   }
 
-  // נסיון להימנע מחזרות קשות
   let tries = 0;
   let word = words[Math.floor(Math.random() * words.length)];
   while (game.usedWords.has(word) && tries < 10) {
@@ -224,7 +343,6 @@ function pickWordForGame(game) {
   }
   game.usedWords.add(word);
   if (game.usedWords.size > 300) {
-    // ניקוי פעם ב...
     game.usedWords.clear();
   }
   return word;
@@ -240,7 +358,6 @@ function sanitizeGame(game) {
     categories: game.categories,
     createdAt: game.createdAt,
     teams: game.teams,
-    // currentRound במידה ורוצים להציג סטטוס
     currentRound: game.currentRound
       ? {
           active: game.currentRound.active,
@@ -335,7 +452,7 @@ io.on("connection", (socket) => {
         defaultRoundSeconds: defaultRoundSeconds || 60,
         categories: Array.isArray(categories) ? categories : [],
         teams,
-        players: {}, // clientId -> { clientId, name, teamId, socketId }
+        players: {},
         currentRound: null,
         usedWords: new Set(),
       };
@@ -385,17 +502,14 @@ io.on("connection", (socket) => {
           socketId: socket.id,
         };
         game.players[cid] = player;
-        // להוסיף לרשימת השחקנים של הקבוצה
         if (!game.teams[teamKey].players.includes(cid)) {
           game.teams[teamKey].players.push(cid);
         }
       } else {
-        // עדכון נתונים במקרה של ריענון / התחברות מחדש
         player.name = playerName;
         player.teamId = teamKey;
         player.socketId = socket.id;
 
-        // לוודא שהוא בקבוצה
         Object.values(game.teams).forEach((t) => {
           t.players = t.players.filter((p) => p !== cid);
         });
@@ -432,7 +546,6 @@ io.on("connection", (socket) => {
       const player = game.players[clientId];
       if (!player) return;
 
-      // להסיר מרשימות הקבוצות
       Object.values(game.teams).forEach((t) => {
         t.players = t.players.filter((p) => p !== clientId);
       });
@@ -484,7 +597,6 @@ io.on("connection", (socket) => {
         scores: getScores(game),
       });
 
-      // לשלוח מילה למסביר
       const player = game.players[explainerId];
       if (player && player.socketId) {
         const word = pickWordForGame(game);
@@ -527,11 +639,9 @@ io.on("connection", (socket) => {
         targetScore: game.targetScore,
       });
 
-      // מילה חדשה למסביר
       const word = pickWordForGame(game);
       socket.emit("wordForExplainer", { word });
 
-      // בדיקת סיום משחק
       if (team.score >= game.targetScore) {
         endGame(game, "targetScore");
         return;
@@ -630,8 +740,6 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
-    // שים לב: לא מוחקים שחקנים על דיסקונט,
-    // כדי שיוכלו להתחבר מחדש עם אותו clientId.
     Object.values(games).forEach((game) => {
       Object.values(game.players).forEach((p) => {
         if (p.socketId === socket.id) {
@@ -642,7 +750,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// למצוא clientId לפי socketId בתוך משחק
 function findClientIdBySocket(game, socketId) {
   for (const [cid, p] of Object.entries(game.players)) {
     if (p.socketId === socketId) return cid;
