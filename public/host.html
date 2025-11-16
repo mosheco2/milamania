@@ -271,11 +271,24 @@
           אם לא תסמן כלום – ייבחרו כל הקטגוריות.
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; font-size:0.8rem;">
+          <label style="font-weight:600;">
+            <input type="checkbox" id="catSelectAll" /> בחר הכל
+          </label>
           <label><input type="checkbox" class="cat-checkbox" value="general" checked /> כללי</label>
           <label><input type="checkbox" class="cat-checkbox" value="family" checked /> משפחה</label>
           <label><input type="checkbox" class="cat-checkbox" value="food" checked /> אוכל</label>
           <label><input type="checkbox" class="cat-checkbox" value="work" /> עבודה</label>
           <label><input type="checkbox" class="cat-checkbox" value="hard" /> קשה</label>
+          <label><input type="checkbox" class="cat-checkbox" value="sports" /> ספורט</label>
+          <label><input type="checkbox" class="cat-checkbox" value="technology" /> טכנולוגיה</label>
+          <label><input type="checkbox" class="cat-checkbox" value="travel" /> טיולים</label>
+          <label><input type="checkbox" class="cat-checkbox" value="school" /> בית ספר</label>
+          <label><input type="checkbox" class="cat-checkbox" value="entertainment" /> סרטים וסדרות</label>
+          <label><input type="checkbox" class="cat-checkbox" value="music" /> מוזיקה</label>
+          <label><input type="checkbox" class="cat-checkbox" value="nature" /> טבע</label>
+          <label><input type="checkbox" class="cat-checkbox" value="holidays" /> חגים</label>
+          <label><input type="checkbox" class="cat-checkbox" value="animals" /> בעלי חיים</label>
+          <label><input type="checkbox" class="cat-checkbox" value="objects" /> חפצים</label>
         </div>
       </div>
 
@@ -298,7 +311,7 @@
 
         <h3 style="margin:0 0 6px;">שליטה בסיבוב</h3>
         <div class="status-text" style="margin-bottom:6px;">
-          בחר קבוצה לסיבוב הבא. המסביר יבחר אוטומטית מתוך שחקני הקבוצה.
+          בחר קבוצה לסיבוב הבא, ואופציונלית בחר מי המסביר. אם לא תבחר – המשחק יבחר אוטומטית.
         </div>
         <div class="row">
           <div>
@@ -310,6 +323,14 @@
           <div>
             <label for="roundSecondsInline">משך סיבוב (שניות)</label>
             <input id="roundSecondsInline" type="number" min="10" max="300" value="60" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="explainerSelect">מסביר (אופציונלי)</label>
+            <select id="explainerSelect">
+              <option value="">בחירה אוטומטית</option>
+            </select>
           </div>
         </div>
 
@@ -345,7 +366,6 @@
     let roundTimeLeft = 0;
     let roundActive = false;
 
-    // אלמנטים
     const hostNameInput = document.getElementById("hostName");
     const numTeamsSelect = document.getElementById("numTeams");
     const targetScoreInput = document.getElementById("targetScore");
@@ -356,6 +376,7 @@
     const teamNameDInput = document.getElementById("teamNameD");
     const teamNameEInput = document.getElementById("teamNameE");
     const catCheckboxes = document.querySelectorAll(".cat-checkbox");
+    const selectAllCatsCheckbox = document.getElementById("catSelectAll");
 
     const createGameBtn = document.getElementById("createGameBtn");
     const endGameBtn = document.getElementById("endGameBtn");
@@ -367,6 +388,7 @@
 
     const roundTeamSelect = document.getElementById("roundTeamSelect");
     const roundSecondsInline = document.getElementById("roundSecondsInline");
+    const explainerSelect = document.getElementById("explainerSelect");
     const startRoundBtn = document.getElementById("startRoundBtn");
     const stopRoundBtn = document.getElementById("stopRoundBtn");
 
@@ -391,6 +413,7 @@
       }
     }
 
+    // טיימר סיבוב - כולל סיום אוטומטי ושליחת endRound לשרת
     function startLocalRoundTimer(duration) {
       clearInterval(roundTimerId);
       roundActive = true;
@@ -402,6 +425,10 @@
           roundTimeLeft = 0;
           updateRoundTimerUI();
           clearInterval(roundTimerId);
+          roundActive = false;
+          if (currentGameCode) {
+            socket.emit("endRound", { gameCode: currentGameCode }, () => {});
+          }
         } else {
           updateRoundTimerUI();
         }
@@ -423,6 +450,45 @@
       return selected;
     }
 
+    // בחר הכל / עדכון “בחר הכל” לפי שינויים
+    if (selectAllCatsCheckbox) {
+      selectAllCatsCheckbox.addEventListener("change", () => {
+        const checked = selectAllCatsCheckbox.checked;
+        catCheckboxes.forEach((cb) => {
+          cb.checked = checked;
+        });
+      });
+
+      catCheckboxes.forEach((cb) => {
+        cb.addEventListener("change", () => {
+          let allChecked = true;
+          catCheckboxes.forEach((c2) => {
+            if (!c2.checked) allChecked = false;
+          });
+          selectAllCatsCheckbox.checked = allChecked;
+        });
+      });
+    }
+
+    function refreshExplainerOptions() {
+      if (!explainerSelect) return;
+      const teamId = roundTeamSelect.value;
+      explainerSelect.innerHTML = '<option value="">בחירה אוטומטית</option>';
+      if (!teamId || !lastGameState || !lastGameState.teams) return;
+      const team = lastGameState.teams[teamId];
+      if (!team || !Array.isArray(team.players)) return;
+      team.players.forEach((cid, idx) => {
+        const opt = document.createElement("option");
+        opt.value = cid;
+        opt.textContent = "שחקן #" + (idx + 1);
+        explainerSelect.appendChild(opt);
+      });
+    }
+
+    roundTeamSelect.addEventListener("change", () => {
+      refreshExplainerOptions();
+    });
+
     function renderGameState(game) {
       lastGameState = game;
       if (!game) {
@@ -435,6 +501,7 @@
         startRoundBtn.disabled = true;
         stopRoundBtn.disabled = true;
         roundTeamSelect.innerHTML = '<option value="">בחר קבוצה...</option>';
+        refreshExplainerOptions();
         return;
       }
 
@@ -443,7 +510,6 @@
       gameCodeRow.innerHTML =
         'קוד משחק: <span class="status-strong">' + game.code + "</span>";
 
-      // יעד נקודות
       if (game.targetScore) {
         scoreTargetEl.textContent =
           "משחק עד " + game.targetScore + " נקודות.";
@@ -451,7 +517,6 @@
         scoreTargetEl.textContent = "";
       }
 
-      // ניקוד וקבוצות
       scoreboardEl.innerHTML = "";
       const teams = game.teams || {};
       const teamIds = Object.keys(teams);
@@ -488,7 +553,6 @@
         roundTeamSelect.appendChild(opt);
       });
 
-      // שחקנים לפי קבוצה (בלי שמות אמיתיים – מסמן לפי מיקום)
       playersByTeamEl.innerHTML = "";
       teamIds.forEach((id) => {
         const t = teams[id];
@@ -513,9 +577,9 @@
       });
 
       startRoundBtn.disabled = !teamIds.length;
+      refreshExplainerOptions();
     }
 
-    // יצירת משחק חדש
     createGameBtn.addEventListener("click", () => {
       hostStatus.textContent = "";
 
@@ -558,7 +622,6 @@
       );
     });
 
-    // התחלת סיבוב
     startRoundBtn.addEventListener("click", () => {
       if (!currentGameCode || !lastGameState) return;
       const teamId = roundTeamSelect.value;
@@ -579,8 +642,10 @@
         10
       );
 
-      // בחירת מסביר אוטומטית - השחקן הראשון ברשימת הקבוצה
-      const explainerId = team.players[0];
+      let explainerId = explainerSelect && explainerSelect.value;
+      if (!explainerId) {
+        explainerId = team.players[0]; // בחירה אוטומטית – כמו קודם
+      }
 
       socket.emit(
         "startRound",
@@ -599,7 +664,6 @@
       );
     });
 
-    // סיום סיבוב
     stopRoundBtn.addEventListener("click", () => {
       if (!currentGameCode) return;
       socket.emit("endRound", { gameCode: currentGameCode }, (res) => {
@@ -609,7 +673,6 @@
       });
     });
 
-    // סגירת משחק
     endGameBtn.addEventListener("click", () => {
       if (!currentGameCode) return;
       const ok = confirm("לסגור את המשחק? השחקנים יקבלו הודעת סיום.");
@@ -621,13 +684,11 @@
       });
     });
 
-    // האזנה לעדכון משחק
     socket.on("gameUpdated", (game) => {
       if (!currentGameCode || !game || game.code !== currentGameCode) return;
       renderGameState(game);
     });
 
-    // התחלת סיבוב (מופעלת גם כשאתה המנהל)
     socket.on("roundStarted", (payload) => {
       if (!currentGameCode || !payload || payload.gameCode !== currentGameCode) return;
       const teams = lastGameState && lastGameState.teams ? lastGameState.teams : payload.teams;
@@ -640,7 +701,6 @@
       stopRoundBtn.disabled = false;
     });
 
-    // סיום סיבוב
     socket.on("roundEnded", (payload) => {
       if (!currentGameCode || !payload || payload.gameCode !== currentGameCode) return;
       stopLocalRoundTimer();
@@ -666,12 +726,8 @@
       stopRoundBtn.disabled = true;
     });
 
-    // סיום משחק
     socket.on("gameEnded", (payload) => {
       if (!payload) return;
-      if (!currentGameCode || payload.gameCode !== currentGameCode) {
-        // גם אם זה משחק אחר, לא נוגעים
-      }
 
       stopLocalRoundTimer();
       startRoundBtn.disabled = true;
@@ -679,10 +735,10 @@
       endGameBtn.disabled = true;
 
       const teams = payload.teams || {};
-      const winnerIds = payload.winnerTeamIds || [];
+      const winnerTeamIds = payload.winnerTeamIds || [];
       let msg = "המשחק הסתיים.";
-      if (winnerIds.length) {
-        const names = winnerIds.map(
+      if (winnerTeamIds.length) {
+        const names = winnerTeamIds.map(
           (id) => (teams[id] && teams[id].name) || "קבוצה " + id
         );
         if (names.length === 1) {
@@ -697,14 +753,12 @@
       renderGameState(null);
     });
 
-    // טעינת לוגו + באנר למסך מנהל
     (function loadBrandingForHost() {
       fetch("/api/banners")
         .then((res) => res.json())
         .then((data) => {
           if (!data) return;
 
-          // לוגו
           const logoCfg = data.logo;
           if (logoCfg && logoCfg.imageUrl && hostLogoEl) {
             hostLogoEl.src = logoCfg.imageUrl;
@@ -712,7 +766,6 @@
             hostLogoEl.classList.remove("hidden");
           }
 
-          // באנר
           if (!hostBannerSlot) return;
           const cfg = data.host;
           if (!cfg || !cfg.imageUrl || !cfg.linkUrl) return;
