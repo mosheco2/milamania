@@ -30,6 +30,7 @@
       padding: 18px 18px 20px;
       box-shadow: 0 18px 45px rgba(0,0,0,0.85);
       border: 1px solid rgba(148,163,184,0.25);
+      margin-bottom: 16px;
     }
     h1, h2, h3 {
       margin-top: 0;
@@ -52,7 +53,9 @@
       font-size: 0.95rem;
       color: #e5e7eb;
     }
-    li { margin-bottom: 4px; }
+    li {
+      margin-bottom: 4px;
+    }
     .chip {
       display: inline-flex;
       align-items: center;
@@ -77,6 +80,7 @@
       font-size: 0.9rem;
       cursor: pointer;
       margin-bottom: 10px;
+      white-space: nowrap;
     }
     .btn:hover {
       background: rgba(15,23,42,0.9);
@@ -92,99 +96,52 @@
       color: #38bdf8;
       font-weight: 600;
     }
+    .logo-small {
+      height: 40px;
+      width: auto;
+      border-radius: 10px;
+      object-fit: contain;
+    }
+
+    /* באנר פרסומת */
+    .ad-banner {
+      display: block;
+      border-radius: 18px;
+      padding: 4px;
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.25), rgba(15,23,42,0.98));
+      border: 1px solid rgba(148,163,184,0.6);
+      text-decoration: none;
+    }
+    .ad-banner img {
+      width: 100%;
+      display: block;
+      border-radius: 14px;
+    }
+
     @media (max-width: 640px) {
       .card {
         padding: 16px 14px 18px;
       }
-      h1 { font-size: 1.5rem; }
+      h1 {
+        font-size: 1.5rem;
+      }
     }
   </style>
 </head>
 <body>
   <div class="app">
     <div class="card">
-      <button class="btn" onclick="location.href='/'">⬅ חזרה למסך הבית</button>
+      <!-- כותרת עם לוגו + חזרה למסך הבית -->
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <img src="logo.png" alt="כהנ'ס לוגו" class="logo-small" />
+          <div>
+            <div class="chip">כהנ'ס · Alias Party</div>
+            <h1>הוראות משחק – כהנ'ס</h1>
+          </div>
+        </div>
+        <button class="btn" onclick="location.href='/'">⬅ חזרה למסך הבית</button>
+      </div>
 
-      <div class="chip">כהנ'ס · Alias Party</div>
-      <h1>הוראות משחק – כהנ'ס</h1>
       <p>
-        משחק אליאס משפחתי ומשוגע. מסבירים מילים בלי להגיד אותן, צוברים נקודות, וצוחקים
-        על מי שאומר את המילה בטעות 😈
-      </p>
-
-      <h2>איך מתחילים משחק?</h2>
-      <p class="section-tag">שלב 1 – המנהל</p>
-      <ul>
-        <li>אחד מכם נבחר להיות <span class="highlight">מנהל המשחק</span>.</li>
-        <li>הוא גולש לכתובת: <span class="highlight">cohens-multi.onrender.com</span>.</li>
-        <li>לוחץ על הכפתור <span class="highlight">"אני מנהל – פתיחת משחק"</span>.</li>
-        <li>בוחר כמה קבוצות יהיו, יעד נקודות, זמן סיבוב וקטגוריות מילים.</li>
-        <li>לוחץ על <span class="highlight">"יצירת משחק חדש"</span> ומקבל קוד משחק (4 אותיות באנגלית).</li>
-      </ul>
-
-      <p class="section-tag">שלב 2 – השחקנים</p>
-      <ul>
-        <li>כל שחקן גולש גם הוא לכתובת: <span class="highlight">cohens-multi.onrender.com</span>.</li>
-        <li>לוחץ על <span class="highlight">"אני שחקן – הצטרפות למשחק"</span>.</li>
-        <li>מקליד:
-          <ul>
-            <li>שם פרטי – איך שתרצו שיופיע.</li>
-            <li>קוד משחק – הקוד שמנהל המשחק נתן לכם.</li>
-            <li>בחירת קבוצה – 1 עד 5 לפי מה שהמנהל הגדיר.</li>
-          </ul>
-        </li>
-        <li>לוחץ על <span class="highlight">"הצטרפות למשחק"</span> ומחכה שהמנהל יתחיל סיבוב.</li>
-      </ul>
-
-      <h2>מה קורה בסיבוב?</h2>
-      <ul>
-        <li>המנהל בוחר איזו קבוצה משחקת עכשיו, ולפי הצורך גם יכול לבחור <span class="highlight">מסביר</span> ידני.</li>
-        <li>המערכת מגרילה מסביר מהקבוצה (או לפי בחירת המנהל) ושולחת אליו מילה לטלפון.</li>
-        <li>על המסביר להסביר את המילה בלי:
-          <ul>
-            <li>להגיד את המילה עצמה או חלק ממנה.</li>
-            <li>שימוש בשורש/נטייה/תרגום של המילה.</li>
-            <li>אותיות, מספרים או איות של המילה.</li>
-          </ul>
-        </li>
-        <li>מותר – חיקויים, תנועות גוף, קולות, תיאורים מצחיקים ועוד.</li>
-        <li>ברגע שהקבוצה מנחשת נכון – המסביר לוחץ <span class="highlight">"✔ הצליח"</span>.</li>
-        <li>נתקעתם? לוחצים <span class="highlight">"דלג (מינוס נקודה)"</span> ומקבלים מילה חדשה.</li>
-      </ul>
-
-      <h2>ניקוד וסיום סיבוב</h2>
-      <ul>
-        <li>כל <span class="highlight">מילה נכונה</span> = +1 נקודה לקבוצה.</li>
-        <li>כל <span class="highlight">דלג</span> = −1 נקודה באותו סיבוב.</li>
-        <li>על המסך של כולם מופיע <span class="highlight">טיימר</span> – כשהוא מגיע ל־0, הסיבוב נגמר אוטומטית.</li>
-        <li>המנהל יכול גם לסיים סיבוב ידנית בלחיצה על <span class="highlight">"סיום סיבוב"</span>.</li>
-        <li>בסיום הסיבוב קופצת לשחקנים הודעה מצחיקה בהתאם לכמות הנקודות:
-          <ul>
-            <li>&lt; 5 נקודות – "אתם חלשים" 😅</li>
-            <li>5–10 נקודות – "צוות נחמד הייתי אומר" 🙂</li>
-            <li>&gt; 10 נקודות – "אתם חזקים במילים אה? מקווה שגם במעשים" 💪</li>
-          </ul>
-        </li>
-      </ul>
-
-      <h2>סיום משחק</h2>
-      <ul>
-        <li>המשחק ממשיך סיבוב־אחר־סיבוב לפי הקבוצות.</li>
-        <li>כשקבוצה מגיעה ליעד הנקודות, או כשהמנהל מחליט – הוא לוחץ <span class="highlight">"סגירת משחק"</span>.</li>
-        <li>כל השחקנים מקבלים הודעת סיום וברכות לקבוצה המנצחת.</li>
-      </ul>
-
-      <h2>טיפים קטנים לגדולים</h2>
-      <ul>
-        <li>אם יצאתם מהדפדפן – פשוט חוזרים לאותו לינק והמשחק מנסה לחבר אתכם מחדש.</li>
-        <li>רוצים לעבור למשחק אחר? לוחצים במסך השחקן על <span class="highlight">"יציאה מהמשחק"</span> ואז מצטרפים עם קוד חדש.</li>
-        <li>מומלץ לשחק עם רמקול פתוח – כדי שהקבוצה תשמע את ההסברים ותוכל לצחוק עליהם ביחד 😉</li>
-      </ul>
-
-      <p style="margin-top:16px; font-size:0.9rem; color:#9ca3af;">
-        זהו. סגרתם טלפונים? פתחתם דמיון? יאללה, מתחילים סיבוב ראשון 🎲
-      </p>
-    </div>
-  </div>
-</body>
-</html>
+        משחק אליאס משפ
