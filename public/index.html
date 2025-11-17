@@ -31,6 +31,7 @@
       border: 1px solid rgba(148,163,184,0.4);
       box-shadow: 0 20px 45px rgba(0,0,0,0.85);
       margin-bottom: 16px;
+      overflow: hidden;
     }
     h1 {
       margin: 4px 0 0;
@@ -49,6 +50,7 @@
       background: radial-gradient(circle at top left,
         rgba(56,189,248,0.2),
         rgba(15,23,42,0.95));
+      margin-bottom: 4px;
     }
     .top-row {
       display: flex;
@@ -57,7 +59,7 @@
       gap: 12px;
       flex-wrap: wrap;
     }
-    /* לוגו מוגדל ודומיננטי יותר */
+    /* לוגו */
     .logo-main {
       height: 88px;
       width: auto;
@@ -136,9 +138,25 @@
       display: block;
       border-radius: 16px;
     }
+
+    /* התאמה למובייל */
     @media (max-width: 640px) {
-      h1 { font-size: 1.9rem; }
-      .logo-main { height: 76px; }
+      h1 {
+        font-size: 1.9rem;
+        text-align: center;
+      }
+      .top-row {
+        flex-direction: column-reverse;   /* קודם טקסט, מתחת לוגו */
+        align-items: center;
+        gap: 16px;
+      }
+      .top-row > div {
+        text-align: center;
+      }
+      .logo-main {
+        height: 110px;      /* לוגו גדול יותר */
+        margin-top: 4px;
+      }
     }
   </style>
 </head>
@@ -148,7 +166,7 @@
     <div class="card">
       <div class="top-row">
         <div>
-          <div class="chip">Alias Party · כהנ'ס 🎲</div>
+          <div class="chip">כהנ'ס · Alias Party 🎲</div>
           <h1>כהנ'ס</h1>
           <p class="small-text">
             בחרו מצב משחק לפי התפקיד שלכם, ותנו לאליאס המשפחתי להתחיל לעבוד.
