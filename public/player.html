@@ -17,7 +17,7 @@
       padding: 0;
       background: #020617;
       color: #e5e7eb;
-      display: block; /* חשוב – עמוד אחד, לא שתי עמודות */
+      display: block; /* עמוד אחד, לא שתי עמודות */
       font-size: 1rem;
     }
     .app {
@@ -138,7 +138,7 @@
       margin-bottom: 4px;
     }
     .logo-small {
-      height: 32px;
+      height: 40px;  /* קצת יותר גדול, כמו במסך מנהל */
       width: auto;
       border-radius: 10px;
       object-fit: contain;
@@ -352,9 +352,10 @@
 
       <!-- שמות השחקנים בקבוצה שלי -->
       <div id="myTeamPlayers" class="status-text" style="margin-top:10px;"></div>
-
-      <div id="player-banner-slot" style="margin-top:10px;"></div>
     </div>
+
+    <!-- באנר פרסומת – מופיע תמיד, גם לפני הצטרפות וגם בזמן המשחק -->
+    <div id="player-banner-slot" style="margin-top:10px;"></div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -652,7 +653,6 @@
         explainerButtons.classList.add("hidden");
       }
 
-      // אחרי התחלת סיבוב – לעדכן גם רשימת שחקנים בקבוצה
       renderMyTeamPlayers();
     });
 
@@ -806,7 +806,7 @@
 
           const img = document.createElement("img");
           img.src = cfg.imageUrl;
-          img.alt = "Banner";
+          img.alt = cfg.altText || "Banner";
 
           a.appendChild(img);
           playerBannerSlot.appendChild(a);
