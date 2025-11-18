@@ -181,7 +181,6 @@
       text-align: center;
     }
 
-    /* טיימר גדול למסך שחקן */
     #playerTimer {
       font-size: 2.2rem;
       font-weight: 800;
@@ -190,7 +189,6 @@
       margin: 10px 0;
     }
 
-    /* קופסת מילה למסביר */
     .word-box {
       margin-top: 10px;
       padding: 14px 12px;
@@ -240,7 +238,6 @@
 
     .ad-banner {
       display: block;
-      margin-top: 4px;
       border-radius: 18px;
       padding: 4px;
       background: radial-gradient(circle at top left, rgba(56,189,248,0.25), rgba(15,23,42,0.98));
@@ -301,7 +298,8 @@
     <div class="card">
       <div class="page-header">
         <div class="page-header-main">
-          <img id="player-logo" class="logo-small hidden" alt="כהנ'ס לוגו" />
+          <!-- לוגו סטטי מהתיקייה public -->
+          <img src="/logo.png" class="logo-small" alt="כהנ'ס לוגו" />
           <div class="page-header-title">
             <div class="chip">כהנ'ס · שחקן</div>
             <h1>מסך שחקן</h1>
@@ -374,28 +372,31 @@
         עדיין אין מסביר בסיבוב הזה.
       </div>
 
-      <!-- קופסת מילה למסביר -->
       <div id="wordBox" class="word-box hidden">
         <div class="word-label">המילה שלך להסביר:</div>
         <div id="wordText" class="word-text">---</div>
       </div>
 
-      <!-- כפתורי מסביר -->
       <div id="explainerButtons" class="hidden" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
         <button id="correctBtn" class="btn btn-success" style="flex:1;">✔ הצליח</button>
         <button id="skipBtn" class="btn btn-ghost" style="flex:1;">דלג (מינוס נקודה)</button>
       </div>
 
-      <!-- ניקוד וקבוצות -->
       <div class="scoreboard" id="playerScoreboard"></div>
 
-      <!-- שמות השחקנים בקבוצה שלי -->
       <div id="myTeamPlayers" class="status-text" style="margin-top:10px;"></div>
     </div>
 
-    <!-- כרטיס לבאנר שחקן (מופיע תמיד) -->
+    <!-- כרטיס באנר קבוע לשחקן -->
     <div class="card" style="margin-top:0;">
-      <div id="player-banner-slot"></div>
+      <a class="ad-banner" href="#" target="_blank" rel="noopener">
+        <div class="ad-banner-label">מעדני כרמלה</div>
+        <!-- חשוב: הקובץ חייב להיות בתיקיית public בשם הזה בדיוק -->
+        <img
+          src="/madanei-karmela-banner.png"
+          alt="מעדני כרמלה - באנר משחק"
+        />
+      </a>
     </div>
   </div>
 
@@ -438,12 +439,6 @@
 
     const playerScoreboardEl = document.getElementById("playerScoreboard");
     const myTeamPlayersEl = document.getElementById("myTeamPlayers");
-
-    const playerLogoEl = document.getElementById("player-logo");
-    const playerBannerSlot = document.getElementById("player-banner-slot");
-
-    const DEFAULT_LOGO = "logo.png";
-    const DEFAULT_BANNER = "madanei-karmela-banner.png";
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -823,80 +818,6 @@
           joinStatus.textContent = "";
         }
       );
-    })();
-
-    /* לוגו + באנר: טעינה דינמית עם נפילה לברירת מחדל */
-    function applyLogo(src, alt) {
-      if (!playerLogoEl) return;
-      playerLogoEl.src = src || DEFAULT_LOGO;
-      playerLogoEl.alt = alt || "כהנ'ס";
-      playerLogoEl.classList.remove("hidden");
-    }
-
-    function applyBanner(src, alt, link, title) {
-      if (!playerBannerSlot) return;
-      playerBannerSlot.innerHTML = "";
-
-      const bannerSrc = src || DEFAULT_BANNER;
-
-      const a = document.createElement("a");
-      a.className = "ad-banner";
-      a.href = link || "#";
-      if (link) {
-        a.target = "_blank";
-        a.rel = "noopener";
-      }
-
-      if (title) {
-        const label = document.createElement("div");
-        label.className = "ad-banner-label";
-        label.textContent = title;
-        a.appendChild(label);
-      }
-
-      const img = document.createElement("img");
-      img.src = bannerSrc;
-      img.alt = alt || "Banner";
-      a.appendChild(img);
-
-      playerBannerSlot.appendChild(a);
-    }
-
-    (function loadBrandingForPlayer() {
-      fetch("/api/banners")
-        .then((res) => res.ok ? res.json() : null)
-        .then((data) => {
-          if (!data) {
-            applyLogo(DEFAULT_LOGO, "כהנ'ס");
-            applyBanner(DEFAULT_BANNER, "מעדני כרמלה");
-            return;
-          }
-
-          const logoCfg = data.logo || {};
-          const logoSrc =
-            logoCfg.imageUrl ||
-            logoCfg.image ||
-            logoCfg.src ||
-            DEFAULT_LOGO;
-          applyLogo(logoSrc, logoCfg.altText || "כהנ'ס");
-
-          const bCfg = data.player || data.home || {};
-          const bannerSrc =
-            bCfg.imageUrl ||
-            bCfg.image ||
-            bCfg.src ||
-            DEFAULT_BANNER;
-          applyBanner(
-            bannerSrc,
-            bCfg.altText || bCfg.title || "Banner",
-            bCfg.linkUrl || bCfg.href || "",
-            bCfg.title || ""
-          );
-        })
-        .catch(() => {
-          applyLogo(DEFAULT_LOGO, "כהנ'ס");
-          applyBanner(DEFAULT_BANNER, "מעדני כרמלה");
-        });
     })();
   </script>
 </body>
