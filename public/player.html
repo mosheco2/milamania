@@ -152,7 +152,7 @@
       text-align: center;
     }
 
-    /* לוגו בראש מסך השחקן – גדול ודומיננטי */
+    /* כותרת מסך שחקן + לוגו */
     .player-header {
       display: flex;
       justify-content: space-between;
@@ -243,6 +243,8 @@
       width: 100%;
       display: block;
       border-radius: 14px;
+      max-height: 150px;
+      object-fit: cover;
     }
 
     @media (max-width: 640px) {
@@ -280,7 +282,8 @@
           <div class="chip">כהנ'ס · שחקן</div>
           <h1 style="margin:4px 0 0;">מסך שחקן</h1>
         </div>
-        <img id="player-logo" class="player-header-logo hidden" alt="כהנ'ס לוגו" />
+        <!-- לוגו קבוע מתוך public/logo.png -->
+        <img src="logo.png" alt="כהנ'ס לוגו" class="player-header-logo" />
       </div>
       <div style="display:flex; gap:6px; margin-top:10px;">
         <button class="btn btn-ghost btn-small" onclick="location.href='instructions.html'">❔ הוראות</button>
@@ -322,8 +325,12 @@
 
       <div id="joinStatus" class="status-text" style="margin-top:8px;"></div>
 
-      <!-- באנר במסך ההצטרפות -->
-      <div id="player-banner-slot-join" style="margin-top:10px;"></div>
+      <!-- באנר קבוע מתוך public/madanei-karmela-banner.png -->
+      <div style="margin-top:10px;">
+        <a class="ad-banner" href="#" aria-label="Banner">
+          <img src="madanei-karmela-banner.png" alt="Banner" />
+        </a>
+      </div>
     </div>
 
     <!-- מסך משחק לאחר הצטרפות -->
@@ -369,8 +376,12 @@
       <!-- שמות השחקנים בקבוצה שלי -->
       <div id="myTeamPlayers" class="status-text" style="margin-top:10px;"></div>
 
-      <!-- באנר במסך המשחק -->
-      <div id="player-banner-slot-game" style="margin-top:10px;"></div>
+      <!-- אותו באנר גם בתוך מסך המשחק -->
+      <div style="margin-top:10px;">
+        <a class="ad-banner" href="#" aria-label="Banner">
+          <img src="madanei-karmela-banner.png" alt="Banner" />
+        </a>
+      </div>
     </div>
   </div>
 
@@ -413,10 +424,6 @@
 
     const playerScoreboardEl = document.getElementById("playerScoreboard");
     const myTeamPlayersEl = document.getElementById("myTeamPlayers");
-
-    const playerLogoEl = document.getElementById("player-logo");
-    const playerBannerJoinSlot = document.getElementById("player-banner-slot-join");
-    const playerBannerGameSlot = document.getElementById("player-banner-slot-game");
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -796,85 +803,6 @@
           joinStatus.textContent = "";
         }
       );
-    })();
-
-    // ===== מיתוג למסך שחקן (לוגו + באנר) =====
-
-    function normalizeImageUrl(url) {
-      if (!url) return null;
-      if (url.startsWith("http://") || url.startsWith("https://")) return url;
-      if (!url.startsWith("/")) return "/" + url.replace(/^public\//, "");
-      return url.replace(/^\/public\//, "/");
-    }
-
-    function renderBanner(slot, imgUrl, altText, linkUrl) {
-      if (!slot || !imgUrl) return;
-      slot.innerHTML = "";
-      const a = document.createElement("a");
-      a.className = "ad-banner";
-      a.href = linkUrl || "#";
-      if (linkUrl) {
-        a.target = "_blank";
-        a.rel = "noopener";
-      }
-      const img = document.createElement("img");
-      img.src = imgUrl;
-      img.alt = altText || "Banner";
-      a.appendChild(img);
-      slot.appendChild(a);
-    }
-
-    function applyDefaultBrandingForPlayer() {
-      // לוגו ברירת מחדל
-      if (playerLogoEl) {
-        playerLogoEl.src = "/logo.png";
-        playerLogoEl.alt = "כהנ'ס";
-        playerLogoEl.classList.remove("hidden");
-      }
-
-      // באנר ברירת מחדל – מייד מרנדר לשני הסלוטים
-      const defaultBannerUrl = "/madanei-karmela-banner.png";
-      renderBanner(playerBannerJoinSlot, defaultBannerUrl, "Banner", "#");
-      renderBanner(playerBannerGameSlot, defaultBannerUrl, "Banner", "#");
-    }
-
-    (function loadBrandingForPlayer() {
-      // קודם כל ברירות מחדל מה-public
-      applyDefaultBrandingForPlayer();
-
-      // ואז מנסים למשוך קונפיג דינמי מ-API (אם קיים)
-      fetch("/api/banners")
-        .then((res) => {
-          if (!res.ok) throw new Error("banners api error");
-          return res.json();
-        })
-        .then((data) => {
-          if (!data) return;
-
-          // לוגו
-          const logoCfg = data.logo;
-          if (logoCfg && logoCfg.imageUrl && playerLogoEl) {
-            const logoUrl = normalizeImageUrl(logoCfg.imageUrl);
-            if (logoUrl) {
-              playerLogoEl.src = logoUrl;
-              playerLogoEl.alt = logoCfg.altText || "כהנ'ס";
-              playerLogoEl.classList.remove("hidden");
-            }
-          }
-
-          // באנר – קודם player ואז home
-          const cfg = data.player || data.home;
-          if (!cfg || !cfg.imageUrl) return;
-
-          const imgUrl = normalizeImageUrl(cfg.imageUrl);
-          if (!imgUrl) return;
-
-          renderBanner(playerBannerJoinSlot, imgUrl, cfg.altText || "Banner", cfg.linkUrl);
-          renderBanner(playerBannerGameSlot, imgUrl, cfg.altText || "Banner", cfg.linkUrl);
-        })
-        .catch(() => {
-          // אם ה-API נופל, נשארים עם ברירות המחדל
-        });
     })();
   </script>
 </body>
