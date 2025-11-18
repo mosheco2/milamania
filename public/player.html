@@ -158,6 +158,7 @@
       text-align: center;
     }
 
+    /* טיימר גדול למסך שחקן */
     #playerTimer {
       font-size: 2.2rem;
       font-weight: 800;
@@ -166,6 +167,7 @@
       margin: 10px 0;
     }
 
+    /* קופסת מילה למסביר */
     .word-box {
       margin-top: 10px;
       padding: 14px 12px;
@@ -351,6 +353,7 @@
       <!-- שמות השחקנים בקבוצה שלי -->
       <div id="myTeamPlayers" class="status-text" style="margin-top:10px;"></div>
 
+      <!-- חריץ לבאנר -->
       <div id="player-banner-slot" style="margin-top:10px;"></div>
     </div>
   </div>
@@ -778,32 +781,72 @@
       );
     })();
 
-    // טעינת לוגו ובאנר למסך שחקן – לפי אותו פורמט כמו במסך הבית
+    // ===== מיתוג למסך שחקן (לוגו + באנר) =====
+
+    function normalizeImageUrl(url) {
+      if (!url) return null;
+      if (url.startsWith("http://") || url.startsWith("https://")) return url;
+      // אם הנתיב יחסי (לדוגמה "logo.png" או "public/logo.png") – נהפוך לנתיב מהשורש
+      if (!url.startsWith("/")) return "/" + url.replace(/^public\//, "");
+      return url.replace(/^\/public\//, "/");
+    }
+
+    function applyDefaultBrandingForPlayer() {
+      // לוגו ברירת מחדל
+      if (playerLogoEl) {
+        playerLogoEl.src = "/logo.png";
+        playerLogoEl.alt = "כהנ'ס";
+        playerLogoEl.classList.remove("hidden");
+      }
+
+      // באנר ברירת מחדל
+      if (playerBannerSlot) {
+        playerBannerSlot.innerHTML = "";
+        const a = document.createElement("a");
+        a.className = "ad-banner";
+        a.href = "#";
+
+        const img = document.createElement("img");
+        img.src = "/player-banner.png";
+        img.alt = "Banner";
+
+        a.appendChild(img);
+        playerBannerSlot.appendChild(a);
+      }
+    }
+
     (function loadBrandingForPlayer() {
+      // קודם כל נטען ברירת מחדל מהתיקייה public
+      applyDefaultBrandingForPlayer();
+
+      // ואז ננסה לעדכן לפי ה־API (אם קיים)
       fetch("/api/banners")
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) throw new Error("banners api error");
+          return res.json();
+        })
         .then((data) => {
           if (!data) return;
 
-          // לוגו גלובלי
+          // לוגו
           const logoCfg = data.logo;
           if (logoCfg && logoCfg.imageUrl && playerLogoEl) {
-            playerLogoEl.src = logoCfg.imageUrl;
-            playerLogoEl.alt = logoCfg.altText || "כהנ'ס";
-            playerLogoEl.classList.remove("hidden");
+            const logoUrl = normalizeImageUrl(logoCfg.imageUrl);
+            if (logoUrl) {
+              playerLogoEl.src = logoUrl;
+              playerLogoEl.alt = logoCfg.altText || "כהנ'ס";
+              playerLogoEl.classList.remove("hidden");
+            }
           }
 
-          if (!playerBannerSlot) return;
+          // באנר שחקן – קודם player, אח"כ home
+          const cfg = data.player || data.home;
+          if (!cfg || !cfg.imageUrl || !playerBannerSlot) return;
 
-          // באנר למסך שחקן – אם אין player נופל ל-home
-          let cfg = null;
-          if (data.player && data.player.imageUrl) {
-            cfg = data.player;
-          } else if (data.home && data.home.imageUrl) {
-            cfg = data.home;
-          }
-          if (!cfg) return;
+          const imgUrl = normalizeImageUrl(cfg.imageUrl);
+          if (!imgUrl) return;
 
+          playerBannerSlot.innerHTML = "";
           const a = document.createElement("a");
           a.className = "ad-banner";
           a.href = cfg.linkUrl || "#";
@@ -813,13 +856,15 @@
           }
 
           const img = document.createElement("img");
-          img.src = cfg.imageUrl;
+          img.src = imgUrl;
           img.alt = cfg.altText || "Banner";
 
           a.appendChild(img);
           playerBannerSlot.appendChild(a);
         })
-        .catch(() => {});
+        .catch(() => {
+          // אם יש שגיאה, נשארים עם ברירות המחדל
+        });
     })();
   </script>
 </body>
