@@ -138,7 +138,7 @@
       margin-bottom: 4px;
     }
     .logo-small {
-      height: 32px;
+      height: 38px;
       width: auto;
       border-radius: 10px;
       object-fit: contain;
@@ -262,6 +262,7 @@
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
         <div style="display:flex; align-items:center; gap:8px;">
+          <!-- לוגו קטן בראש הדף -->
           <img id="player-logo" class="logo-small hidden" alt="כהנ'ס לוגו" />
           <div>
             <div class="chip">כהנ'ס · שחקן</div>
@@ -353,6 +354,7 @@
       <!-- שמות השחקנים בקבוצה שלי -->
       <div id="myTeamPlayers" class="status-text" style="margin-top:10px;"></div>
 
+      <!-- משבצת לבאנר פרסומי -->
       <div id="player-banner-slot" style="margin-top:10px;"></div>
     </div>
   </div>
@@ -782,12 +784,12 @@
 
     // טעינת לוגו ובאנר למסך שחקן
     (function loadBrandingForPlayer() {
-      fetch("/api/banners")
+      fetch("/api/banners?player=1&cb=" + Date.now())
         .then((res) => res.json())
         .then((data) => {
           if (!data) return;
 
-          // לוגו – ישירות מהשדה logo (כמו במסך הבית)
+          // לוגו (slot "logo")
           const logoCfg = data.logo;
           if (logoCfg && logoCfg.imageUrl && playerLogoEl) {
             playerLogoEl.src = logoCfg.imageUrl;
@@ -797,7 +799,7 @@
 
           if (!playerBannerSlot) return;
 
-          // באנר שחקן – קודם מנסה slot "player", ואם אין – נופל ל-"home"
+          // באנר שחקן – קודם slot "player", אם אין אז "home"
           const cfg = data.player || data.home;
           if (!cfg || !cfg.imageUrl) return;
 
