@@ -158,7 +158,6 @@
       text-align: center;
     }
 
-    /* טיימר גדול למסך שחקן */
     #playerTimer {
       font-size: 2.2rem;
       font-weight: 800;
@@ -167,7 +166,6 @@
       margin: 10px 0;
     }
 
-    /* קופסת מילה למסביר */
     .word-box {
       margin-top: 10px;
       padding: 14px 12px;
@@ -780,18 +778,15 @@
       );
     })();
 
-    // טעינת לוגו ובאנר למסך שחקן
+    // טעינת לוגו ובאנר למסך שחקן – לפי אותו פורמט כמו במסך הבית
     (function loadBrandingForPlayer() {
       fetch("/api/banners")
         .then((res) => res.json())
         .then((data) => {
           if (!data) return;
 
-          // תומך גם במבנה { slots: { ... } } וגם במבנה השטוח { logo, home, player ... }
-          const slots = data.slots || data;
-
-          // לוגו
-          const logoCfg = slots.logo;
+          // לוגו גלובלי
+          const logoCfg = data.logo;
           if (logoCfg && logoCfg.imageUrl && playerLogoEl) {
             playerLogoEl.src = logoCfg.imageUrl;
             playerLogoEl.alt = logoCfg.altText || "כהנ'ס";
@@ -800,9 +795,14 @@
 
           if (!playerBannerSlot) return;
 
-          // באנר שחקן – אם אין player נופל ל-home
-          const cfg = slots.player || slots.home;
-          if (!cfg || !cfg.imageUrl) return;
+          // באנר למסך שחקן – אם אין player נופל ל-home
+          let cfg = null;
+          if (data.player && data.player.imageUrl) {
+            cfg = data.player;
+          } else if (data.home && data.home.imageUrl) {
+            cfg = data.home;
+          }
+          if (!cfg) return;
 
           const a = document.createElement("a");
           a.className = "ad-banner";
