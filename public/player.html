@@ -240,7 +240,7 @@
 
     .ad-banner {
       display: block;
-      margin-top: 14px;
+      margin-top: 4px;
       border-radius: 18px;
       padding: 4px;
       background: radial-gradient(circle at top left, rgba(56,189,248,0.25), rgba(15,23,42,0.98));
@@ -391,8 +391,11 @@
 
       <!-- שמות השחקנים בקבוצה שלי -->
       <div id="myTeamPlayers" class="status-text" style="margin-top:10px;"></div>
+    </div>
 
-      <div id="player-banner-slot" style="margin-top:10px;"></div>
+    <!-- כרטיס לבאנר שחקן (מופיע תמיד) -->
+    <div class="card" style="margin-top:0;">
+      <div id="player-banner-slot"></div>
     </div>
   </div>
 
@@ -863,14 +866,12 @@
       fetch("/api/banners")
         .then((res) => res.ok ? res.json() : null)
         .then((data) => {
-          // אם אין בכלל נתונים – נופלים ישר לברירות המחדל
           if (!data) {
             applyLogo(DEFAULT_LOGO, "כהנ'ס");
             applyBanner(DEFAULT_BANNER, "מעדני כרמלה");
             return;
           }
 
-          // לוגו
           const logoCfg = data.logo || {};
           const logoSrc =
             logoCfg.imageUrl ||
@@ -879,7 +880,6 @@
             DEFAULT_LOGO;
           applyLogo(logoSrc, logoCfg.altText || "כהנ'ס");
 
-          // באנר לשחקן – קודם slot ייעודי, אם אין נשתמש ב-home
           const bCfg = data.player || data.home || {};
           const bannerSrc =
             bCfg.imageUrl ||
@@ -894,7 +894,6 @@
           );
         })
         .catch(() => {
-          // במקרה של שגיאה – גם נופלים לברירות המחדל
           applyLogo(DEFAULT_LOGO, "כהנ'ס");
           applyBanner(DEFAULT_BANNER, "מעדני כרמלה");
         });
