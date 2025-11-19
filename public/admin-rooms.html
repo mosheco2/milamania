@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>כהנ'ס - חדרים פתוחים</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      font-size: 16px;
+    }
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    .app {
+      max-width: 800px;
+      width: 100%;
+      padding: 20px 12px 32px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #020617;
+      border-radius: 20px;
+      padding: 16px 16px 18px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.85);
+      border: 1px solid rgba(148,163,184,0.25);
+      margin-bottom: 16px;
+      width: 100%;
+    }
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.4);
+      font-size: 0.8rem;
+      color: #cbd5f5;
+      gap: 6px;
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.22), rgba(15,23,42,0.95));
+      margin-bottom: 4px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 16px;
+      border-radius: 999px;
+      border: 1px solid #4b5563;
+      background: transparent;
+      color: #e5e7eb;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease;
+    }
+    .btn:hover {
+      background: rgba(15,23,42,0.9);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      transform: translateY(-1px);
+    }
+    .btn-primary {
+      border: none;
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: #020617;
+      box-shadow: 0 10px 25px rgba(56,189,248,0.35);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 14px 35px rgba(56,189,248,0.5);
+    }
+    .btn-small {
+      padding: 6px 10px;
+      font-size: 0.8rem;
+    }
+    .btn + .btn {
+      margin-right: 6px;
+    }
+    .logo-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-big {
+      height: 50px;
+      width: auto;
+      border-radius: 16px;
+      object-fit: contain;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.85);
+    }
+    .logo-placeholder {
+      height: 50px;
+      width: 50px;
+      border-radius: 16px;
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.3), rgba(15,23,42,1));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.3rem;
+      color: #e5e7eb;
+    }
+    .status-text {
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+    .status-strong {
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+    .rooms-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .rooms-list {
+      margin-top: 8px;
+    }
+    .room-card {
+      border-radius: 16px;
+      padding: 12px 12px;
+      margin-bottom: 10px;
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.10), rgba(15,23,42,1));
+      border: 1px solid rgba(148,163,184,0.35);
+    }
+    .room-row-1 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .room-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .room-subtext {
+      font-size: 0.85rem;
+      color: #9ca3af;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      background: rgba(15,23,42,0.95);
+      border: 1px solid rgba(148,163,184,0.5);
+      color: #e5e7eb;
+      margin-right: 4px;
+    }
+    .badge-green {
+      background: rgba(22,163,74,0.15);
+      border-color: rgba(34,197,94,0.7);
+      color: #bbf7d0;
+    }
+    .players-list {
+      margin-top: 6px;
+      font-size: 0.85rem;
+      color: #cbd5f5;
+    }
+    .players-list span {
+      display: inline-block;
+      margin-left: 6px;
+      margin-bottom: 3px;
+    }
+    .players-list .team-tag {
+      font-size: 0.75rem;
+      color: #22c55e;
+      margin-right: 3px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 14px 8px 6px;
+      font-size: 0.95rem;
+      color: #9ca3af;
+    }
+
+    .ad-banner {
+      display: block;
+      margin-top: 10px;
+      border-radius: 18px;
+      padding: 4px;
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.25), rgba(15,23,42,0.98));
+      border: 1px solid rgba(148,163,184,0.6);
+      text-decoration: none;
+    }
+    .ad-banner img {
+      width: 100%;
+      display: block;
+      border-radius: 14px;
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        padding: 16px 10px 28px;
+      }
+      h1 {
+        font-size: 1.4rem;
+      }
+      .logo-big, .logo-placeholder {
+        height: 44px;
+        width: 44px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- כותרת + לוגו -->
+    <div class="card">
+      <div class="rooms-header">
+        <div>
+          <div class="chip">כהנ'ס · ניהול</div>
+          <h1 style="margin:4px 0 2px;">חדרים פתוחים</h1>
+          <p class="status-text" id="summaryText">
+            טוען נתונים על החדרים הפעילים...
+          </p>
+        </div>
+        <div>
+          <div class="logo-bar">
+            <img id="admin-logo" class="logo-big" alt="כהנ'ס" style="display:none;" />
+            <div id="admin-logo-placeholder" class="logo-placeholder">כ</div>
+          </div>
+          <div style="margin-top:6px; text-align:left;">
+            <button class="btn btn-small" onclick="location.href='/'">מסך הבית ⬅</button>
+            <button class="btn btn-small" onclick="location.href='host.html'">ניהול משחק 👑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- רשימת חדרים -->
+    <div class="card">
+      <div class="rooms-header" style="margin-bottom:8px;">
+        <h2 style="margin:0;font-size:1.05rem;">חדרים פעילים כרגע</h2>
+        <button id="refreshBtn" class="btn btn-primary btn-small">רענון כעת 🔄</button>
+      </div>
+      <div id="roomsContainer" class="rooms-list"></div>
+    </div>
+
+    <!-- באנר פרסום -->
+    <div id="admin-banner-slot"></div>
+  </div>
+
+  <script>
+    const roomsContainer = document.getElementById("roomsContainer");
+    const summaryText = document.getElementById("summaryText");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const adminLogoEl = document.getElementById("admin-logo");
+    const adminLogoPlaceholder = document.getElementById("admin-logo-placeholder");
+    const adminBannerSlot = document.getElementById("admin-banner-slot");
+
+    async function fetchRooms() {
+      try {
+        const res = await fetch("/api/admin/rooms");
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+
+        const rooms = (data && data.rooms) || [];
+        const totalRooms = data && typeof data.totalRooms === "number"
+          ? data.totalRooms
+          : rooms.length;
+        const totalPlayers = data && typeof data.totalPlayers === "number"
+          ? data.totalPlayers
+          : rooms.reduce((s, r) => s + (r.playersCount || 0), 0);
+
+        if (!rooms.length) {
+          summaryText.textContent = "אין כרגע חדרים פתוחים.";
+          roomsContainer.innerHTML = '<div class="empty-state">ברגע שמשחק חדש ייפתח – הוא יופיע כאן.</div>';
+          return;
+        }
+
+        summaryText.innerHTML =
+          'יש כרגע ' +
+          '<span class="status-strong">' + totalRooms + '</span> חדרים פתוחים ' +
+          'ו־<span class="status-strong">' + totalPlayers + '</span> שחקנים מחוברים.';
+
+        roomsContainer.innerHTML = "";
+        rooms.forEach((room) => {
+          const div = document.createElement("div");
+          div.className = "room-card";
+
+          const playersCount = room.playersCount || 0;
+          const players = room.players || [];
+          const managerName = room.managerName ? (" · מנהל: " + room.managerName) : "";
+
+          div.innerHTML = `
+            <div class="room-row-1">
+              <div>
+                <div class="room-title">
+                  ${room.name || ("חדר " + (room.code || ""))}
+                </div>
+                <div class="room-subtext">
+                  קוד משחק: <span class="status-strong">${room.code || "-"}</span>${managerName}
+                </div>
+              </div>
+              <div>
+                <span class="badge badge-green">שחקנים: ${playersCount}</span>
+              </div>
+            </div>
+            <div class="players-list">
+              ${
+                playersCount
+                  ? players
+                      .map((p) => {
+                        const t = p.teamId ? `<span class="team-tag">(${p.teamId})</span>` : "";
+                        const n = p.name || "שחקן ללא שם";
+                        return `<span>${t}${n}</span>`;
+                      })
+                      .join("")
+                  : '<span style="color:#9ca3af;">אין עדיין שחקנים מחוברים לחדר הזה.</span>'
+              }
+            </div>
+          `;
+
+          roomsContainer.appendChild(div);
+        });
+      } catch (err) {
+        console.error("Failed to fetch rooms:", err);
+        summaryText.textContent = "שגיאה בטעינת החדרים. נסה לרענן.";
+        roomsContainer.innerHTML = '<div class="empty-state">לא הצלחתי למשוך נתונים מהשרת.</div>';
+      }
+    }
+
+    refreshBtn.addEventListener("click", fetchRooms);
+
+    // טעינה ראשונית + רענון כל 5 שניות
+    fetchRooms();
+    setInterval(fetchRooms, 5000);
+
+    // טעינת לוגו ובאנר (אותו API כמו בדפים האחרים)
+    (function loadBrandingForAdmin() {
+      fetch("/api/banners")
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data) return;
+
+          const logoCfg = data.logo;
+          if (logoCfg && logoCfg.imageUrl) {
+            adminLogoEl.src = logoCfg.imageUrl;
+            adminLogoEl.alt = logoCfg.altText || "כהנ'ס";
+            adminLogoEl.style.display = "block";
+            if (adminLogoPlaceholder) adminLogoPlaceholder.style.display = "none";
+          }
+
+          if (!adminBannerSlot) return;
+          const cfg = data.admin || data.home || data.player;
+          if (!cfg || !cfg.imageUrl) return;
+
+          const a = document.createElement("a");
+          a.className = "ad-banner";
+          a.href = cfg.linkUrl || "#";
+          if (cfg.linkUrl) {
+            a.target = "_blank";
+            a.rel = "noopener";
+          }
+
+          const img = document.createElement("img");
+          img.src = cfg.imageUrl;
+          img.alt = cfg.altText || "Banner";
+
+          a.appendChild(img);
+          adminBannerSlot.appendChild(a);
+        })
+        .catch(() => {});
+    })();
+  </script>
+</body>
+</html>
