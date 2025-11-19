@@ -16,6 +16,9 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 10000;
 const ADMIN_CODE = process.env.ADMIN_CODE || "cohens1234";
 
+// 24 שעות במילישניות
+const GAME_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -93,20 +96,33 @@ app.get("/api/admin/rooms", (req, res) => {
       if (!game) return;
 
       const playersMap = game.players || {};
-      const playersArr = Object.values(playersMap).map((p, idx) => ({
-        name: p && p.name ? p.name : `שחקן ${idx + 1}`,
-        teamId: p && p.teamId ? p.teamId : null,
-      }));
+      const teamsMap = game.teams || {};
+
+      const playersArr = Object.values(playersMap).map((p, idx) => {
+        const teamId = p && p.teamId ? p.teamId : null;
+        const teamName =
+          teamId && teamsMap[teamId]
+            ? teamsMap[teamId].name || `קבוצה ${teamId}`
+            : null;
+
+        return {
+          name: p && p.name ? p.name : `שחקן ${idx + 1}`,
+          teamId: teamId,
+          teamName: teamName,
+        };
+      });
 
       rooms.push({
         code: game.code || code,
-        name:
-          game.name ||
-          game.title ||
-          `משחק ${code}`,
+        name: game.name || game.title || `משחק ${code}`,
         managerName: game.hostName || null,
-        status: game.currentRound && game.currentRound.active ? "round-active" : "active",
+        status:
+          game.currentRound && game.currentRound.active
+            ? "round-active"
+            : "active",
         createdAt: game.createdAt || null,
+        updatedAt: game.updatedAt || null,
+        lastActivity: game.lastActivity || null,
         playersCount: playersArr.length,
         players: playersArr,
       });
@@ -125,6 +141,22 @@ app.get("/api/admin/rooms", (req, res) => {
     });
   } catch (err) {
     console.error("Error in /api/admin/rooms:", err);
+    res.status(500).json({ ok: false, error: "Server error" });
+  }
+});
+
+// סגירת חדר ידנית ע"י אדמין (נקרא מעמוד admin-rooms.html)
+app.post("/api/admin/rooms/:code/close", (req, res) => {
+  try {
+    const code = (req.params.code || "").toUpperCase();
+    const game = games[code];
+    if (!game) {
+      return res.status(404).json({ ok: false, error: "המשחק לא נמצא" });
+    }
+    endGame(game, "admin-close");
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Error in /api/admin/rooms/:code/close:", err);
     res.status(500).json({ ok: false, error: "Server error" });
   }
 });
@@ -227,7 +259,6 @@ const WORD_SETS = {
     "אופטימיזציה",
     "היפר אקטיבי",
   ],
-  // קטגוריות חדשות
   sports: [
     "כדורגל",
     "כדורסל",
@@ -365,6 +396,13 @@ function makeGameCode() {
   return c;
 }
 
+// עדכון זמן פעילות במשחק
+function touchGame(game) {
+  const now = Date.now();
+  game.updatedAt = now;
+  game.lastActivity = now;
+}
+
 function pickWordForGame(game) {
   const categories =
     game.categories && game.categories.length
@@ -405,6 +443,8 @@ function sanitizeGame(game) {
     defaultRoundSeconds: game.defaultRoundSeconds,
     categories: game.categories,
     createdAt: game.createdAt,
+    updatedAt: game.updatedAt,
+    lastActivity: game.lastActivity,
     teams: game.teams,
     currentRound: game.currentRound
       ? {
@@ -491,11 +531,15 @@ io.on("connection", (socket) => {
         };
       });
 
+      const now = Date.now();
+
       const game = {
         code,
         hostSocketId: socket.id,
         hostName: hostName || "מנהל",
-        createdAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
+        lastActivity: now,
         targetScore: targetScore || 30,
         defaultRoundSeconds: defaultRoundSeconds || 60,
         categories: Array.isArray(categories) ? categories : [],
@@ -566,6 +610,8 @@ io.on("connection", (socket) => {
         }
       }
 
+      touchGame(game);
+
       socket.join("game-" + code);
 
       const safeGame = sanitizeGame(game);
@@ -600,6 +646,8 @@ io.on("connection", (socket) => {
 
       delete game.players[clientId];
 
+      touchGame(game);
+
       socket.leave("game-" + code);
       broadcastGame(game);
     } catch (err) {
@@ -632,6 +680,8 @@ io.on("connection", (socket) => {
         startedAt: Date.now(),
         roundScore: 0,
       };
+
+      touchGame(game);
 
       const safeGame = sanitizeGame(game);
 
@@ -676,6 +726,8 @@ io.on("connection", (socket) => {
       team.score = (team.score || 0) + 1;
       game.currentRound.roundScore++;
 
+      touchGame(game);
+
       const scores = getScores(game);
 
       io.to("game-" + code).emit("scoreUpdated", {
@@ -719,6 +771,8 @@ io.on("connection", (socket) => {
       if (team.score < 0) team.score = 0;
       game.currentRound.roundScore--;
 
+      touchGame(game);
+
       const scores = getScores(game);
 
       io.to("game-" + code).emit("scoreUpdated", {
@@ -750,6 +804,8 @@ io.on("connection", (socket) => {
 
       const round = game.currentRound;
       game.currentRound = null;
+
+      touchGame(game);
 
       const scores = getScores(game);
 
@@ -789,11 +845,16 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
     Object.values(games).forEach((game) => {
+      let touched = false;
       Object.values(game.players).forEach((p) => {
         if (p.socketId === socket.id) {
           p.socketId = null;
+          touched = true;
         }
       });
+      if (touched) {
+        touchGame(game);
+      }
     });
   });
 });
@@ -804,6 +865,44 @@ function findClientIdBySocket(game, socketId) {
   }
   return null;
 }
+
+// ----------------------
+//   מנגנון סגירה אוטומטי של חדרים אחרי 24 שעות
+// ----------------------
+
+setInterval(() => {
+  const now = Date.now();
+  const codesToClose = [];
+
+  for (const [code, game] of Object.entries(games)) {
+    if (!game) continue;
+    const base =
+      typeof game.lastActivity === "number"
+        ? game.lastActivity
+        : typeof game.createdAt === "number"
+        ? game.createdAt
+        : null;
+    if (!base) continue;
+
+    const age = now - base;
+    if (age > GAME_MAX_AGE_MS) {
+      codesToClose.push(code);
+    }
+  }
+
+  codesToClose.forEach((code) => {
+    const game = games[code];
+    if (!game) return;
+    console.log(
+      "Auto-closing game",
+      code,
+      "after",
+      GAME_MAX_AGE_MS / (60 * 60 * 1000),
+      "hours"
+    );
+    endGame(game, "timeout");
+  });
+}, 60 * 1000);
 
 // ----------------------
 //   הפעלת השרת
