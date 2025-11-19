@@ -77,6 +77,15 @@
     .btn-primary:hover {
       box-shadow: 0 14px 35px rgba(56,189,248,0.5);
     }
+    .btn-danger {
+      border: none;
+      background: linear-gradient(135deg, #f97373, #ef4444);
+      color: #020617;
+      box-shadow: 0 10px 25px rgba(248,113,113,0.4);
+    }
+    .btn-danger:hover {
+      box-shadow: 0 14px 35px rgba(248,113,113,0.6);
+    }
     .btn-small {
       padding: 6px 10px;
       font-size: 0.8rem;
@@ -95,18 +104,6 @@
       border-radius: 16px;
       object-fit: contain;
       box-shadow: 0 12px 30px rgba(0,0,0,0.85);
-    }
-    .logo-placeholder {
-      height: 50px;
-      width: 50px;
-      border-radius: 16px;
-      background: radial-gradient(circle at top left, rgba(56,189,248,0.3), rgba(15,23,42,1));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 1.3rem;
-      color: #e5e7eb;
     }
     .status-text {
       font-size: 0.9rem;
@@ -158,26 +155,35 @@
       border: 1px solid rgba(148,163,184,0.5);
       color: #e5e7eb;
       margin-right: 4px;
+      margin-bottom: 3px;
     }
     .badge-green {
       background: rgba(22,163,74,0.15);
       border-color: rgba(34,197,94,0.7);
       color: #bbf7d0;
     }
+    .badge-time {
+      background: rgba(59,130,246,0.15);
+      border-color: rgba(96,165,250,0.7);
+      color: #bfdbfe;
+    }
     .players-list {
       margin-top: 6px;
       font-size: 0.85rem;
       color: #cbd5f5;
     }
-    .players-list span {
-      display: inline-block;
-      margin-left: 6px;
-      margin-bottom: 3px;
+    .players-list div {
+      margin-bottom: 2px;
     }
     .players-list .team-tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.5);
+      color: #bbf7d0;
       font-size: 0.75rem;
-      color: #22c55e;
-      margin-right: 3px;
+      margin-left: 6px;
     }
     .empty-state {
       text-align: center;
@@ -208,9 +214,8 @@
       h1 {
         font-size: 1.4rem;
       }
-      .logo-big, .logo-placeholder {
+      .logo-big {
         height: 44px;
-        width: 44px;
       }
     }
   </style>
@@ -229,8 +234,8 @@
         </div>
         <div>
           <div class="logo-bar">
-            <img id="admin-logo" class="logo-big" alt="כהנ'ס" style="display:none;" />
-            <div id="admin-logo-placeholder" class="logo-placeholder">כ</div>
+            <!-- לוגו קבוע מתיקיית public -->
+            <img src="/logo.png" class="logo-big" alt="כהנ'ס - Alias Party" />
           </div>
           <div style="margin-top:6px; text-align:left;">
             <button class="btn btn-small" onclick="location.href='/'">מסך הבית ⬅</button>
@@ -247,19 +252,65 @@
         <button id="refreshBtn" class="btn btn-primary btn-small">רענון כעת 🔄</button>
       </div>
       <div id="roomsContainer" class="rooms-list"></div>
+      <p class="status-text" style="margin-top:10px;">
+        * חדרים נסגרים אוטומטית לאחר 24 שעות (ברמת השרת).
+      </p>
     </div>
 
-    <!-- באנר פרסום -->
-    <div id="admin-banner-slot"></div>
+    <!-- באנר פרסום קבוע -->
+    <a href="#" class="ad-banner">
+      <img src="/madanei-karmela-banner.png.png" alt="באנר פרסומת" />
+    </a>
   </div>
 
   <script>
     const roomsContainer = document.getElementById("roomsContainer");
     const summaryText = document.getElementById("summaryText");
     const refreshBtn = document.getElementById("refreshBtn");
-    const adminLogoEl = document.getElementById("admin-logo");
-    const adminLogoPlaceholder = document.getElementById("admin-logo-placeholder");
-    const adminBannerSlot = document.getElementById("admin-banner-slot");
+
+    function formatRoomOpenTime(openedAt) {
+      if (!openedAt) return "";
+      let openedMs;
+
+      if (typeof openedAt === "number") {
+        openedMs = openedAt;
+      } else {
+        const parsed = Date.parse(openedAt);
+        if (Number.isNaN(parsed)) return "";
+        openedMs = parsed;
+      }
+
+      const now = Date.now();
+      const diffSec = Math.max(0, Math.floor((now - openedMs) / 1000));
+      const diffMin = Math.floor(diffSec / 60);
+      const diffHours = Math.floor(diffMin / 60);
+
+      if (diffHours >= 1) {
+        const remMin = diffMin % 60;
+        return diffHours + " ש' " + remMin + " ד'";
+      }
+      if (diffMin >= 1) {
+        return diffMin + " דק'";
+      }
+      return diffSec + " שנ'";
+    }
+
+    async function closeRoom(roomCode) {
+      if (!roomCode) return;
+      const ok = confirm("לסגור את החדר עם הקוד " + roomCode + "?");
+      if (!ok) return;
+
+      try {
+        await fetch("/api/admin/rooms/" + encodeURIComponent(roomCode) + "/close", {
+          method: "POST"
+        });
+        // אחרי סגירה – רענון הרשימה
+        fetchRooms();
+      } catch (err) {
+        console.error("Failed to close room:", err);
+        alert("לא הצלחתי לסגור את החדר. נסה שוב.");
+      }
+    }
 
     async function fetchRooms() {
       try {
@@ -287,13 +338,43 @@
           'ו־<span class="status-strong">' + totalPlayers + '</span> שחקנים מחוברים.';
 
         roomsContainer.innerHTML = "";
-        rooms.forEach((room) => {
-          const div = document.createElement("div");
-          div.className = "room-card";
 
+        rooms.forEach((room) => {
           const playersCount = room.playersCount || 0;
           const players = room.players || [];
           const managerName = room.managerName ? (" · מנהל: " + room.managerName) : "";
+
+          // גזירת קבוצות ושמות שחקנים מכל קבוצה
+          const teamsMap = new Map();
+          players.forEach((p) => {
+            const teamLabel = p.teamName || p.teamId || "ללא קבוצה";
+            const playerName = p.name || "שחקן ללא שם";
+            if (!teamsMap.has(teamLabel)) {
+              teamsMap.set(teamLabel, []);
+            }
+            teamsMap.get(teamLabel).push(playerName);
+          });
+
+          let playersHtml;
+          if (playersCount) {
+            playersHtml = Array.from(teamsMap.entries())
+              .map(([team, names]) => {
+                return `<div><span class="team-tag">${team}</span>${names.join(", ")}</div>`;
+              })
+              .join("");
+          } else {
+            playersHtml = '<div style="color:#9ca3af;">אין עדיין שחקנים מחוברים לחדר הזה.</div>';
+          }
+
+          const openTimeText = formatRoomOpenTime(
+            room.openedAt || room.createdAt || room.createdAtMs
+          );
+          const openTimeBadge = openTimeText
+            ? `<span class="badge badge-time">פתוח: ${openTimeText}</span>`
+            : "";
+
+          const div = document.createElement("div");
+          div.className = "room-card";
 
           div.innerHTML = `
             <div class="room-row-1">
@@ -305,24 +386,26 @@
                   קוד משחק: <span class="status-strong">${room.code || "-"}</span>${managerName}
                 </div>
               </div>
-              <div>
+              <div style="text-align:left;">
                 <span class="badge badge-green">שחקנים: ${playersCount}</span>
+                ${openTimeBadge}
+                <button class="btn btn-danger btn-small close-room-btn" data-room-code="${room.code || ""}">
+                  סגור חדר ✖
+                </button>
               </div>
             </div>
             <div class="players-list">
-              ${
-                playersCount
-                  ? players
-                      .map((p) => {
-                        const t = p.teamId ? `<span class="team-tag">(${p.teamId})</span>` : "";
-                        const n = p.name || "שחקן ללא שם";
-                        return `<span>${t}${n}</span>`;
-                      })
-                      .join("")
-                  : '<span style="color:#9ca3af;">אין עדיין שחקנים מחוברים לחדר הזה.</span>'
-              }
+              ${playersHtml}
             </div>
           `;
+
+          const btn = div.querySelector(".close-room-btn");
+          if (btn) {
+            btn.addEventListener("click", function () {
+              const code = this.dataset.roomCode;
+              closeRoom(code);
+            });
+          }
 
           roomsContainer.appendChild(div);
         });
@@ -338,43 +421,6 @@
     // טעינה ראשונית + רענון כל 5 שניות
     fetchRooms();
     setInterval(fetchRooms, 5000);
-
-    // טעינת לוגו ובאנר (אותו API כמו בדפים האחרים)
-    (function loadBrandingForAdmin() {
-      fetch("/api/banners")
-        .then((res) => res.json())
-        .then((data) => {
-          if (!data) return;
-
-          const logoCfg = data.logo;
-          if (logoCfg && logoCfg.imageUrl) {
-            adminLogoEl.src = logoCfg.imageUrl;
-            adminLogoEl.alt = logoCfg.altText || "כהנ'ס";
-            adminLogoEl.style.display = "block";
-            if (adminLogoPlaceholder) adminLogoPlaceholder.style.display = "none";
-          }
-
-          if (!adminBannerSlot) return;
-          const cfg = data.admin || data.home || data.player;
-          if (!cfg || !cfg.imageUrl) return;
-
-          const a = document.createElement("a");
-          a.className = "ad-banner";
-          a.href = cfg.linkUrl || "#";
-          if (cfg.linkUrl) {
-            a.target = "_blank";
-            a.rel = "noopener";
-          }
-
-          const img = document.createElement("img");
-          img.src = cfg.imageUrl;
-          img.alt = cfg.altText || "Banner";
-
-          a.appendChild(img);
-          adminBannerSlot.appendChild(a);
-        })
-        .catch(() => {});
-    })();
   </script>
 </body>
 </html>
