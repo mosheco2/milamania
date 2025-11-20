@@ -1,4 +1,4 @@
-// server.js - כהנ'ס Alias Party
+// server.js - כהנ'ס Party
 
 const express = require("express");
 const http = require("http");
