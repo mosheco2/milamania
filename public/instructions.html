@@ -116,6 +116,20 @@
       display: block;
     }
 
+    /* בלוק כותרת + דמות */
+    .hero-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap-reverse;
+      margin-bottom: 18px;
+    }
+
+    .hero-text {
+      flex: 1 1 260px;
+      min-width: 0;
+    }
+
     .title {
       font-size: 32px;
       margin-bottom: 6px;
@@ -126,8 +140,21 @@
     .subtitle {
       font-size: 16px;
       color: #6B618F;
-      margin-bottom: 22px;
+      margin-bottom: 0;
       line-height: 1.5;
+    }
+
+    .hero-illustration {
+      flex: 0 0 190px;
+      text-align: center;
+    }
+
+    .hero-illustration img {
+      max-width: 190px;
+      width: 100%;
+      height: auto;
+      display: block;
+      margin-inline: auto;
     }
 
     .btn-back {
@@ -221,6 +248,13 @@
       .logo-wrapper img {
         height: 56px;
       }
+      .hero-row {
+        flex-direction: column-reverse;
+        text-align: center;
+      }
+      .hero-text {
+        text-align: center;
+      }
     }
   </style>
 </head>
@@ -237,11 +271,19 @@
         </div>
       </div>
 
-      <!-- כותרת -->
-      <h1 class="title">הוראות המשחק</h1>
-      <p class="subtitle">
-        מה שצריך כדי להיכנס לאקשן של מילים, ניחושים ויותר מדי צחוקים 😄
-      </p>
+      <!-- כותרת + דמות -->
+      <div class="hero-row">
+        <div class="hero-text">
+          <h1 class="title">הוראות המשחק</h1>
+          <p class="subtitle">
+            מה שצריך כדי להיכנס לאקשן של מילים, ניחושים ויותר מדי צחוקים 😄
+          </p>
+        </div>
+        <div class="hero-illustration">
+          <!-- הקובץ ששמרת בתיקיית public בשם m1.png -->
+          <img src="m1.png" alt="מפלצת מילמניה מסבירה את המשחק" />
+        </div>
+      </div>
 
       <!-- חזרה -->
       <a href="index.html" class="btn-back">⬅ חזרה למסך הבית</a>
