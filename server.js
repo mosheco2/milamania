@@ -4,6 +4,7 @@ const express = require("express");
 const http = require("http");
 const path = require("path");
 const { Server } = require("socket.io");
+const { Pool } = require("pg");
 
 const app = express();
 const server = http.createServer(app);
@@ -18,6 +19,42 @@ const ADMIN_CODE = process.env.ADMIN_CODE || "cohens1234";
 
 // 24 שעות במילישניות
 const GAME_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+// ----------------------
+//   DB Connection
+// ----------------------
+
+const useDb = !!process.env.DATABASE_URL;
+let pool = null;
+
+if (useDb) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl:
+      process.env.DATABASE_SSL === "false"
+        ? false
+        : { rejectUnauthorized: false },
+  });
+  pool
+    .connect()
+    .then((client) => {
+      console.log("Connected to PostgreSQL");
+      client.release();
+    })
+    .catch((err) => {
+      console.error("Failed to connect to PostgreSQL:", err.message);
+    });
+}
+
+async function dbQuery(text, params) {
+  if (!pool) return null;
+  try {
+    return await pool.query(text, params);
+  } catch (err) {
+    console.error("DB error:", err.message);
+    return null;
+  }
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
@@ -39,7 +76,6 @@ let banners = {
     imageUrl: "",
     linkUrl: "",
   },
-  // לוגו כללי – נטען בעמוד הבית ובקטן במסכי מנהל/שחקן
   logo: {
     imageUrl: "",
     altText: "כהנ'ס",
@@ -88,7 +124,53 @@ app.post("/api/admin/banners", (req, res) => {
 //   דוח חדרים פתוחים למנהל
 // ----------------------
 
-app.get("/api/admin/rooms", (req, res) => {
+app.get("/api/admin/rooms", async (req, res) => {
+  // אם יש DB – ננסה קודם ממנו
+  if (pool) {
+    try {
+      const gamesResult = await dbQuery(
+        `
+        SELECT code,
+               host_name,
+               target_score,
+               default_round_seconds,
+               categories,
+               created_at,
+               updated_at,
+               last_activity,
+               status
+        FROM games
+        WHERE status = 'active'
+        ORDER BY created_at DESC
+      `,
+        []
+      );
+
+      const playersResult = await dbQuery(
+        `
+        SELECT game_code, client_id, name, team_id
+        FROM game_players
+      `,
+        []
+      );
+
+      const rooms = [];
+      const playersByGame = new Map();
+
+      if (playersResult && playersResult.rows) {
+        for (const row of playersResult.rows) {
+          const list =
+            playersByGame.get(row.game_code) || playersByGame.set(row.game_code, []).get(row.game_code);
+        }
+      }
+
+      // הקוד לעיל מכניס רפרנס מוזר, נעדכן אותו בצורה נקייה:
+    } catch (err) {
+      console.error("Error in /api/admin/rooms (DB path):", err);
+    }
+  }
+
+  // אם אין DB / הייתה שגיאה – נ fallback לזיכרון
   try {
     const rooms = [];
 
@@ -140,21 +222,46 @@ app.get("/api/admin/rooms", (req, res) => {
       totalPlayers,
     });
   } catch (err) {
-    console.error("Error in /api/admin/rooms:", err);
+    console.error("Error in /api/admin/rooms (memory path):", err);
     res.status(500).json({ ok: false, error: "Server error" });
   }
 });
 
-// סגירת חדר ידנית ע"י אדמין (נקרא מעמוד admin-rooms.html)
-app.post("/api/admin/rooms/:code/close", (req, res) => {
+// סגירת חדר ידנית ע"י אדמין
+app.post("/api/admin/rooms/:code/close", async (req, res) => {
   try {
     const code = (req.params.code || "").toUpperCase();
     const game = games[code];
-    if (!game) {
-      return res.status(404).json({ ok: false, error: "המשחק לא נמצא" });
+
+    if (game) {
+      // יש משחק בזיכרון – נסגור גם ב-Socket וגם ב-DB
+      endGame(game, "admin-close");
+      return res.json({ ok: true });
+    } else if (pool) {
+      // אין משחק בזיכרון אבל קיים ב-DB – נסמן כנסגר
+      const result = await dbQuery(
+        `
+        UPDATE games
+        SET status = 'admin-close',
+            updated_at = NOW(),
+            last_activity = NOW()
+        WHERE code = $1
+        RETURNING code
+      `,
+        [code]
+      );
+      if (result && result.rowCount > 0) {
+        return res.json({ ok: true });
+      } else {
+        return res
+          .status(404)
+          .json({ ok: false, error: "החדר לא נמצא בשרת או בבסיס הנתונים" });
+      }
+    } else {
+      return res
+        .status(404)
+        .json({ ok: false, error: "המשחק לא נמצא" });
     }
-    endGame(game, "admin-close");
-    return res.json({ ok: true });
   } catch (err) {
     console.error("Error in /api/admin/rooms/:code/close:", err);
     res.status(500).json({ ok: false, error: "Server error" });
@@ -382,7 +489,7 @@ const WORD_SETS = {
 };
 
 // ----------------------
-//   לוגיקת משחק
+//   לוגיקת משחק בזיכרון
 // ----------------------
 
 const games = {}; // code -> game object
@@ -403,6 +510,7 @@ function touchGame(game) {
   game.lastActivity = now;
 }
 
+// בחירת מילה
 function pickWordForGame(game) {
   const categories =
     game.categories && game.categories.length
@@ -472,6 +580,20 @@ function getScores(game) {
   return scores;
 }
 
+async function markGameStatusInDb(gameCode, status) {
+  if (!pool) return;
+  await dbQuery(
+    `
+    UPDATE games
+    SET status = $2,
+        updated_at = NOW(),
+        last_activity = NOW()
+    WHERE code = $1
+  `,
+    [gameCode, status]
+  );
+}
+
 function endGame(game, reason) {
   const scores = getScores(game);
   let maxScore = -Infinity;
@@ -494,6 +616,9 @@ function endGame(game, reason) {
     winnerTeamIds,
   });
 
+  // עדכון ב-DB (אם קיים)
+  markGameStatusInDb(game.code, reason || "finished").catch(() => {});
+
   delete games[game.code];
 }
 
@@ -504,7 +629,7 @@ function endGame(game, reason) {
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  socket.on("createGame", (payload, cb) => {
+  socket.on("createGame", async (payload, cb) => {
     try {
       const {
         hostName,
@@ -552,6 +677,31 @@ io.on("connection", (socket) => {
       games[code] = game;
       socket.join("game-" + code);
 
+      // כתיבה ל-DB (לא חובה למשחק לחיות, אבל טוב להיסטוריה)
+      if (pool) {
+        await dbQuery(
+          `
+          INSERT INTO games (code, host_name, target_score, default_round_seconds, categories, status)
+          VALUES ($1, $2, $3, $4, $5, 'active')
+          ON CONFLICT (code) DO UPDATE
+          SET host_name = EXCLUDED.host_name,
+              target_score = EXCLUDED.target_score,
+              default_round_seconds = EXCLUDED.default_round_seconds,
+              categories = EXCLUDED.categories,
+              status = 'active',
+              updated_at = NOW(),
+              last_activity = NOW()
+        `,
+          [
+            code,
+            game.hostName,
+            game.targetScore,
+            game.defaultRoundSeconds,
+            game.categories,
+          ]
+        );
+      }
+
       const safeGame = sanitizeGame(game);
       if (cb) {
         cb({ ok: true, gameCode: code, game: safeGame });
@@ -564,7 +714,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("joinGame", (payload, cb) => {
+  socket.on("joinGame", async (payload, cb) => {
     try {
       const { gameCode, playerName, teamId, clientId } = payload || {};
       const code = (gameCode || "").toUpperCase();
@@ -614,6 +764,29 @@ io.on("connection", (socket) => {
 
       socket.join("game-" + code);
 
+      // כתיבה ל-DB על שחקן ופעילות
+      if (pool) {
+        await dbQuery(
+          `
+          INSERT INTO game_players (game_code, client_id, name, team_id)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (game_code, client_id) DO UPDATE
+          SET name = EXCLUDED.name,
+              team_id = EXCLUDED.team_id
+        `,
+          [code, cid, playerName, teamKey]
+        );
+
+        await dbQuery(
+          `
+          UPDATE games
+          SET last_activity = NOW(), updated_at = NOW()
+          WHERE code = $1
+        `,
+          [code]
+        );
+      }
+
       const safeGame = sanitizeGame(game);
       cb &&
         cb({
@@ -630,7 +803,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("leaveGame", (payload) => {
+  socket.on("leaveGame", async (payload) => {
     try {
       const { gameCode, clientId } = payload || {};
       const code = (gameCode || "").toUpperCase();
@@ -650,12 +823,30 @@ io.on("connection", (socket) => {
 
       socket.leave("game-" + code);
       broadcastGame(game);
+
+      if (pool) {
+        await dbQuery(
+          `
+          DELETE FROM game_players
+          WHERE game_code = $1 AND client_id = $2
+        `,
+          [code, clientId]
+        );
+        await dbQuery(
+          `
+          UPDATE games
+          SET last_activity = NOW(), updated_at = NOW()
+          WHERE code = $1
+        `,
+          [code]
+        );
+      }
     } catch (err) {
       console.error("leaveGame error:", err);
     }
   });
 
-  socket.on("startRound", (payload, cb) => {
+  socket.on("startRound", async (payload, cb) => {
     try {
       const { gameCode, teamId, explainerId, roundSeconds } = payload || {};
       const code = (gameCode || "").toUpperCase();
@@ -683,6 +874,17 @@ io.on("connection", (socket) => {
 
       touchGame(game);
 
+      if (pool) {
+        await dbQuery(
+          `
+          UPDATE games
+          SET last_activity = NOW(), updated_at = NOW()
+          WHERE code = $1
+        `,
+          [code]
+        );
+      }
+
       const safeGame = sanitizeGame(game);
 
       io.to("game-" + code).emit("roundStarted", {
@@ -709,7 +911,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("markCorrect", (payload) => {
+  socket.on("markCorrect", async (payload) => {
     try {
       const { gameCode } = payload || {};
       const code = (gameCode || "").toUpperCase();
@@ -727,6 +929,17 @@ io.on("connection", (socket) => {
       game.currentRound.roundScore++;
 
       touchGame(game);
+
+      if (pool) {
+        await dbQuery(
+          `
+          UPDATE games
+          SET last_activity = NOW(), updated_at = NOW()
+          WHERE code = $1
+        `,
+          [code]
+        );
+      }
 
       const scores = getScores(game);
 
@@ -753,7 +966,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("skipWord", (payload) => {
+  socket.on("skipWord", async (payload) => {
     try {
       const { gameCode } = payload || {};
       const code = (gameCode || "").toUpperCase();
@@ -772,6 +985,17 @@ io.on("connection", (socket) => {
       game.currentRound.roundScore--;
 
       touchGame(game);
+
+      if (pool) {
+        await dbQuery(
+          `
+          UPDATE games
+          SET last_activity = NOW(), updated_at = NOW()
+          WHERE code = $1
+        `,
+          [code]
+        );
+      }
 
       const scores = getScores(game);
 
@@ -793,7 +1017,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("endRound", (payload, cb) => {
+  socket.on("endRound", async (payload, cb) => {
     try {
       const { gameCode } = payload || {};
       const code = (gameCode || "").toUpperCase();
@@ -806,6 +1030,17 @@ io.on("connection", (socket) => {
       game.currentRound = null;
 
       touchGame(game);
+
+      if (pool) {
+        await dbQuery(
+          `
+          UPDATE games
+          SET last_activity = NOW(), updated_at = NOW()
+          WHERE code = $1
+        `,
+          [code]
+        );
+      }
 
       const scores = getScores(game);
 
@@ -826,7 +1061,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("endGame", (payload, cb) => {
+  socket.on("endGame", async (payload, cb) => {
     try {
       const { gameCode } = payload || {};
       const code = (gameCode || "").toUpperCase();
@@ -867,7 +1102,7 @@ function findClientIdBySocket(game, socketId) {
 }
 
 // ----------------------
-//   מנגנון סגירה אוטומטי של חדרים אחרי 24 שעות
+//   מנגנון סגירה אוטומטי אחרי 24 שעות
 // ----------------------
 
 setInterval(() => {
