@@ -122,7 +122,7 @@
       align-items: center;
       gap: 18px;
       flex-wrap: wrap-reverse;
-      margin-bottom: 18px;
+      margin-bottom: 10px; /* צמצמתי קצת רווח כללי */
     }
 
     .hero-text {
@@ -140,7 +140,7 @@
     .subtitle {
       font-size: 16px;
       color: #6B618F;
-      margin-bottom: 0;
+      margin-bottom: 8px;
       line-height: 1.5;
     }
 
@@ -169,7 +169,8 @@
       font-size: 14px;
       text-decoration: none;
       box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-      margin-bottom: 24px;
+      margin-top: 6px;       /* עכשיו הכפתור יושב צמוד לטקסט */
+      margin-bottom: 16px;
     }
 
     .section-title {
@@ -255,6 +256,9 @@
       .hero-text {
         text-align: center;
       }
+      .btn-back {
+        align-self: center;
+      }
     }
   </style>
 </head>
@@ -271,22 +275,20 @@
         </div>
       </div>
 
-      <!-- כותרת + דמות -->
+      <!-- כותרת + דמות + כפתור -->
       <div class="hero-row">
         <div class="hero-text">
           <h1 class="title">הוראות המשחק</h1>
           <p class="subtitle">
             מה שצריך כדי להיכנס לאקשן של מילים, ניחושים ויותר מדי צחוקים 😄
           </p>
+          <a href="index.html" class="btn-back">⬅ חזרה למסך הבית</a>
         </div>
         <div class="hero-illustration">
           <!-- הקובץ ששמרת בתיקיית public בשם m1.png -->
           <img src="m1.png" alt="מפלצת מילמניה מסבירה את המשחק" />
         </div>
       </div>
-
-      <!-- חזרה -->
-      <a href="index.html" class="btn-back">⬅ חזרה למסך הבית</a>
 
       <!-- איך מתחילים -->
       <h2 class="section-title">1. איך נכנסים למשחק?</h2>
