@@ -290,7 +290,7 @@
 <body>
   <div class="app">
     <!-- כותרת + יצירת משחק -->
-    <div class="card">
+    <div class="card" id="hostTop">
       <div class="page-header">
         <div class="page-header-main">
           <img id="host-logo" class="logo-small hidden" alt="מילמניה לוגו" />
@@ -475,6 +475,34 @@
       <div id="playersByTeam" class="status-text"></div>
 
       <div id="host-banner-slot" style="margin-top:8px;"></div>
+
+      <!-- כפתור לגלילה לחלק של השחקן -->
+      <button id="scrollToHostPlayerBtn" class="btn btn-ghost btn-small" style="margin-top:12px;">
+        ⬇ מצב שלי כשחקן
+      </button>
+    </div>
+
+    <!-- מצב המנהל כשחקן -->
+    <div class="card" id="hostPlayerSection">
+      <h3 style="margin:0 0 6px;">מצב המנהל כשחקן</h3>
+      <p class="status-text" style="margin-bottom:8px;">
+        בחר את הקבוצה שבה אתה משחק, ותראה כאן את מצב הקבוצה והשחקנים שלך.
+      </p>
+
+      <div class="row">
+        <div>
+          <label for="hostPlayerTeamSelect">הקבוצה שלי</label>
+          <select id="hostPlayerTeamSelect">
+            <option value="">עדיין לא בחרתי קבוצה</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="hostPlayerTeamSummary" class="status-text" style="margin-top:4px;"></div>
+
+      <button id="scrollToTopBtn" class="btn btn-ghost btn-small" style="margin-top:12px;">
+        ⬆ חזרה לניהול המשחק
+      </button>
     </div>
   </div>
 
@@ -523,6 +551,13 @@
     const playersByTeamEl = document.getElementById("playersByTeam");
     const hostBannerSlot = document.getElementById("host-banner-slot");
     const hostLogoEl = document.getElementById("host-logo");
+
+    const hostPlayerTeamSelect = document.getElementById("hostPlayerTeamSelect");
+    const hostPlayerTeamSummary = document.getElementById("hostPlayerTeamSummary");
+    const scrollToHostPlayerBtn = document.getElementById("scrollToHostPlayerBtn");
+    const scrollToTopBtn = document.getElementById("scrollToTopBtn");
+    const hostPlayerSection = document.getElementById("hostPlayerSection");
+    const hostTop = document.getElementById("hostTop");
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -614,6 +649,34 @@
       });
     }
 
+    function renderHostPlayerView() {
+      if (!hostPlayerTeamSelect || !hostPlayerTeamSummary) return;
+
+      const teamId = hostPlayerTeamSelect.value;
+      if (!lastGameState || !lastGameState.teams || !teamId || !lastGameState.teams[teamId]) {
+        hostPlayerTeamSummary.textContent = "עדיין לא בחרת קבוצה כשחקן.";
+        return;
+      }
+
+      const team = lastGameState.teams[teamId];
+      const playersMap = lastGameState.players || lastGameState.playersByClientId || {};
+      const players = team.players || [];
+
+      const teamName = team.name || `קבוצה ${teamId}`;
+      let html = `הקבוצה שלי: <strong>${teamName}</strong> · ניקוד: <strong>${team.score || 0}</strong>`;
+
+      if (players.length) {
+        const names = players
+          .map((cid) => (playersMap[cid] && playersMap[cid].name) ? playersMap[cid].name : null)
+          .filter(Boolean);
+        html += "<br/>שחקנים בקבוצה: " + (names.length ? names.join(", ") : "—");
+      } else {
+        html += "<br/>עדיין אין שחקנים בקבוצה הזו.";
+      }
+
+      hostPlayerTeamSummary.innerHTML = html;
+    }
+
     function renderGameState(game) {
       lastGameState = game;
 
@@ -625,6 +688,9 @@
         playersByTeamEl.innerHTML = "";
         scoreTargetEl.textContent = "";
         roundStatusEl.textContent = "";
+        if (hostPlayerTeamSummary) {
+          hostPlayerTeamSummary.textContent = "עדיין לא בחרת קבוצה כשחקן.";
+        }
         stopLocalRoundTimer();
         return;
       }
@@ -746,12 +812,47 @@
         }
       }
 
+      if (hostPlayerTeamSelect) {
+        const oldHostTeam = hostPlayerTeamSelect.value;
+        hostPlayerTeamSelect.innerHTML = '<option value="">עדיין לא בחרת קבוצה</option>';
+        if (game.teams) {
+          Object.entries(game.teams).forEach(([teamId, team]) => {
+            const opt = document.createElement("option");
+            opt.value = teamId;
+            opt.textContent = team.name || `קבוצה ${teamId}`;
+            hostPlayerTeamSelect.appendChild(opt);
+          });
+        }
+        if (oldHostTeam && game.teams && game.teams[oldHostTeam]) {
+          hostPlayerTeamSelect.value = oldHostTeam;
+        }
+        renderHostPlayerView();
+      }
+
       refreshExplainerOptions();
     }
 
     if (roundTeamSelect) {
       roundTeamSelect.addEventListener("change", () => {
         refreshExplainerOptions();
+      });
+    }
+
+    if (hostPlayerTeamSelect) {
+      hostPlayerTeamSelect.addEventListener("change", () => {
+        renderHostPlayerView();
+      });
+    }
+
+    if (scrollToHostPlayerBtn && hostPlayerSection) {
+      scrollToHostPlayerBtn.addEventListener("click", () => {
+        hostPlayerSection.scrollIntoView({ behavior: "smooth" });
+      });
+    }
+
+    if (scrollToTopBtn && hostTop) {
+      scrollToTopBtn.addEventListener("click", () => {
+        hostTop.scrollIntoView({ behavior: "smooth" });
       });
     }
 
@@ -888,11 +989,11 @@
         const link = buildPlayerInviteLink(teamId, teamName);
 
         const text =
-          "🔥 יש לנו עכשיו משחק מילמניה חי!\\n" +
-          `אתה מוזמן להצטרף לקבוצה "${teamName}".\\n` +
-          `קוד המשחק: ${currentGameCode}\\n` +
-          "להצטרפות למשחק לחץ על הקישור:\\n" +
-          link + "\\n\\n" +
+          "🔥 יש לנו עכשיו משחק מילמניה חי!\n" +
+          `אתה מוזמן להצטרף לקבוצה "${teamName}".\n` +
+          `קוד המשחק: ${currentGameCode}\n` +
+          "להצטרפות למשחק לחץ על הקישור:\n" +
+          link + "\n\n" +
           "טיפ: כנס עם שם מצחיק ותתכונן להרבה צחוקים 😄";
 
         const waUrl = "https://wa.me/?text=" + encodeURIComponent(text);
