@@ -122,7 +122,7 @@
       align-items: center;
       gap: 18px;
       flex-wrap: wrap-reverse;
-      margin-bottom: 10px; /* צמצמתי קצת רווח כללי */
+      margin-bottom: 10px;
     }
 
     .hero-text {
@@ -169,15 +169,15 @@
       font-size: 14px;
       text-decoration: none;
       box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-      margin-top: 6px;       /* עכשיו הכפתור יושב צמוד לטקסט */
-      margin-bottom: 16px;
+      margin-top: 6px;
+      margin-bottom: 4px;   /* היה 16 – צמצום הרווח */
     }
 
     .section-title {
       font-size: 20px;
       font-weight: 700;
       color: #2B1E4A;
-      margin-top: 16px;
+      margin-top: 8px;      /* היה 16 – צמצום נוסף */
       margin-bottom: 6px;
     }
 
@@ -285,7 +285,6 @@
           <a href="index.html" class="btn-back">⬅ חזרה למסך הבית</a>
         </div>
         <div class="hero-illustration">
-          <!-- הקובץ ששמרת בתיקיית public בשם m1.png -->
           <img src="m1.png" alt="מפלצת מילמניה מסבירה את המשחק" />
         </div>
       </div>
@@ -337,7 +336,6 @@
   </div>
 
   <script>
-    // טעינת לוגו ובאנר מגיליון גוגל (כמו בשאר הדפים)
     const SHEET_CSV_URL =
       "https://docs.google.com/spreadsheets/d/1RDpEq7cL0lY3K3GFQd9BqiLA0xnPki2toV1PU2x86G4/export?format=csv";
 
