@@ -1,4 +1,4 @@
-// server.js - כהנ'ס Alias Party
+// server.js - Wordmania party מילהמניה
 
 const express = require("express");
 const http = require("http");
