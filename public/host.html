@@ -269,6 +269,43 @@
       color: #2B1E4A;
     }
 
+    /* תג שחקן + כפתור הסרה */
+    .player-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(248, 247, 255, 0.9);
+      border: 1px solid rgba(180, 169, 214, 0.6);
+      margin: 2px 4px 2px 0;
+      font-size: 0.82rem;
+      color: #433362;
+    }
+    .remove-player-btn {
+      border: none;
+      background: transparent;
+      color: #EF4444;
+      font-size: 0.8rem;
+      cursor: pointer;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .remove-player-btn:hover {
+      color: #b91c1c;
+    }
+
+    /* iframe של מסך השחקן */
+    #hostPlayerFrame {
+      width: 100%;
+      min-height: 460px;
+      border-radius: 18px;
+      border: 1px solid rgba(180,169,214,0.6);
+      box-shadow: 0 18px 34px rgba(0,0,0,0.10);
+      margin-top: 10px;
+      background: #000;
+    }
+
     @media (max-width: 640px) {
       body {
         font-size: 1.05rem;
@@ -312,7 +349,7 @@
 </head>
 <body>
   <div class="app">
-    <!-- כותרת + טאבים + יצירת משחק -->
+    <!-- מצבי מסך: מנהל / שחקן -->
     <div class="card" id="hostTop">
       <div class="page-header">
         <div class="page-header-main">
@@ -325,7 +362,7 @@
         <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
           <div class="top-tabs">
             <button id="tabHost" class="active" type="button">👑 מצב מנהל</button>
-            <button id="tabPlayer" type="button">🎮 מצב שחקן</button>
+            <button id="tabPlayer" type="button">🎮 מצב שחקן (אני)</button>
           </div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
             <button class="btn btn-ghost btn-small" onclick="location.href='instructions.html'">❔ הוראות</button>
@@ -335,209 +372,216 @@
       </div>
 
       <p class="status-text" style="margin-top:8px;">
-        כאן פותחים משחק מילמניה חדש, מגדירים קבוצות, זמן סיבוב ויעד נקודות – ומשם נותנים לשחקנים לרוץ על המילים 😄
+        בלשונית "מצב מנהל" אתה שולט במשחק. בלשונית "מצב שחקן (אני)" אתה נכנס למשחק כשחקן –
+        בלי לעבור לדף אחר.
       </p>
-
-      <div class="row">
-        <div>
-          <label for="hostName">שם המנהל</label>
-          <input id="hostName" type="text" placeholder="לדוגמה: משה" />
-        </div>
-        <div>
-          <label for="numTeams">מספר קבוצות</label>
-          <select id="numTeams">
-            <option value="2">2 קבוצות</option>
-            <option value="3">3 קבוצות</option>
-            <option value="4">4 קבוצות</option>
-            <option value="5">5 קבוצות</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label for="targetScore">יעד נקודות לניצחון</label>
-          <input id="targetScore" type="number" min="5" max="200" value="30" />
-        </div>
-        <div>
-          <label for="roundSeconds">משך סיבוב (שניות)</label>
-          <input id="roundSeconds" type="number" min="10" max="300" value="60" />
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label for="teamNameA">שם קבוצה A</label>
-          <input id="teamNameA" type="text" placeholder="למשל: הכחולים" />
-        </div>
-        <div>
-          <label for="teamNameB">שם קבוצה B</label>
-          <input id="teamNameB" type="text" placeholder="למשל: הוורודים" />
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label for="teamNameC">שם קבוצה C (אופציונלי)</label>
-          <input id="teamNameC" type="text" placeholder="קבוצה נוספת" />
-        </div>
-        <div>
-          <label for="teamNameD">שם קבוצה D (אופציונלי)</label>
-          <input id="teamNameD" type="text" placeholder="קבוצה נוספת" />
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label for="teamNameE">שם קבוצה E (אופציונלי)</label>
-          <input id="teamNameE" type="text" placeholder="קבוצה נוספת" />
-        </div>
-      </div>
-
-      <div style="margin-top:8px; margin-bottom:6px;">
-        <label>קטגוריות מילים</label>
-        <div class="status-text">
-          אם לא תסמן כלום – המשחק ישתמש בכל הקטגוריות.
-        </div>
-        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; font-size:0.82rem;">
-          <label style="font-weight:600;">
-            <input type="checkbox" id="catSelectAll" /> בחר הכל
-          </label>
-          <label><input type="checkbox" class="cat-checkbox" value="general" checked /> כללי</label>
-          <label><input type="checkbox" class="cat-checkbox" value="family" checked /> משפחה</label>
-          <label><input type="checkbox" class="cat-checkbox" value="food" checked /> אוכל</label>
-          <label><input type="checkbox" class="cat-checkbox" value="work" /> עבודה</label>
-          <label><input type="checkbox" class="cat-checkbox" value="hard" /> קשה</label>
-          <label><input type="checkbox" class="cat-checkbox" value="sports" /> ספורט</label>
-          <label><input type="checkbox" class="cat-checkbox" value="technology" /> טכנולוגיה</label>
-          <label><input type="checkbox" class="cat-checkbox" value="travel" /> טיולים</label>
-          <label><input type="checkbox" class="cat-checkbox" value="school" /> בית ספר</label>
-          <label><input type="checkbox" class="cat-checkbox" value="entertainment" /> סרטים וסדרות</label>
-          <label><input type="checkbox" class="cat-checkbox" value="music" /> מוזיקה</label>
-          <label><input type="checkbox" class="cat-checkbox" value="nature" /> טבע</label>
-          <label><input type="checkbox" class="cat-checkbox" value="holidays" /> חגים</label>
-          <label><input type="checkbox" class="cat-checkbox" value="animals" /> בעלי חיים</label>
-          <label><input type="checkbox" class="cat-checkbox" value="objects" /> חפצים</label>
-        </div>
-      </div>
-
-      <button id="createGameBtn" class="btn btn-primary" style="margin-top:8px;">
-        יצירת משחק חדש
-      </button>
-      <button id="endGameBtn" class="btn btn-danger" style="margin-top:8px; margin-right:6px;" disabled>
-        סגירת משחק
-      </button>
-
-      <div id="hostStatus" class="status-text" style="margin-top:8px;"></div>
     </div>
 
-    <!-- קוד משחק, הזמנת וואטסאפ, טיימר וסיבוב -->
-    <div class="card" id="gameCodeRow" style="display:none;">
-      <h3 style="margin:0 0 6px;">קוד משחק</h3>
-      <div id="gameCodeDisplay" class="status-text" style="margin-bottom:6px;"></div>
+    <!-- מצב מנהל: יצירת משחק, טיימר, ניקוד -->
+    <div id="hostMode">
+      <div class="card">
+        <div class="row">
+          <div>
+            <label for="hostName">שם המנהל</label>
+            <input id="hostName" type="text" placeholder="לדוגמה: משה" />
+          </div>
+          <div>
+            <label for="numTeams">מספר קבוצות</label>
+            <select id="numTeams">
+              <option value="2">2 קבוצות</option>
+              <option value="3">3 קבוצות</option>
+              <option value="4">4 קבוצות</option>
+              <option value="5">5 קבוצות</option>
+            </select>
+          </div>
+        </div>
 
-      <div class="status-text" style="margin-bottom:4px;">
-        שלח הזמנה לשחקנים בוואטסאפ עם קוד המשחק וקבוצה מוגדרת מראש:
+        <div class="row">
+          <div>
+            <label for="targetScore">יעד נקודות לניצחון</label>
+            <input id="targetScore" type="number" min="5" max="200" value="30" />
+          </div>
+          <div>
+            <label for="roundSeconds">משך סיבוב (שניות)</label>
+            <input id="roundSeconds" type="number" min="10" max="300" value="60" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="teamNameA">שם קבוצה A</label>
+            <input id="teamNameA" type="text" placeholder="למשל: הכחולים" />
+          </div>
+          <div>
+            <label for="teamNameB">שם קבוצה B</label>
+            <input id="teamNameB" type="text" placeholder="למשל: הוורודים" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="teamNameC">שם קבוצה C (אופציונלי)</label>
+            <input id="teamNameC" type="text" placeholder="קבוצה נוספת" />
+          </div>
+          <div>
+            <label for="teamNameD">שם קבוצה D (אופציונלי)</label>
+            <input id="teamNameD" type="text" placeholder="קבוצה נוספת" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="teamNameE">שם קבוצה E (אופציונלי)</label>
+            <input id="teamNameE" type="text" placeholder="קבוצה נוספת" />
+          </div>
+        </div>
+
+        <div style="margin-top:8px; margin-bottom:6px;">
+          <label>קטגוריות מילים</label>
+          <div class="status-text">
+            אם לא תסמן כלום – המשחק ישתמש בכל הקטגוריות.
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; font-size:0.82rem;">
+            <label style="font-weight:600;">
+              <input type="checkbox" id="catSelectAll" /> בחר הכל
+            </label>
+            <label><input type="checkbox" class="cat-checkbox" value="general" checked /> כללי</label>
+            <label><input type="checkbox" class="cat-checkbox" value="family" checked /> משפחה</label>
+            <label><input type="checkbox" class="cat-checkbox" value="food" checked /> אוכל</label>
+            <label><input type="checkbox" class="cat-checkbox" value="work" /> עבודה</label>
+            <label><input type="checkbox" class="cat-checkbox" value="hard" /> קשה</label>
+            <label><input type="checkbox" class="cat-checkbox" value="sports" /> ספורט</label>
+            <label><input type="checkbox" class="cat-checkbox" value="technology" /> טכנולוגיה</label>
+            <label><input type="checkbox" class="cat-checkbox" value="travel" /> טיולים</label>
+            <label><input type="checkbox" class="cat-checkbox" value="school" /> בית ספר</label>
+            <label><input type="checkbox" class="cat-checkbox" value="entertainment" /> סרטים וסדרות</label>
+            <label><input type="checkbox" class="cat-checkbox" value="music" /> מוזיקה</label>
+            <label><input type="checkbox" class="cat-checkbox" value="nature" /> טבע</label>
+            <label><input type="checkbox" class="cat-checkbox" value="holidays" /> חגים</label>
+            <label><input type="checkbox" class="cat-checkbox" value="animals" /> בעלי חיים</label>
+            <label><input type="checkbox" class="cat-checkbox" value="objects" /> חפצים</label>
+          </div>
+        </div>
+
+        <button id="createGameBtn" class="btn btn-primary" style="margin-top:8px;">
+          יצירת משחק חדש
+        </button>
+        <button id="endGameBtn" class="btn btn-danger" style="margin-top:8px; margin-right:6px;" disabled>
+          סגירת משחק
+        </button>
+
+        <div id="hostStatus" class="status-text" style="margin-top:8px;"></div>
       </div>
 
-      <div class="row" style="margin-bottom:6px;">
-        <div>
-          <label for="inviteTeamSelect">קבוצה להזמנה</label>
-          <select id="inviteTeamSelect">
-            <option value="">בחר קבוצה...</option>
-          </select>
+      <!-- קוד משחק, הזמנת וואטסאפ, טיימר וסיבוב -->
+      <div class="card" id="gameCodeRow" style="display:none;">
+        <h3 style="margin:0 0 6px;">קוד משחק</h3>
+        <div id="gameCodeDisplay" class="status-text" style="margin-bottom:6px;"></div>
+
+        <div class="status-text" style="margin-bottom:4px;">
+          שלח הזמנה לשחקנים בוואטסאפ עם קוד המשחק וקבוצה מוגדרת מראש:
         </div>
-        <div style="flex:0 0 190px; align-self:flex-end;">
-          <button id="whatsappInviteBtn" class="btn btn-primary btn-wide btn-small" type="button" disabled>
-            📲 שליחת הזמנה בוואטסאפ
-          </button>
+
+        <div class="row" style="margin-bottom:6px;">
+          <div>
+            <label for="inviteTeamSelect">קבוצה להזמנה</label>
+            <select id="inviteTeamSelect">
+              <option value="">בחר קבוצה...</option>
+            </select>
+          </div>
+          <div style="flex:0 0 190px; align-self:flex-end;">
+            <button id="whatsappInviteBtn" class="btn btn-primary btn-wide btn-small" type="button" disabled>
+              📲 שליחת הזמנה בוואטסאפ
+            </button>
+          </div>
+        </div>
+
+        <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 0;" />
+
+        <h3 style="margin:0 0 6px;">שליטה בסיבוב</h3>
+        <div class="status-text" id="roundStatus" style="margin-bottom:6px;"></div>
+        <div id="roundTimer">טיימר: --:--</div>
+
+        <div class="status-text" style="margin-top:6px; margin-bottom:6px;">
+          בחר קבוצה לסיבוב הבא ומסביר (אם תרצה). אם לא תבחר מסביר – המשחק יבחר שחקן ראשון בקבוצה.
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="roundTeamSelect">קבוצה לסיבוב</label>
+            <select id="roundTeamSelect">
+              <option value="">בחר קבוצה...</option>
+            </select>
+          </div>
+          <div>
+            <label for="roundSecondsInline">משך סיבוב (שניות)</label>
+            <input id="roundSecondsInline" type="number" min="10" max="300" value="60" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="explainerSelect">מסביר (אופציונלי)</label>
+            <select id="explainerSelect">
+              <option value="">בחירה אוטומטית</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+          <button id="startRoundBtn" class="btn btn-success">התחל סיבוב</button>
+          <button id="stopRoundBtn" class="btn btn-ghost" disabled>סיום סיבוב</button>
         </div>
       </div>
 
-      <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 0;" />
+      <!-- ניקוד וקבוצות -->
+      <div class="card">
+        <h3 style="margin:0 0 6px;">ניקוד וקבוצות</h3>
+        <div id="scoreTarget" class="status-text"></div>
+        <div id="scoreboard"></div>
 
-      <h3 style="margin:0 0 6px;">שליטה בסיבוב</h3>
-      <div class="status-text" id="roundStatus" style="margin-bottom:6px;"></div>
-      <div id="roundTimer">טיימר: --:--</div>
+        <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 8px;" />
 
-      <div class="status-text" style="margin-top:6px; margin-bottom:6px;">
-        בחר קבוצה לסיבוב הבא ומסביר (אם תרצה). אם לא תבחר מסביר – המשחק יבחר שחקן ראשון בקבוצה.
-      </div>
+        <h3 style="margin:0 0 6px; font-size:0.95rem;">שחקנים לפי קבוצה</h3>
+        <div id="playersByTeam" class="status-text"></div>
 
-      <div class="row">
-        <div>
-          <label for="roundTeamSelect">קבוצה לסיבוב</label>
-          <select id="roundTeamSelect">
-            <option value="">בחר קבוצה...</option>
-          </select>
-        </div>
-        <div>
-          <label for="roundSecondsInline">משך סיבוב (שניות)</label>
-          <input id="roundSecondsInline" type="number" min="10" max="300" value="60" />
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label for="explainerSelect">מסביר (אופציונלי)</label>
-          <select id="explainerSelect">
-            <option value="">בחירה אוטומטית</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
-        <button id="startRoundBtn" class="btn btn-success">התחל סיבוב</button>
-        <button id="stopRoundBtn" class="btn btn-ghost" disabled>סיום סיבוב</button>
+        <div id="host-banner-slot" style="margin-top:8px;"></div>
       </div>
     </div>
 
-    <!-- ניקוד וקבוצות -->
-    <div class="card">
-      <h3 style="margin:0 0 6px;">ניקוד וקבוצות</h3>
-      <div id="scoreTarget" class="status-text"></div>
-      <div id="scoreboard"></div>
+    <!-- מצב שחקן (באותו דף) -->
+    <div id="playerMode" class="hidden">
+      <div class="card">
+        <h3 style="margin:0 0 6px;">אני כשחקן</h3>
+        <p class="status-text" style="margin-bottom:8px;">
+          כאן אתה נכנס למשחק כמו כל שחקן – כדי להסביר מילים מהטלפון שלך – אבל נשאר באותו דף
+          ויכול לחזור בכל רגע ללשונית "מצב מנהל".
+        </p>
 
-      <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 8px;" />
-
-      <h3 style="margin:0 0 6px; font-size:0.95rem;">שחקנים לפי קבוצה</h3>
-      <div id="playersByTeam" class="status-text"></div>
-
-      <div id="host-banner-slot" style="margin-top:8px;"></div>
-
-      <!-- כפתור לגלילה לחלק של השחקן -->
-      <button id="scrollToHostPlayerBtn" class="btn btn-ghost btn-small" style="margin-top:12px;">
-        ⬇ מצב שלי כשחקן
-      </button>
-    </div>
-
-    <!-- מצב המנהל כשחקן -->
-    <div class="card" id="hostPlayerSection">
-      <h3 style="margin:0 0 6px;">מצב המנהל כשחקן</h3>
-      <p class="status-text" style="margin-bottom:8px;">
-        אחרי שפתחת משחק, תוכל להצטרף אליו כשחקן, לבחור קבוצה ולהיות גם מסביר וגם מנחש – ועדיין להישאר מנהל המשחק.
-      </p>
-
-      <div class="row">
-        <div>
-          <label for="hostPlayerTeamSelect">הקבוצה שלי</label>
-          <select id="hostPlayerTeamSelect">
-            <option value="">עדיין לא בחרתי קבוצה</option>
-          </select>
+        <div class="row">
+          <div>
+            <label for="hostPlayerName">השם שלי במשחק</label>
+            <input id="hostPlayerName" type="text" placeholder="לדוגמה: משה המלך" />
+          </div>
+          <div>
+            <label for="hostPlayerTeamSelect">הקבוצה שלי</label>
+            <select id="hostPlayerTeamSelect">
+              <option value="">בחירת קבוצה...</option>
+            </select>
+          </div>
         </div>
+
+        <button id="openPlayerViewBtn" class="btn btn-primary" type="button" style="margin-top:6px;">
+          כניסה למסך השחקן בתוך הדף
+        </button>
+
+        <p class="status-text" style="margin-top:8px;">
+          אחרי שתלחץ – ייפתח כאן למטה מסך השחקן (player). בשלב הבא נגדיר שגם ההצטרפות תהיה
+          אוטומטית לפי השם והקבוצה שבחרת.
+        </p>
+
+        <iframe id="hostPlayerFrame" class="hidden"></iframe>
       </div>
-
-      <button id="joinAsPlayerBtn" class="btn btn-primary btn-small" type="button" style="margin-top:4px;">
-        🎮 הצטרף למשחק כשחקן מנהל
-      </button>
-
-      <div id="hostPlayerTeamSummary" class="status-text" style="margin-top:8px;">
-        עדיין לא הצטרפת למשחק כשחקן.
-      </div>
-
-      <button id="scrollToTopBtn" class="btn btn-ghost btn-small" style="margin-top:12px;">
-        ⬆ חזרה לניהול המשחק
-      </button>
     </div>
   </div>
 
@@ -550,8 +594,6 @@
     let roundTimerId = null;
     let roundTimeLeft = 0;
     let roundActive = false;
-    let hostClientId = null;       // מזהה שחקן של המנהל
-    let hostJoinedAsPlayer = false;
 
     const hostNameInput = document.getElementById("hostName");
     const numTeamsSelect = document.getElementById("numTeams");
@@ -589,15 +631,14 @@
     const hostBannerSlot = document.getElementById("host-banner-slot");
     const hostLogoEl = document.getElementById("host-logo");
 
-    const hostPlayerTeamSelect = document.getElementById("hostPlayerTeamSelect");
-    const hostPlayerTeamSummary = document.getElementById("hostPlayerTeamSummary");
-    const scrollToHostPlayerBtn = document.getElementById("scrollToHostPlayerBtn");
-    const scrollToTopBtn = document.getElementById("scrollToTopBtn");
-    const hostPlayerSection = document.getElementById("hostPlayerSection");
-    const hostTop = document.getElementById("hostTop");
-
     const tabHost = document.getElementById("tabHost");
     const tabPlayer = document.getElementById("tabPlayer");
+    const hostMode = document.getElementById("hostMode");
+    const playerMode = document.getElementById("playerMode");
+    const hostPlayerNameInput = document.getElementById("hostPlayerName");
+    const hostPlayerTeamSelect = document.getElementById("hostPlayerTeamSelect");
+    const openPlayerViewBtn = document.getElementById("openPlayerViewBtn");
+    const hostPlayerFrame = document.getElementById("hostPlayerFrame");
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -618,6 +659,8 @@
       clearInterval(roundTimerId);
       roundActive = true;
       roundTimeLeft = duration;
+      if (startRoundBtn) startRoundBtn.disabled = true;
+      if (stopRoundBtn) stopRoundBtn.disabled = false;
       updateRoundTimerUI();
       roundTimerId = setInterval(() => {
         roundTimeLeft--;
@@ -626,6 +669,8 @@
           updateRoundTimerUI();
           clearInterval(roundTimerId);
           roundActive = false;
+          if (startRoundBtn) startRoundBtn.disabled = false;
+          if (stopRoundBtn) stopRoundBtn.disabled = true;
           if (currentGameCode) {
             socket.emit("endRound", { gameCode: currentGameCode }, () => {});
           }
@@ -639,6 +684,8 @@
       clearInterval(roundTimerId);
       roundActive = false;
       roundTimeLeft = 0;
+      if (startRoundBtn) startRoundBtn.disabled = false;
+      if (stopRoundBtn) stopRoundBtn.disabled = true;
       updateRoundTimerUI();
     }
 
@@ -689,38 +736,30 @@
       });
     }
 
-    function renderHostPlayerView() {
-      if (!hostPlayerTeamSelect || !hostPlayerTeamSummary) return;
-
-      const teamId = hostPlayerTeamSelect.value;
-      if (!lastGameState || !lastGameState.teams || !teamId || !lastGameState.teams[teamId]) {
-        hostPlayerTeamSummary.textContent = hostJoinedAsPlayer
-          ? "הצטרפת כשחקן, אבל הקבוצה לא קיימת כרגע."
-          : "עדיין לא הצטרפת למשחק כשחקן.";
-        return;
-      }
-
-      const team = lastGameState.teams[teamId];
-      const playersMap = lastGameState.players || lastGameState.playersByClientId || {};
-      const players = team.players || [];
-
-      const teamName = team.name || `קבוצה ${teamId}`;
-      let html = `הקבוצה שלי: <strong>${teamName}</strong> · ניקוד: <strong>${team.score || 0}</strong>`;
-
-      if (players.length) {
-        const names = players
-          .map((cid) => (playersMap[cid] && playersMap[cid].name) ? playersMap[cid].name : null)
-          .filter(Boolean);
-        html += "<br/>שחקנים בקבוצה: " + (names.length ? names.join(", ") : "—");
-      } else {
-        html += "<br/>עדיין אין שחקנים בקבוצה הזו.";
-      }
-
-      if (!hostJoinedAsPlayer) {
-        html += "<br/><br/>לחץ על הכפתור למעלה כדי להצטרף למשחק כשחקן מנהל.";
-      }
-
-      hostPlayerTeamSummary.innerHTML = html;
+    function attachRemovePlayerHandlers() {
+      const btns = document.querySelectorAll(".remove-player-btn[data-client-id]");
+      btns.forEach((btn) => {
+        btn.onclick = () => {
+          const clientId = btn.getAttribute("data-client-id");
+          if (!clientId || !currentGameCode) return;
+          const ok = confirm("להסיר את השחקן הזה מהמשחק?");
+          if (!ok) return;
+          socket.emit(
+            "removePlayer",
+            { gameCode: currentGameCode, clientId },
+            (resp) => {
+              if (!resp || !resp.ok) {
+                alert(resp && resp.error ? resp.error : "שגיאה בהסרת שחקן.");
+                return;
+              }
+              hostStatus.textContent = "השחקן הוסר מהמשחק.";
+              if (resp.game) {
+                renderGameState(resp.game);
+              }
+            }
+          );
+        };
+      });
     }
 
     function renderGameState(game) {
@@ -735,10 +774,11 @@
         playersByTeamEl.innerHTML = "";
         scoreTargetEl.textContent = "";
         if (roundStatusEl) roundStatusEl.textContent = "";
-        if (hostPlayerTeamSummary) {
-          hostPlayerTeamSummary.textContent = "עדיין לא הצטרפת למשחק כשחקן.";
-        }
         stopLocalRoundTimer();
+
+        if (hostPlayerTeamSelect) {
+          hostPlayerTeamSelect.innerHTML = '<option value="">בחירת קבוצה...</option>';
+        }
         return;
       }
 
@@ -805,15 +845,28 @@
 
           const list = document.createElement("div");
           list.className = "team-players";
-          const names = (team.players || [])
-            .map((cid) => (playersMap[cid] ? playersMap[cid].name : cid))
-            .filter(Boolean);
 
-          list.textContent = names.length ? names.join(", ") : "—";
+          if (Array.isArray(team.players) && team.players.length) {
+            team.players.forEach((cid) => {
+              const p = playersMap[cid];
+              const name = (p && p.name) ? p.name : cid;
+              const pill = document.createElement("span");
+              pill.className = "player-pill";
+              pill.innerHTML = `
+                <span>${name}</span>
+                <button type="button" class="remove-player-btn" data-client-id="${cid}">✖</button>
+              `;
+              list.appendChild(pill);
+            });
+          } else {
+            list.textContent = "—";
+          }
+
           wrapper.appendChild(list);
-
           playersByTeamEl.appendChild(wrapper);
         });
+
+        attachRemovePlayerHandlers();
       }
 
       if (roundStatusEl) {
@@ -864,7 +917,7 @@
 
       if (hostPlayerTeamSelect) {
         const oldHostTeam = hostPlayerTeamSelect.value;
-        hostPlayerTeamSelect.innerHTML = '<option value="">עדיין לא בחרתי קבוצה</option>';
+        hostPlayerTeamSelect.innerHTML = '<option value="">בחירת קבוצה...</option>';
         if (game.teams) {
           Object.entries(game.teams).forEach(([teamId, team]) => {
             const opt = document.createElement("option");
@@ -876,50 +929,12 @@
         if (oldHostTeam && game.teams && game.teams[oldHostTeam]) {
           hostPlayerTeamSelect.value = oldHostTeam;
         }
-        renderHostPlayerView();
       }
-
-      refreshExplainerOptions();
     }
 
     if (roundTeamSelect) {
       roundTeamSelect.addEventListener("change", () => {
         refreshExplainerOptions();
-      });
-    }
-
-    if (hostPlayerTeamSelect) {
-      hostPlayerTeamSelect.addEventListener("change", () => {
-        renderHostPlayerView();
-      });
-    }
-
-    if (scrollToHostPlayerBtn && hostPlayerSection) {
-      scrollToHostPlayerBtn.addEventListener("click", () => {
-        hostPlayerSection.scrollIntoView({ behavior: "smooth" });
-        tabHost.classList.remove("active");
-        tabPlayer.classList.add("active");
-      });
-    }
-
-    if (scrollToTopBtn && hostTop) {
-      scrollToTopBtn.addEventListener("click", () => {
-        hostTop.scrollIntoView({ behavior: "smooth" });
-        tabPlayer.classList.remove("active");
-        tabHost.classList.add("active");
-      });
-    }
-
-    if (tabHost && tabPlayer) {
-      tabHost.addEventListener("click", () => {
-        hostTop.scrollIntoView({ behavior: "smooth" });
-        tabHost.classList.add("active");
-        tabPlayer.classList.remove("active");
-      });
-      tabPlayer.addEventListener("click", () => {
-        hostPlayerSection.scrollIntoView({ behavior: "smooth" });
-        tabPlayer.classList.add("active");
-        tabHost.classList.remove("active");
       });
     }
 
@@ -969,6 +984,11 @@
               gameCodeDisplay.textContent = "קוד המשחק: " + currentGameCode;
             }
             if (endGameBtn) endGameBtn.disabled = false;
+
+            // מילוי אוטומטי של שם השחקן במסך שחקן
+            if (hostPlayerNameInput && !hostPlayerNameInput.value) {
+              hostPlayerNameInput.value = hostName;
+            }
           }
         );
       });
@@ -980,8 +1000,10 @@
         socket.emit("endGame", { gameCode: currentGameCode }, () => {
           hostStatus.textContent = "המשחק נסגר.";
           currentGameCode = null;
-          hostJoinedAsPlayer = false;
-          hostClientId = null;
+          if (hostPlayerFrame) {
+            hostPlayerFrame.src = "";
+            hostPlayerFrame.classList.add("hidden");
+          }
           renderGameState(null);
         });
       });
@@ -1025,44 +1047,51 @@
       });
     }
 
-    // הצטרפות המנהל למשחק כשחקן
-    if (joinAsPlayerBtn) {
-      joinAsPlayerBtn.addEventListener("click", () => {
+    // טאבים – מעבר בין מצב מנהל למצב שחקן
+    if (tabHost && tabPlayer && hostMode && playerMode) {
+      tabHost.addEventListener("click", () => {
+        tabHost.classList.add("active");
+        tabPlayer.classList.remove("active");
+        hostMode.classList.remove("hidden");
+        playerMode.classList.add("hidden");
+      });
+
+      tabPlayer.addEventListener("click", () => {
+        tabPlayer.classList.add("active");
+        tabHost.classList.remove("active");
+        hostMode.classList.add("hidden");
+        playerMode.classList.remove("hidden");
+      });
+    }
+
+    // פתיחת מסך השחקן בתוך הדף (iframe)
+    if (openPlayerViewBtn && hostPlayerFrame) {
+      openPlayerViewBtn.addEventListener("click", () => {
         if (!currentGameCode) {
-          alert("אין משחק פעיל כרגע. צור משחק קודם.");
-          return;
-        }
-        const name = (hostNameInput.value || "").trim();
-        if (!name) {
-          alert("נא להזין שם מנהל (שישמש גם כשם השחקן).");
-          return;
-        }
-        const teamId = hostPlayerTeamSelect.value;
-        if (!teamId) {
-          alert("נא לבחור קבוצה לפני הצטרפות כשחקן.");
+          alert("אין משחק פעיל כרגע. קודם צור משחק.");
           return;
         }
 
-        socket.emit(
-          "joinGame",
-          {
-            gameCode: currentGameCode,
-            name,
-            teamId,
-          },
-          (resp) => {
-            if (!resp || !resp.ok) {
-              alert(resp && resp.error ? resp.error : "שגיאה בהצטרפות כשחקן.");
-              return;
-            }
-            hostClientId = resp.clientId;
-            hostJoinedAsPlayer = true;
-            renderGameState(resp.game || lastGameState);
-            hostPlayerSection.scrollIntoView({ behavior: "smooth" });
-            tabHost.classList.remove("active");
-            tabPlayer.classList.add("active");
-          }
-        );
+        const name =
+          (hostPlayerNameInput && hostPlayerNameInput.value.trim()) ||
+          (hostNameInput && hostNameInput.value.trim());
+
+        if (!name) {
+          alert("נא להזין שם לשחקן.");
+          return;
+        }
+
+        const teamId = hostPlayerTeamSelect ? hostPlayerTeamSelect.value : "";
+
+        const params = new URLSearchParams();
+        params.set("autoJoin", "1");
+        params.set("code", currentGameCode);
+        params.set("name", name);
+        if (teamId) params.set("teamId", teamId);
+
+        const url = "/player.html?" + params.toString();
+        hostPlayerFrame.src = url;
+        hostPlayerFrame.classList.remove("hidden");
       });
     }
 
@@ -1124,8 +1153,10 @@
     socket.on("gameEnded", () => {
       hostStatus.textContent = "המשחק נסגר.";
       currentGameCode = null;
-      hostJoinedAsPlayer = false;
-      hostClientId = null;
+      if (hostPlayerFrame) {
+        hostPlayerFrame.src = "";
+        hostPlayerFrame.classList.add("hidden");
+      }
       renderGameState(null);
     });
 
