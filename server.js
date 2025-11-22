@@ -193,9 +193,7 @@ function sanitizeGame(game) {
 
 function broadcastGame(game) {
   const safe = sanitizeGame(game);
-  // אירוע קלאסי לקליינטים קיימים
   io.to("game-" + game.code).emit("gameUpdated", safe);
-  // אירוע נוסף למסכים שמשתמשים בשם gameState
   io.to("game-" + game.code).emit("gameState", safe);
 }
 
@@ -207,7 +205,6 @@ function getScores(game) {
   return teamsScores;
 }
 
-// מפסיק טיימר סיבוב פעיל (אם יש) עבור קוד משחק
 function clearRoundTimer(code) {
   if (roundTimers[code]) {
     clearInterval(roundTimers[code]);
@@ -215,7 +212,6 @@ function clearRoundTimer(code) {
   }
 }
 
-// מנקה משחקים ישנים מהזיכרון
 function cleanupOldGames() {
   const now = Date.now();
   const GAME_MAX_AGE_MS = 6 * 60 * 60 * 1000; // 6 שעות
@@ -231,7 +227,6 @@ function cleanupOldGames() {
   }
 }
 
-// להריץ פעם ב-15 דקות
 setInterval(cleanupOldGames, 15 * 60 * 1000);
 
 // ----------------------
@@ -291,6 +286,28 @@ io.on("connection", (socket) => {
       }
 
       const now = new Date();
+
+      // 👇 חדש: בניית קבוצות לפי numTeams ו־teamNames מהלקוח
+      const rawNumTeams = (data && data.numTeams) || 2;
+      const numTeams = Math.max(2, Math.min(5, parseInt(rawNumTeams, 10) || 2));
+      const incomingTeamNames = (data && data.teamNames) || {};
+      const teamIds = ["A", "B", "C", "D", "E"];
+      const teams = {};
+      for (let i = 0; i < numTeams; i++) {
+        const id = teamIds[i];
+        const rawName =
+          incomingTeamNames && incomingTeamNames[id]
+            ? String(incomingTeamNames[id])
+            : "";
+        const name = rawName.trim ? rawName.trim() : rawName;
+        teams[id] = {
+          id,
+          name: name || `קבוצה ${id}`,
+          score: 0,
+          players: [],
+        };
+      }
+
       const newGame = {
         code,
         hostSocketId: socket.id,
@@ -301,10 +318,7 @@ io.on("connection", (socket) => {
         createdAt: now,
         updatedAt: now,
         lastActivity: now,
-        teams: {
-          A: { id: "A", name: "קבוצה A", score: 0, players: [] },
-          B: { id: "B", name: "קבוצה B", score: 0, players: [] },
-        },
+        teams: teams,
         players: {},
         currentRound: null,
       };
@@ -505,7 +519,6 @@ io.on("connection", (socket) => {
       };
       game.lastActivity = now;
 
-      // מפסיקים טיימר קודם (אם היה) ומפעילים חדש לסיבוב הזה
       clearRoundTimer(code);
       roundTimers[code] = setInterval(() => {
         const g = games[code];
@@ -603,13 +616,11 @@ io.on("connection", (socket) => {
       const player = game.players[clientId];
       const teamId = player.teamId;
 
-      // הסרה ממפת השחקנים
       delete game.players[clientId];
       if (game.playersByClientId) {
         delete game.playersByClientId[clientId];
       }
 
-      // הסרה מהקבוצה
       if (teamId && game.teams[teamId] && Array.isArray(game.teams[teamId].players)) {
         game.teams[teamId].players = game.teams[teamId].players.filter(
           (cid) => cid !== clientId
@@ -633,7 +644,6 @@ io.on("connection", (socket) => {
         }
       }
 
-      // נשלח לשחקן הודעה שהוסר
       io.to(clientId).emit("removedFromGame", { reason: "הוסרת מהמשחק על ידי המנהל." });
 
       callback && callback({ ok: true, game: sanitizeGame(game) });
@@ -817,7 +827,6 @@ io.on("connection", (socket) => {
 
 const ADMIN_CODE = process.env.ADMIN_CODE || "ONEBTN";
 
-// החזרת תמונת מצב כללי (חדרים, מספר שחקנים וכו')
 app.get("/admin/rooms", async (req, res) => {
   const code = req.query.code;
   if (code !== ADMIN_CODE) {
@@ -892,7 +901,6 @@ app.get("/admin/rooms", async (req, res) => {
   }
 });
 
-// סיכום כולל (ניתן לשימוש לדשבורד קטן בעתיד)
 app.get("/admin/summary", async (req, res) => {
   const code = req.query.code;
   if (code !== ADMIN_CODE) {
@@ -953,4 +961,4 @@ app.get("/admin/summary", async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`🚀 Server listening on port ${PORT}`);
-});
+});Server listening on port ${
