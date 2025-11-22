@@ -14,33 +14,29 @@ const io = new Server(server, {
   },
 });
 
-const PORT = process.env.PORT || 10000;
-const ADMIN_CODE = process.env.ADMIN_CODE || "cohens1234";
-
-// 24 שעות במילישניות
-const GAME_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const PORT = process.env.PORT || 3000;
 
 // ----------------------
-//   חיבור ל-PostgreSQL
+//   Static Files
 // ----------------------
 
-let pool = null;
+app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json());
+
+// ----------------------
+//   Postgres Pool
+// ----------------------
+
+// אפשר לשנות את משתני הסביבה בהתאם לשרת שלך
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+});
+
 let dbReady = false;
 
 async function initDb() {
   try {
-    const connectionString =
-      process.env.DATABASE_URL ||
-      "postgres://postgres:postgres@localhost:5432/cohens_alias";
-
-    pool = new Pool({
-      connectionString,
-      ssl:
-        process.env.NODE_ENV === "production"
-          ? { rejectUnauthorized: false }
-          : false,
-    });
-
     await pool.query(`
       CREATE TABLE IF NOT EXISTS games (
         code TEXT PRIMARY KEY,
@@ -60,7 +56,7 @@ async function initDb() {
         game_code TEXT NOT NULL REFERENCES games(code) ON DELETE CASCADE,
         team_id TEXT NOT NULL,
         name TEXT NOT NULL,
-        score INTEGER NOT NULL DEFAULT 0
+        score INTEGER DEFAULT 0
       );
     `);
 
@@ -90,21 +86,12 @@ async function initDb() {
     `);
 
     dbReady = true;
-    console.log("✅ PostgreSQL initialized successfully.");
+    console.log("✅ Database initialized");
   } catch (err) {
-    console.error("❌ Error initializing PostgreSQL:", err);
+    console.error("❌ Error initializing DB:", err);
   }
 }
-
-// קריאה מיידית לאתחול DB
-initDb();
-
-// ----------------------
-//     Static Files
-// ----------------------
-
-app.use(express.static(path.join(__dirname, "public")));
-app.use(express.json());
+initDb().catch((err) => console.error(err));
 
 // ----------------------
 //   In-memory store
@@ -142,8 +129,8 @@ app.use(express.json());
  *       roundSeconds: number,
  *       startedAt: timestamp,
  *       roundScore: number,
- *       endsAt: timestamp,
- *       secondsLeft: number
+ *       secondsLeft: number,
+ *       endsAt: number (ms)
  *     }
  *   }
  * }
@@ -188,14 +175,17 @@ function sanitizeGame(game) {
     // מידע על הסיבוב הנוכחי (אם יש)
     currentRound: game.currentRound
       ? {
-          active: game.currentRound.active,
+          active: !!game.currentRound.active,
           teamId: game.currentRound.teamId,
           explainerId: game.currentRound.explainerId,
           explainerName: game.currentRound.explainerName,
           roundSeconds: game.currentRound.roundSeconds,
           startedAt: game.currentRound.startedAt,
           roundScore: game.currentRound.roundScore,
-          secondsLeft: game.currentRound.secondsLeft ?? null,
+          secondsLeft:
+            typeof game.currentRound.secondsLeft === "number"
+              ? game.currentRound.secondsLeft
+              : null,
         }
       : null,
   };
@@ -203,7 +193,9 @@ function sanitizeGame(game) {
 
 function broadcastGame(game) {
   const safe = sanitizeGame(game);
+  // אירוע קלאסי לקליינטים קיימים
   io.to("game-" + game.code).emit("gameUpdated", safe);
+  // אירוע נוסף למסכים שמשתמשים בשם gameState
   io.to("game-" + game.code).emit("gameState", safe);
 }
 
@@ -215,7 +207,7 @@ function getScores(game) {
   return teamsScores;
 }
 
-// עצירת טיימר עבור משחק מסוים
+// מפסיק טיימר סיבוב פעיל (אם יש) עבור קוד משחק
 function clearRoundTimer(code) {
   if (roundTimers[code]) {
     clearInterval(roundTimers[code]);
@@ -226,6 +218,7 @@ function clearRoundTimer(code) {
 // מנקה משחקים ישנים מהזיכרון
 function cleanupOldGames() {
   const now = Date.now();
+  const GAME_MAX_AGE_MS = 6 * 60 * 60 * 1000; // 6 שעות
   for (const code of Object.keys(games)) {
     const g = games[code];
     if (!g.lastActivity) continue;
@@ -250,17 +243,17 @@ app.get("/api/banners", async (req, res) => {
     res.json({
       logo: {
         imageUrl: "/milmania-logo.png",
-        altText: "מילמניה - Wordmania",
+        altText: "מילמניה",
       },
       host: {
         imageUrl: "/banner-host.png",
-        linkUrl: "https://example.com",
-        altText: "באנר מנהל משחק",
+        linkUrl: "https://onebtn.com",
+        altText: "ONEBTN",
       },
       player: {
         imageUrl: "/banner-player.png",
-        linkUrl: "https://example.com",
-        altText: "באנר שחקן",
+        linkUrl: "https://onebtn.com",
+        altText: "ONEBTN",
       },
     });
   } catch (err) {
@@ -270,48 +263,31 @@ app.get("/api/banners", async (req, res) => {
 });
 
 // ----------------------
-//       Socket.io
+//   Socket.IO logic
 // ----------------------
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
+  // ----------------------
+  //   Create Game
+  // ----------------------
   socket.on("createGame", async (data, callback) => {
     try {
       const {
         hostName,
-        numTeams = 2,
-        targetScore = 30,
-        roundSeconds = 60,
+        targetScore = 40,
+        defaultRoundSeconds = 60,
         categories = [],
-        teamNames = {},
       } = data || {};
 
-      if (!hostName || typeof hostName !== "string") {
-        return (
-          callback &&
-          callback({ ok: false, error: "שם מנהל אינו תקין." })
-        );
+      if (!hostName || !hostName.trim()) {
+        return callback && callback({ ok: false, error: "שם מנהל אינו תקין." });
       }
 
-      // יצירת קוד ייחודי
-      let code;
-      do {
+      let code = generateGameCode(4);
+      while (games[code]) {
         code = generateGameCode(4);
-      } while (games[code]);
-
-      // בניית קבוצות
-      const teams = {};
-      const letters = ["A", "B", "C", "D", "E"];
-      for (let i = 0; i < numTeams && i < letters.length; i++) {
-        const id = letters[i];
-        const customName = (teamNames && teamNames[id]) || "";
-        teams[id] = {
-          id,
-          name: customName.trim() || `קבוצה ${id}`,
-          score: 0,
-          players: [],
-        };
       }
 
       const now = new Date();
@@ -319,22 +295,23 @@ io.on("connection", (socket) => {
         code,
         hostSocketId: socket.id,
         hostName: hostName.trim(),
-        targetScore: targetScore || 30,
-        defaultRoundSeconds: roundSeconds || 60,
+        targetScore: Number(targetScore) || 40,
+        defaultRoundSeconds: Number(defaultRoundSeconds) || 60,
         categories: Array.isArray(categories) ? categories : [],
         createdAt: now,
         updatedAt: now,
         lastActivity: now,
-        teams,
+        teams: {
+          A: { id: "A", name: "קבוצה A", score: 0, players: [] },
+          B: { id: "B", name: "קבוצה B", score: 0, players: [] },
+        },
         players: {},
         currentRound: null,
       };
 
       games[code] = newGame;
-
       socket.join("game-" + code);
 
-      // שמירה ל-DB
       if (dbReady && pool) {
         try {
           await pool.query(
@@ -351,64 +328,52 @@ io.on("connection", (socket) => {
             ]
           );
 
-          const teamInserts = [];
-          for (const tid of Object.keys(teams)) {
-            teamInserts.push({
-              gameCode: code,
-              teamId: tid,
-              name: teams[tid].name,
-              score: teams[tid].score,
-            });
-          }
-
-          for (const t of teamInserts) {
+          const teamEntries = Object.values(newGame.teams);
+          for (const t of teamEntries) {
             await pool.query(
               `
               INSERT INTO game_teams (game_code, team_id, name, score)
               VALUES ($1, $2, $3, $4)
             `,
-              [t.gameCode, t.teamId, t.name, t.score]
+              [code, t.id, t.name, t.score]
             );
           }
         } catch (err) {
-          console.error("Error persisting new game to DB:", err);
+          console.error("Error persisting new game:", err);
         }
       }
 
-      console.log(`🎮 Game created: ${code} by host ${hostName}`);
+      console.log("🎮 New game created:", code);
 
       callback &&
         callback({
           ok: true,
           gameCode: code,
+          game: sanitizeGame(newGame),
         });
 
       broadcastGame(newGame);
     } catch (err) {
       console.error("Error in createGame:", err);
-      callback &&
-        callback({ ok: false, error: "שגיאה ביצירת משחק." });
+      callback && callback({ ok: false, error: "שגיאה ביצירת משחק." });
     }
   });
 
+  // ----------------------
+  //   Join Game (Player)
+  // ----------------------
   socket.on("joinGame", async (data, callback) => {
     try {
       const { gameCode, name, teamId } = data || {};
       const code = (gameCode || "").toUpperCase().trim();
       if (!games[code]) {
-        return (
-          callback &&
-          callback({ ok: false, error: "המשחק לא נמצא." })
-        );
+        return callback && callback({ ok: false, error: "המשחק לא נמצא." });
       }
       const game = games[code];
 
       const playerName = (name || "").trim();
       if (!playerName) {
-        return (
-          callback &&
-          callback({ ok: false, error: "נא להזין שם שחקן." })
-        );
+        return callback && callback({ ok: false, error: "נא להזין שם שחקן." });
       }
 
       let chosenTeamId = (teamId || "").trim();
@@ -426,13 +391,15 @@ io.on("connection", (socket) => {
         teamId: chosenTeamId,
       };
 
+      if (!game.teams[chosenTeamId].players) {
+        game.teams[chosenTeamId].players = [];
+      }
       if (!game.teams[chosenTeamId].players.includes(clientId)) {
         game.teams[chosenTeamId].players.push(clientId);
       }
 
       game.lastActivity = new Date();
-
-      socket.join("game-" + code);
+      game.updatedAt = new Date();
 
       if (dbReady && pool) {
         try {
@@ -448,9 +415,7 @@ io.on("connection", (socket) => {
         }
       }
 
-      console.log(
-        `👤 Player joined: ${playerName} -> game ${code}, team ${chosenTeamId}`
-      );
+      console.log(`👤 Player joined: ${playerName} -> game ${code}, team ${chosenTeamId}`);
 
       callback &&
         callback({
@@ -463,22 +428,19 @@ io.on("connection", (socket) => {
       broadcastGame(game);
     } catch (err) {
       console.error("Error in joinGame:", err);
-      callback &&
-        callback({ ok: false, error: "שגיאה בהצטרפות למשחק." });
+      callback && callback({ ok: false, error: "שגיאה בהצטרפות למשחק." });
     }
   });
 
+  // ----------------------
+  //   Get Game State
+  // ----------------------
   socket.on("getGameState", (data, callback) => {
     try {
-      const code = (data && data.gameCode || "")
-        .toUpperCase()
-        .trim();
+      const code = ((data && data.gameCode) || "").toUpperCase().trim();
       const game = games[code];
       if (!game) {
-        return (
-          callback &&
-          callback({ ok: false, error: "המשחק לא נמצא." })
-        );
+        return callback && callback({ ok: false, error: "המשחק לא נמצא." });
       }
       callback &&
         callback({
@@ -487,108 +449,31 @@ io.on("connection", (socket) => {
         });
     } catch (err) {
       console.error("Error in getGameState:", err);
-      callback &&
-        callback({ ok: false, error: "שגיאה בקבלת מצב משחק." });
+      callback && callback({ ok: false, error: "שגיאה בקבלת מצב משחק." });
     }
   });
 
-  // הסרת שחקן על ידי המנהל
-  socket.on("removePlayer", async (data, callback) => {
-    try {
-      const { gameCode, clientId } = data || {};
-      const code = (gameCode || "").toUpperCase().trim();
-      const game = games[code];
-      if (!game) {
-        return (
-          callback &&
-          callback({ ok: false, error: "המשחק לא נמצא." })
-        );
-      }
-
-      const player = game.players[clientId];
-      if (!player) {
-        return (
-          callback &&
-          callback({ ok: false, error: "השחקן לא נמצא במשחק." })
-        );
-      }
-
-      const teamId = player.teamId;
-      if (teamId && game.teams[teamId]) {
-        game.teams[teamId].players =
-          (game.teams[teamId].players || []).filter(
-            (id) => id !== clientId
-          );
-      }
-      delete game.players[clientId];
-      game.lastActivity = new Date();
-
-      if (dbReady && pool) {
-        try {
-          await pool.query(
-            "DELETE FROM game_players WHERE game_code = $1 AND client_id = $2",
-            [code, clientId]
-          );
-        } catch (err) {
-          console.error("Error deleting player from DB:", err);
-        }
-      }
-
-      // אם השחקן עדיין מחובר - נעדכן אותו
-      try {
-        const targetSocket =
-          io.sockets.sockets.get(player.socketId);
-        if (targetSocket) {
-          targetSocket.leave("game-" + code);
-          targetSocket.emit("removedFromGame", {
-            gameCode: code,
-            reason: "המנהל הסיר אותך מהמשחק.",
-          });
-        }
-      } catch (err) {
-        console.error("Error notifying removed player:", err);
-      }
-
-      console.log(
-        `👢 Player removed: ${player.name} (${clientId}) from game ${code}`
-      );
-
-      const safeGame = sanitizeGame(game);
-
-      callback &&
-        callback({
-          ok: true,
-          game: safeGame,
-        });
-
-      broadcastGame(game);
-    } catch (err) {
-      console.error("Error in removePlayer:", err);
-      callback &&
-        callback({ ok: false, error: "שגיאה בהסרת שחקן." });
-    }
-  });
-
+  // ----------------------
+  //   Start Round
+  // ----------------------
   socket.on("startRound", async (data, callback) => {
     try {
-      const { gameCode, teamId, roundSeconds, explainerClientId } =
-        data || {};
+      const {
+        gameCode,
+        teamId,
+        roundSeconds,
+        explainerClientId,
+      } = data || {};
 
       const code = (gameCode || "").toUpperCase().trim();
       const game = games[code];
       if (!game) {
-        return (
-          callback &&
-          callback({ ok: false, error: "המשחק לא נמצא." })
-        );
+        return callback && callback({ ok: false, error: "המשחק לא נמצא." });
       }
 
       const tid = (teamId || "").trim() || Object.keys(game.teams)[0];
       if (!game.teams[tid]) {
-        return (
-          callback &&
-          callback({ ok: false, error: "קבוצה לא תקינה." })
-        );
+        return callback && callback({ ok: false, error: "קבוצה לא תקינה." });
       }
 
       let explainerId = explainerClientId || null;
@@ -615,10 +500,30 @@ io.on("connection", (socket) => {
         roundSeconds: seconds,
         startedAt: now,
         roundScore: 0,
-        endsAt,
         secondsLeft: seconds,
+        endsAt,
       };
       game.lastActivity = now;
+
+      // מפסיקים טיימר קודם (אם היה) ומפעילים חדש לסיבוב הזה
+      clearRoundTimer(code);
+      roundTimers[code] = setInterval(() => {
+        const g = games[code];
+        if (!g || !g.currentRound || !g.currentRound.active) {
+          clearRoundTimer(code);
+          return;
+        }
+        const nowTs = Date.now();
+        const remainingMs = (g.currentRound.endsAt || nowTs) - nowTs;
+        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+        g.currentRound.secondsLeft = remainingSeconds;
+        if (remainingSeconds <= 0) {
+          g.currentRound.active = false;
+          clearRoundTimer(code);
+        }
+        g.lastActivity = new Date();
+        broadcastGame(g);
+      }, 1000);
 
       if (dbReady && pool) {
         try {
@@ -635,9 +540,7 @@ io.on("connection", (socket) => {
       }
 
       console.log(
-        `⏱️ Round started in game ${code}, team ${tid}, explainer: ${
-          explainerName || explainerId
-        }`
+        `▶ Round started in game ${code}, team ${tid}, explainerId=${explainerId}, seconds=${seconds}`
       );
 
       callback && callback({ ok: true });
@@ -649,58 +552,30 @@ io.on("connection", (socket) => {
         roundSeconds: seconds,
       });
 
-      // טיימר מרכזי לסיבוב - יעדכן secondsLeft לכל הלקוחות
-      clearRoundTimer(code);
-      roundTimers[code] = setInterval(() => {
-        const g = games[code];
-        if (!g || !g.currentRound || !g.currentRound.active) {
-          clearRoundTimer(code);
-          return;
-        }
-        const nowMs = Date.now();
-        const remaining = Math.max(
-          0,
-          Math.ceil((g.currentRound.endsAt - nowMs) / 1000)
-        );
-        g.currentRound.secondsLeft = remaining;
-        if (remaining <= 0) {
-          g.currentRound.secondsLeft = 0;
-          g.currentRound.active = false;
-          clearRoundTimer(code);
-        }
-        broadcastGame(g);
-      }, 1000);
-
       broadcastGame(game);
     } catch (err) {
       console.error("Error in startRound:", err);
-      callback &&
-        callback({ ok: false, error: "שגיאה בהתחלת סיבוב." });
+      callback && callback({ ok: false, error: "שגיאה בהתחלת סיבוב." });
     }
   });
 
+  // ----------------------
+  //   Change Round Score
+  // ----------------------
   socket.on("changeRoundScore", async (data, callback) => {
     try {
       const { gameCode, delta } = data || {};
       const code = (gameCode || "").toUpperCase().trim();
       const game = games[code];
       if (!game || !game.currentRound || !game.currentRound.active) {
-        return (
-          callback &&
-          callback({ ok: false, error: "אין סיבוב פעיל." })
-        );
+        return callback && callback({ ok: false, error: "אין סיבוב פעיל." });
       }
 
       const d = parseInt(delta, 10) || 0;
-      game.currentRound.roundScore =
-        (game.currentRound.roundScore || 0) + d;
+      game.currentRound.roundScore = (game.currentRound.roundScore || 0) + d;
       game.lastActivity = new Date();
 
-      callback &&
-        callback({
-          ok: true,
-          roundScore: game.currentRound.roundScore,
-        });
+      callback && callback({ ok: true, roundScore: game.currentRound.roundScore });
 
       io.to("game-" + code).emit("roundScoreUpdated", {
         roundScore: game.currentRound.roundScore,
@@ -709,34 +584,87 @@ io.on("connection", (socket) => {
       broadcastGame(game);
     } catch (err) {
       console.error("Error in changeRoundScore:", err);
-      callback &&
-        callback({ ok: false, error: "שגיאה בעדכון ניקוד סיבוב." });
+      callback && callback({ ok: false, error: "שגיאה בעדכון ניקוד סיבוב." });
     }
   });
 
+  // ----------------------
+  //   Remove Player (by Host)
+  // ----------------------
+  socket.on("removePlayer", async (data, callback) => {
+    try {
+      const { gameCode, clientId } = data || {};
+      const code = (gameCode || "").toUpperCase().trim();
+      const game = games[code];
+      if (!game || !clientId || !game.players[clientId]) {
+        return callback && callback({ ok: false, error: "שחקן לא נמצא." });
+      }
+
+      const player = game.players[clientId];
+      const teamId = player.teamId;
+
+      // הסרה ממפת השחקנים
+      delete game.players[clientId];
+      if (game.playersByClientId) {
+        delete game.playersByClientId[clientId];
+      }
+
+      // הסרה מהקבוצה
+      if (teamId && game.teams[teamId] && Array.isArray(game.teams[teamId].players)) {
+        game.teams[teamId].players = game.teams[teamId].players.filter(
+          (cid) => cid !== clientId
+        );
+      }
+
+      game.lastActivity = new Date();
+      game.updatedAt = new Date();
+
+      if (dbReady && pool) {
+        try {
+          await pool.query(
+            `
+            DELETE FROM game_players
+            WHERE game_code = $1 AND client_id = $2
+          `,
+            [code, clientId]
+          );
+        } catch (err) {
+          console.error("Error deleting game player:", err);
+        }
+      }
+
+      // נשלח לשחקן הודעה שהוסר
+      io.to(clientId).emit("removedFromGame", { reason: "הוסרת מהמשחק על ידי המנהל." });
+
+      callback && callback({ ok: true, game: sanitizeGame(game) });
+      broadcastGame(game);
+    } catch (err) {
+      console.error("Error in removePlayer:", err);
+      callback && callback({ ok: false, error: "שגיאה בהסרת שחקן." });
+    }
+  });
+
+  // ----------------------
+  //   End Round
+  // ----------------------
   socket.on("endRound", async (data, callback) => {
     try {
       const { gameCode } = data || {};
       const code = (gameCode || "").toUpperCase().trim();
       const game = games[code];
       if (!game || !game.currentRound) {
-        return (
-          callback &&
-          callback({ ok: false, error: "אין סיבוב פעיל." })
-        );
+        return callback && callback({ ok: false, error: "אין סיבוב פעיל." });
       }
 
       const round = game.currentRound;
       round.active = false;
       clearRoundTimer(code);
-
       const now = new Date();
 
       const teamId = round.teamId;
       if (teamId && game.teams[teamId]) {
         game.teams[teamId].score =
-          (game.teams[teamId].score || 0) +
-          (round.roundScore || 0);
+          (game.teams[teamId].score || 0) + (round.roundScore || 0);
       }
       game.lastActivity = now;
       game.updatedAt = now;
@@ -773,10 +701,7 @@ io.on("connection", (socket) => {
             [now, code]
           );
         } catch (err) {
-          console.error(
-            "Error logging round end / score:",
-            err
-          );
+          console.error("Error logging round end / score:", err);
         }
       }
 
@@ -784,8 +709,7 @@ io.on("connection", (socket) => {
         `✅ Round ended in game ${code}, team ${teamId}, roundScore = ${round.roundScore}`
       );
 
-      callback &&
-        callback({ ok: true, scores: getScores(game) });
+      callback && callback({ ok: true, scores: getScores(game) });
 
       io.to("game-" + code).emit("roundEnded", {
         teamId,
@@ -797,91 +721,92 @@ io.on("connection", (socket) => {
       broadcastGame(game);
     } catch (err) {
       console.error("Error in endRound:", err);
-      callback &&
-        callback({ ok: false, error: "שגיאה בסיום סיבוב." });
+      callback && callback({ ok: false, error: "שגיאה בסיום סיבוב." });
     }
   });
 
+  // ----------------------
+  //   End Game
+  // ----------------------
   socket.on("endGame", async (data, callback) => {
     try {
       const { gameCode } = data || {};
       const code = (gameCode || "").toUpperCase().trim();
       const game = games[code];
       if (!game) {
-        return (
-          callback &&
-          callback({ ok: false, error: "המשחק לא נמצא." })
-        );
+        return callback && callback({ ok: false, error: "המשחק לא נמצא." });
       }
 
       console.log("🛑 Game ended:", code);
-
       clearRoundTimer(code);
       delete games[code];
 
       if (dbReady && pool) {
         try {
-          await pool.query("DELETE FROM games WHERE code = $1", [
-            code,
-          ]);
+          await pool.query(
+            `
+            UPDATE games
+            SET updated_at = NOW(), last_activity = NOW()
+            WHERE code = $1
+          `,
+            [code]
+          );
         } catch (err) {
-          console.error("Error deleting game from DB:", err);
+          console.error("Error logging game end:", err);
         }
       }
 
-      io.to("game-" + code).emit("gameEnded", {
-        message: "המשחק נסגר על ידי המנהל.",
-        code,
-      });
-
+      io.to("game-" + code).emit("gameEnded", { code });
       callback && callback({ ok: true });
     } catch (err) {
       console.error("Error in endGame:", err);
-      callback &&
-        callback({ ok: false, error: "שגיאה בסגירת המשחק." });
+      callback && callback({ ok: false, error: "שגיאה בסגירת המשחק." });
     }
   });
 
+  // ----------------------
+  //   Disconnect
+  // ----------------------
   socket.on("disconnect", async () => {
     console.log("Client disconnected:", socket.id);
+    const clientId = socket.id;
 
-    // ניקוי שחקנים שניתקו מהמשחקים
-    try {
-      for (const code of Object.keys(games)) {
-        const game = games[code];
-        if (!game.players) continue;
+    for (const code of Object.keys(games)) {
+      const game = games[code];
+      if (!game || !game.players || !game.players[clientId]) continue;
 
-        const player = game.players[socket.id];
-        if (!player) continue;
+      const player = game.players[clientId];
+      const teamId = player.teamId;
 
-        const teamId = player.teamId;
-        if (teamId && game.teams[teamId]) {
-          game.teams[teamId].players =
-            (game.teams[teamId].players || []).filter(
-              (id) => id !== socket.id
-            );
-        }
-        delete game.players[socket.id];
-        game.lastActivity = new Date();
-
-        if (dbReady && pool) {
-          try {
-            await pool.query(
-              "DELETE FROM game_players WHERE game_code = $1 AND client_id = $2",
-              [code, socket.id]
-            );
-          } catch (err) {
-            console.error(
-              "Error deleting disconnected player from DB:",
-              err
-            );
-          }
-        }
-
-        broadcastGame(game);
+      delete game.players[clientId];
+      if (game.playersByClientId) {
+        delete game.playersByClientId[clientId];
       }
-    } catch (err) {
-      console.error("Error cleaning up on disconnect:", err);
+
+      if (teamId && game.teams[teamId] && Array.isArray(game.teams[teamId].players)) {
+        game.teams[teamId].players = game.teams[teamId].players.filter(
+          (cid) => cid !== clientId
+        );
+      }
+
+      game.lastActivity = new Date();
+      game.updatedAt = new Date();
+
+      if (dbReady && pool) {
+        try {
+          await pool.query(
+            `
+            DELETE FROM game_players
+            WHERE game_code = $1 AND client_id = $2
+          `,
+            [code, clientId]
+          );
+        } catch (err) {
+          console.error("Error deleting game player on disconnect:", err);
+        }
+      }
+
+      broadcastGame(game);
     }
   });
 });
@@ -890,6 +815,9 @@ io.on("connection", (socket) => {
 //   Admin Routes
 // ----------------------
 
+const ADMIN_CODE = process.env.ADMIN_CODE || "ONEBTN";
+
+// החזרת תמונת מצב כללי (חדרים, מספר שחקנים וכו')
 app.get("/admin/rooms", async (req, res) => {
   const code = req.query.code;
   if (code !== ADMIN_CODE) {
@@ -900,16 +828,18 @@ app.get("/admin/rooms", async (req, res) => {
     const memGames = Object.values(games).map((g) => ({
       code: g.code,
       hostName: g.hostName,
-      playersCount: Object.keys(g.players || {}).length,
-      teams: Object.values(g.teams || {}).map((t) => ({
-        id: t.id,
-        name: t.name,
-        score: t.score,
-        playersCount: (t.players || []).length,
-      })),
+      targetScore: g.targetScore,
+      defaultRoundSeconds: g.defaultRoundSeconds,
+      categories: g.categories,
       createdAt: g.createdAt,
       updatedAt: g.updatedAt,
       lastActivity: g.lastActivity,
+      teams: Object.keys(g.teams || {}).map((tid) => ({
+        teamId: tid,
+        name: g.teams[tid].name,
+        score: g.teams[tid].score,
+        playersCount: (g.teams[tid].players || []).length,
+      })),
     }));
 
     let dbGames = [];
@@ -934,13 +864,27 @@ app.get("/admin/rooms", async (req, res) => {
           ON t.game_code = g.code
         GROUP BY g.code, g.host_name, g.target_score, g.default_round_seconds, g.categories, g.created_at, g.updated_at, g.last_activity
         ORDER BY g.created_at DESC
+        LIMIT 100
       `);
-      dbGames = result.rows;
+
+      dbGames = result.rows.map((row) => ({
+        code: row.code,
+        hostName: row.host_name,
+        targetScore: row.target_score,
+        defaultRoundSeconds: row.default_round_seconds,
+        categories: row.categories,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        lastActivity: row.last_activity,
+        teams: row.teams || [],
+      }));
     }
 
     res.json({
-      memory: memGames,
-      database: dbGames,
+      ok: true,
+      inMemory: memGames,
+      fromDb: dbGames,
+      currentGames: Object.keys(games).length,
     });
   } catch (err) {
     console.error("Error in /admin/rooms:", err);
@@ -948,77 +892,7 @@ app.get("/admin/rooms", async (req, res) => {
   }
 });
 
-app.get("/admin/stats", async (req, res) => {
-  const code = req.query.code;
-  if (code !== ADMIN_CODE) {
-    return res.status(403).json({ error: "Not authorized" });
-  }
-
-  try {
-    let gamesCount = 0;
-    let playersCount = 0;
-
-    if (dbReady && pool) {
-      const gamesRes = await pool.query(
-        "SELECT COUNT(*) AS c FROM games"
-      );
-      gamesCount = parseInt(gamesRes.rows[0].c, 10) || 0;
-
-      const playersRes = await pool.query(
-        "SELECT COUNT(*) AS c FROM game_players"
-      );
-      playersCount = parseInt(playersRes.rows[0].c, 10) || 0;
-    }
-
-    res.json({
-      memory: {
-        currentGames: Object.keys(games).length,
-      },
-      database: {
-        gamesCount,
-        playersCount,
-      },
-    });
-  } catch (err) {
-    console.error("Error in /admin/stats:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-app.get("/admin/full-dump", async (req, res) => {
-  const code = req.query.code;
-  if (code !== ADMIN_CODE) {
-    return res.status(403).json({ error: "Not authorized" });
-  }
-
-  try {
-    let gamesRows = [];
-    if (dbReady && pool) {
-      const gamesRes = await pool.query(
-        "SELECT * FROM games ORDER BY created_at DESC"
-      );
-      gamesRows = gamesRes.rows;
-    }
-
-    let playersRows = [];
-    if (dbReady && pool) {
-      const playersRes = await pool.query(
-        "SELECT * FROM game_players ORDER BY created_at DESC LIMIT 500"
-      );
-      playersRows = playersRes.rows;
-    }
-
-    res.json({
-      memoryGamesCount: Object.keys(games).length,
-      gamesRows,
-      playersRows,
-    });
-  } catch (err) {
-    console.error("Error in /admin/full-dump:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
+// סיכום כולל (ניתן לשימוש לדשבורד קטן בעתיד)
 app.get("/admin/summary", async (req, res) => {
   const code = req.query.code;
   if (code !== ADMIN_CODE) {
@@ -1026,51 +900,41 @@ app.get("/admin/summary", async (req, res) => {
   }
 
   try {
-    let gamesRows = [];
-    if (dbReady && pool) {
-      const gamesRes = await pool.query(
-        "SELECT * FROM games ORDER BY created_at DESC"
-      );
-      gamesRows = gamesRes.rows;
-    }
-
-    let summary = {
-      totalGamesMemory: Object.keys(games).length,
-      totalGamesDb: gamesRows.length,
-      gamesByCode: {},
-      totalPlayers: 0,
-      rooms: [],
+    const summary = {
       totalRooms: 0,
       totalPlayers: 0,
+      rooms: [],
     };
 
-    if (gamesRows.length > 0) {
-      const codes = gamesRows.map((g) => g.code);
-      const playersRes = await pool.query(
-        `SELECT game_code, client_id, name, team_id
-         FROM game_players
-         WHERE game_code = ANY($1::text[])`,
-        [codes]
-      );
+    if (dbReady && pool) {
+      const gamesRes = await pool.query(`
+        SELECT code, host_name, created_at
+        FROM games
+        ORDER BY created_at DESC
+        LIMIT 200
+      `);
+      const gamesRows = gamesRes.rows;
 
-      const players = playersRes.rows;
+      const playersRes = await pool.query(`
+        SELECT game_code, COUNT(*) AS cnt
+        FROM game_players
+        GROUP BY game_code
+      `);
+      const playersRows = playersRes.rows;
+
       const playersByGame = {};
-      players.forEach((p) => {
-        if (!playersByGame[p.game_code]) {
-          playersByGame[p.game_code] = [];
-        }
-        playersByGame[p.game_code].push(p);
+      playersRows.forEach((row) => {
+        playersByGame[row.game_code] = parseInt(row.cnt, 10) || 0;
       });
 
       summary.totalRooms = gamesRows.length;
       gamesRows.forEach((g) => {
-        const playersForGame = playersByGame[g.code] || [];
-        summary.totalPlayers += playersForGame.length;
-
+        const count = playersByGame[g.code] || 0;
+        summary.totalPlayers += count;
         summary.rooms.push({
           code: g.code,
           hostName: g.host_name,
-          playersCount: playersForGame.length,
+          playersCount: count,
           createdAt: g.created_at,
         });
       });
@@ -1089,4 +953,4 @@ app.get("/admin/summary", async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`🚀 Server listening on port ${PORT}`);
-});
+});Server listening on port ${P
