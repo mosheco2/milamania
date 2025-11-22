@@ -358,14 +358,20 @@
     let myClientId = null;
     let myTeamId = null;
 
-    // קריאת פרמטרים מה-URL (הזמנה מווצאפ)
+    // קריאת פרמטרים מה-URL (הזמנה / autoJoin מה-host)
     const urlParams = new URLSearchParams(window.location.search);
     const invitedCode = (urlParams.get("code") || "").toUpperCase();
     const invitedTeamId = urlParams.get("teamId") || "";
     const invitedTeamName = urlParams.get("teamName") || "";
+    const autoJoin = urlParams.get("autoJoin") === "1";
+    const prefillName = urlParams.get("name") || "";
 
     if (invitedCode) {
       gameCodeInput.value = invitedCode;
+    }
+
+    if (prefillName) {
+      playerNameInput.value = prefillName;
     }
 
     if (invitedCode && invitedTeamId) {
@@ -389,7 +395,7 @@
       });
     }
 
-    // הרצה חד-פעמית לטעינת מצב משחק לפי קוד אם קיים URL code
+    // טעינת מצב משחק ראשוני לפי invitedCode (כדי למלא קבוצה בבחירת שחקן)
     if (invitedCode) {
       socket.emit("getGameState", { gameCode: invitedCode }, (resp) => {
         if (!resp || !resp.ok || !resp.game) return;
@@ -402,18 +408,46 @@
       });
     }
 
-    // טעינת באנרים/לוגו למסך שחקן
+    // טעינת לוגו ובאנר למסך שחקן – תואם /api/banners כמו ב-host
     function loadPlayerBranding() {
       fetch("/api/banners")
         .then((res) => res.json())
         .then((data) => {
-          if (data && data.logoUrl) {
-            playerLogoEl.src = data.logoUrl;
+          if (!data) return;
+
+          const logoCfg = data.logo;
+          if (logoCfg && logoCfg.imageUrl && playerLogoEl) {
+            playerLogoEl.src = logoCfg.imageUrl;
+            playerLogoEl.alt = logoCfg.altText || "מילמניה";
             playerLogoEl.classList.remove("hidden");
+            playerLogoEl.addEventListener("error", () => {
+              playerLogoEl.classList.add("hidden");
+            });
           }
-          if (data && data.playerBannerHtml) {
-            playerBannerSlot.innerHTML = data.playerBannerHtml;
-          }
+
+          if (!playerBannerSlot) return;
+          const cfg = data.player;
+          if (!cfg || !cfg.imageUrl || !cfg.linkUrl) return;
+
+          const a = document.createElement("a");
+          a.href = cfg.linkUrl;
+          a.target = "_blank";
+          a.rel = "noopener";
+
+          const img = document.createElement("img");
+          img.src = cfg.imageUrl;
+          img.alt = cfg.altText || "Banner";
+          img.style.maxWidth = "100%";
+          img.style.borderRadius = "18px";
+          img.style.display = "block";
+          img.style.marginTop = "8px";
+
+          img.addEventListener("error", () => {
+            a.style.display = "none";
+          });
+
+          a.appendChild(img);
+          playerBannerSlot.appendChild(a);
         })
         .catch((err) => {
           console.error("Failed to load banners:", err);
@@ -438,7 +472,8 @@
       const me = playersMap[myClientId];
 
       if (!me) {
-        myGameInfo.textContent = "אתה לא מחובר כרגע למשחק. אולי המנהל סילק אותך או שהחיבור אבד.";
+        myGameInfo.textContent =
+          "אתה לא מחובר כרגע למשחק. ייתכן שהמנהל הסיר אותך או שהחיבור אבד.";
         myTeamNameEl.textContent = "";
         myTeamPlayersEl.textContent = "";
         scoreboardEl.textContent = "";
@@ -449,16 +484,16 @@
       currentGameCode = game.code || currentGameCode;
       myTeamId = me.teamId || myTeamId;
 
-      const team = game.teams && myTeamId ? game.teams[myTeamId] : null;
-      const teamName = team ? (team.name || `קבוצה ${myTeamId}`) : "ללא קבוצה";
+      const myTeam = game.teams && myTeamId ? game.teams[myTeamId] : null;
+      const myTeamName = myTeam ? (myTeam.name || `קבוצה ${myTeamId}`) : "ללא קבוצה";
 
       myGameInfo.innerHTML =
         `אתה מחובר לחדר בקוד <strong>${currentGameCode || "-"}</strong> בשם <strong>${me.name || ""}</strong>.`;
 
-      myTeamNameEl.textContent = teamName;
+      myTeamNameEl.textContent = myTeamName;
 
-      if (team && team.players && team.players.length) {
-        const names = team.players
+      if (myTeam && myTeam.players && myTeam.players.length) {
+        const names = myTeam.players
           .map((cid) => (playersMap[cid] && playersMap[cid].name) ? playersMap[cid].name : null)
           .filter(Boolean);
         myTeamPlayersEl.textContent = names.length
@@ -480,27 +515,27 @@
         scoreboardEl.textContent = "";
       }
 
-      // מצב סיבוב
-      if (game.round && game.round.isActive) {
-        const roundSecondsLeft = typeof game.round.secondsLeft === "number"
-          ? game.round.secondsLeft
-          : null;
-        const explainerName = game.round.explainerName || "";
-        const explainerTeamName = game.round.teamName || "";
-        const explainerTeamId = game.round.teamId || "";
-
-        const explainerTeamText = explainerTeamName
-          || (explainerTeamId ? `קבוצה ${explainerTeamId}` : "");
+      // מצב סיבוב – על בסיס currentRound מהשרת
+      const r = game.currentRound || game.round || null;
+      if (r && (r.isActive || r.active)) {
+        const secondsLeft = typeof r.secondsLeft === "number" ? r.secondsLeft : null;
+        const explainerName = r.explainerName || "";
+        const explainerTeamId = r.teamId || "";
+        const explainerTeam =
+          explainerTeamId && game.teams ? game.teams[explainerTeamId] : null;
+        const explainerTeamName = explainerTeam
+          ? (explainerTeam.name || `קבוצה ${explainerTeamId}`)
+          : (explainerTeamId ? `קבוצה ${explainerTeamId}` : "");
 
         let msg = "סיבוב פעיל כרגע.";
-        if (explainerName && explainerTeamText) {
-          msg = `עכשיו מסביר/ה: <strong>${explainerName}</strong> (${explainerTeamText}).`;
+        if (explainerName && explainerTeamName) {
+          msg = `עכשיו מסביר/ה: <strong>${explainerName}</strong> (${explainerTeamName}).`;
         } else if (explainerName) {
           msg = `עכשיו מסביר/ה: <strong>${explainerName}</strong>.`;
         }
 
-        if (roundSecondsLeft !== null) {
-          msg += ` · נשארו כ־${roundSecondsLeft} שניות.`;
+        if (secondsLeft !== null) {
+          msg += ` · נשארו כ־${secondsLeft} שניות.`;
         }
 
         if (myTeamId && explainerTeamId && myTeamId === explainerTeamId) {
@@ -514,21 +549,22 @@
       }
     }
 
-    // הצטרפות למשחק (עם חסימה לשמות שונים מאותו מכשיר לאותו קוד)
-    joinBtn.addEventListener("click", () => {
-      const rawCode = gameCodeInput.value.trim().toUpperCase();
-      const playerName = playerNameInput.value.trim();
+    // לוגיקה של הצטרפות למשחק (משותף לכפתור ול-autoJoin)
+    function joinGameToServer(gameCode, playerName, teamId, options) {
+      const opts = options || {};
 
-      if (!rawCode || rawCode.length < 3) {
-        joinStatus.textContent = "נא להקליד קוד משחק תקין.";
+      if (!gameCode || gameCode.length < 3) {
+        if (!opts.silent) {
+          joinStatus.textContent = "נא להקליד קוד משחק תקין.";
+        }
         return;
       }
       if (!playerName || playerName.length < 2) {
-        joinStatus.textContent = "נא לבחור שם לשחקן (לפחות 2 תווים).";
+        if (!opts.silent) {
+          joinStatus.textContent = "נא לבחור שם לשחקן (לפחות 2 תווים).";
+        }
         return;
       }
-
-      const gameCode = rawCode;
 
       // בדיקה ב-localStorage – האם כבר הצטרפנו למשחק הזה מדפדפן זה?
       let existingJoin = null;
@@ -545,28 +581,34 @@
         existingJoin.name &&
         existingJoin.name !== playerName
       ) {
-        joinStatus.textContent =
-          `בדפדפן הזה כבר הצטרפת למשחק ${gameCode} בשם "${existingJoin.name}". ` +
-          "אי אפשר להצטרף שוב לאותו משחק עם שם אחר מאותו מכשיר.";
+        if (!opts.silent) {
+          joinStatus.textContent =
+            `בדפדפן הזה כבר הצטרפת למשחק ${gameCode} בשם "${existingJoin.name}". ` +
+            "אי אפשר להצטרף שוב לאותו משחק עם שם אחר מאותו מכשיר.";
+        }
         return;
       }
 
       const payload = {
         gameCode,
         name: playerName,
-        teamId: invitedTeamId || teamSelect.value || null,
+        teamId: teamId || null,
       };
 
-      joinStatus.textContent = "מצטרף למשחק...";
-      joinBtn.disabled = true;
+      if (!opts.silent) {
+        joinStatus.textContent = "מצטרף למשחק...";
+      }
+      if (joinBtn) joinBtn.disabled = true;
 
       socket.emit("joinGame", payload, (resp) => {
-        joinBtn.disabled = false;
+        if (joinBtn) joinBtn.disabled = false;
 
         if (!resp || !resp.ok) {
-          joinStatus.textContent =
-            (resp && resp.error) ||
-            "לא הצלחנו לצרף אותך למשחק. בדוק את הקוד ונסה שוב.";
+          if (!opts.silent) {
+            joinStatus.textContent =
+              (resp && resp.error) ||
+              "לא הצלחנו לצרף אותך למשחק. בדוק את הקוד ונסה שוב.";
+          }
           return;
         }
 
@@ -584,10 +626,12 @@
           // אם localStorage לא זמין – מתעלמים בשקט
         }
 
-        joinStatus.textContent = "הצטרפת בהצלחה למשחק!";
+        if (!opts.silent) {
+          joinStatus.textContent = "הצטרפת בהצלחה למשחק!";
+        }
         myClientId = resp.clientId;
         currentGameCode = gameCode;
-        myTeamId = resp.teamId || null;
+        myTeamId = resp.teamId || teamId || null;
 
         joinSection.classList.add("hidden");
         playerGameCard.classList.remove("hidden");
@@ -602,6 +646,14 @@
           });
         }
       });
+    }
+
+    // כפתור "הצטרפות למשחק"
+    joinBtn.addEventListener("click", () => {
+      const rawCode = (gameCodeInput.value || "").trim().toUpperCase();
+      const playerName = (playerNameInput.value || "").trim();
+      const selectedTeamId = invitedTeamId || teamSelect.value || null;
+      joinGameToServer(rawCode, playerName, selectedTeamId, { silent: false });
     });
 
     // האזנה לעדכוני משחק מהשרת
@@ -614,9 +666,30 @@
 
     socket.on("gameEnded", (data) => {
       if (data && data.code && currentGameCode && data.code !== currentGameCode) return;
-
       roundStatusPlayerEl.textContent = "המשחק הסתיים. תודה ששיחקתם! 🎉";
     });
+
+    // אם המנהל מסיר שחקן
+    socket.on("removedFromGame", (data) => {
+      const msg =
+        (data && data.reason) ||
+        "המנהל הסיר אותך מהמשחק.";
+      joinStatus.textContent = msg;
+      joinSection.classList.remove("hidden");
+      playerGameCard.classList.add("hidden");
+      myClientId = null;
+      myTeamId = null;
+      currentGameCode = null;
+    });
+
+    // AutoJoin (לשימוש המנהל בתוך iframe של host)
+    if (autoJoin && invitedCode && prefillName) {
+      // ננסה להצטרף אוטומטית לפי הפרמטרים
+      const teamIdForAuto =
+        invitedTeamId || (teamSelect && teamSelect.value) || null;
+      // מונעים הבהוב מיותר של joinSection – נשאיר אותו, אבל ההצטרפות תקרה לבד
+      joinGameToServer(invitedCode, prefillName, teamIdForAuto, { silent: true });
+    }
   </script>
 </body>
 </html>
