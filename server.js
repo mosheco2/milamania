@@ -1,4 +1,4 @@
-// server.js - Wordmania party מילהמניה
+// server.js - מילמניה / Wordmania
 
 const express = require("express");
 const http = require("http");
@@ -9,19 +9,11 @@ const { Pool } = require("pg");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
+  cors: { origin: "*" },
 });
 
-// ----------------------
-//   Basic Config
-// ----------------------
 const PORT = process.env.PORT || 3000;
 
-// ----------------------
-//   Static Files
-// ----------------------
 app.use(express.static(path.join(__dirname, "public")));
 
 // ----------------------
@@ -98,7 +90,7 @@ let pool = null;
 })();
 
 // ----------------------
-//   In-memory Storage
+//   In-memory storage
 // ----------------------
 
 /**
@@ -115,13 +107,13 @@ let pool = null;
  *   logoUrl,
  *   banners: { host: {...}, player: {...} }
  *   teams: {
- *     A: { id: "A", name: "Team A", score: 0, players: [clientId, ...] },
+ *     A: { id: "A", name, score, players: [clientId, ...] },
  *   },
  *   playersByClientId: {
  *     socket.id: { clientId, name, teamId }
  *   },
  *   currentRound: {
- *     active: true,
+ *     active,
  *     teamId,
  *     explainerId,
  *     explainerName,
@@ -137,7 +129,7 @@ const games = {};
 const roundTimers = {};
 
 // ----------------------
-//   Utility
+//   Utils
 // ----------------------
 
 function generateGameCode() {
@@ -180,7 +172,7 @@ function clearRoundTimer(gameCode) {
   }
 }
 
-// סיום סיבוב (גם ידני וגם אוטומטי כשנגמר הזמן)
+// סיום סיבוב (ידני או אוטומטי כשטיימר נגמר)
 async function finishRound(gameCode, options = { reason: "manual" }) {
   const code = (gameCode || "").toUpperCase().trim();
   const game = games[code];
@@ -206,8 +198,7 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
       await pool.query(
         `
         UPDATE rounds
-        SET 
-          ended_at = $1, round_score = $2
+        SET ended_at = $1, round_score = $2
         WHERE game_code = $3 AND team_id = $4
           AND ended_at IS NULL
         ORDER BY id DESC
@@ -238,9 +229,8 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   io.to("game-" + code).emit("roundEnded", {
     teamId,
     roundScore,
-    totalScore: teamId && game.teams[teamId]
-      ? game.teams[teamId].score
-      : 0,
+    totalScore:
+      teamId && game.teams[teamId] ? game.teams[teamId].score : 0,
   });
 
   game.currentRound = null;
@@ -248,7 +238,7 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
 }
 
 // ----------------------
-//   Words / Categories
+//   Words
 // ----------------------
 
 const WORD_BANK = [
@@ -350,7 +340,6 @@ io.on("connection", (socket) => {
       };
 
       games[code] = game;
-
       socket.join("game-" + code);
 
       if (dbReady && pool) {
@@ -451,7 +440,9 @@ io.on("connection", (socket) => {
         }
       }
 
-      console.log(`👤 Player joined: ${playerName} -> game ${code}, team ${chosenTeamId}`);
+      console.log(
+        `👤 Player joined: ${playerName} -> game ${code}, team ${chosenTeamId}`
+      );
 
       callback &&
         callback({
@@ -487,7 +478,11 @@ io.on("connection", (socket) => {
       const teamId = player.teamId;
       delete game.playersByClientId[clientId];
 
-      if (teamId && game.teams[teamId] && Array.isArray(game.teams[teamId].players)) {
+      if (
+        teamId &&
+        game.teams[teamId] &&
+        Array.isArray(game.teams[teamId].players)
+      ) {
         game.teams[teamId].players = game.teams[teamId].players.filter(
           (cid) => cid !== clientId
         );
@@ -588,7 +583,6 @@ io.on("connection", (socket) => {
       }
 
       const tid = teamId && game.teams[teamId] ? teamId : teamIds[0];
-
       const seconds =
         parseInt(roundSeconds, 10) || game.defaultRoundSeconds || 60;
 
@@ -635,7 +629,10 @@ io.on("connection", (socket) => {
 
         const nowTs = Date.now();
         const remainingMs = (current.endsAt || nowTs) - nowTs;
-        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+        const remainingSeconds = Math.max(
+          0,
+          Math.ceil(remainingMs / 1000)
+        );
         current.secondsLeft = remainingSeconds;
 
         if (remainingSeconds <= 0) {
@@ -643,9 +640,18 @@ io.on("connection", (socket) => {
           current.active = false;
           clearRoundTimer(code);
 
+          // שם הקבוצה המציגה לצורך הפופאפ
+          const teamId = current.teamId;
+          const teamName =
+            teamId && g.teams && g.teams[teamId]
+              ? g.teams[teamId].name
+              : null;
+
           io.to("game-" + code).emit("roundTimeUp", {
             code,
             roundScore: current.roundScore || 0,
+            teamId,
+            teamName,
           });
 
           await finishRound(code, { reason: "timeout" });
@@ -710,7 +716,8 @@ io.on("connection", (socket) => {
       }
       game.lastActivity = new Date();
 
-      callback && callback({ ok: true, roundScore: game.currentRound.roundScore });
+      callback &&
+        callback({ ok: true, roundScore: game.currentRound.roundScore });
 
       broadcastGame(game);
     } catch (err) {
@@ -816,15 +823,19 @@ io.on("connection", (socket) => {
         }
 
         if (!game.playersByClientId) return;
-
-        if (!game.playersByClientId[socket.id]) return;
         const player = game.playersByClientId[socket.id];
+        if (!player) return;
+
         const clientId = socket.id;
         const teamId = player.teamId;
 
         delete game.playersByClientId[clientId];
 
-        if (teamId && game.teams[teamId] && Array.isArray(game.teams[teamId].players)) {
+        if (
+          teamId &&
+          game.teams[teamId] &&
+          Array.isArray(game.teams[teamId].players)
+        ) {
           game.teams[teamId].players = game.teams[teamId].players.filter(
             (cid) => cid !== clientId
           );
@@ -916,7 +927,7 @@ app.get("/admin/summary", async (req, res) => {
 });
 
 // ----------------------
-//   Start Server
+//   Start server
 // ----------------------
 
 server.listen(PORT, () => {
