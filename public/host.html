@@ -183,7 +183,7 @@
 
     #roundTimer {
       margin-top: 4px;
-      font-size: 1.6rem;
+      font-size: 1.8rem;
       font-weight: 800;
       letter-spacing: 0.06em;
       color: #F84779;
@@ -262,7 +262,7 @@
       input, select { font-size: 1rem; }
       .btn { font-size: 1rem; padding: 10px 16px; }
       #roundTimer {
-        font-size: 1.9rem;
+        font-size: 2rem;
         text-align: center;
         margin-top: 8px;
       }
@@ -470,7 +470,7 @@
       </div>
     </div>
 
-    <!-- מצב שחקן עבור המנהל (פותח חלון חדש) -->
+    <!-- מצב שחקן עבור המנהל (חלון חדש) -->
     <div id="playerMode" class="hidden">
       <div class="card">
         <h3 style="margin:0 0 6px;">אני כשחקן</h3>
@@ -771,9 +771,15 @@
           const t = game.teams && game.teams[r.teamId];
           const teamName = t ? (t.name || `קבוצה ${r.teamId}`) : "";
           const explainerName = r.explainerName || "";
-          roundStatusEl.textContent =
+          let msg =
             `סיבוב לקבוצה: ${teamName}` +
             (explainerName ? ` · מסביר: ${explainerName}` : "");
+
+          if (typeof r.roundScore === "number") {
+            msg += ` · ניקוד בסיבוב: ${r.roundScore}`;
+          }
+
+          roundStatusEl.innerHTML = msg;
         } else {
           roundStatusEl.textContent = "אין סיבוב פעיל כרגע.";
         }
@@ -959,7 +965,11 @@
     if (stopRoundBtn) {
       stopRoundBtn.addEventListener("click", () => {
         if (!currentGameCode) return;
-        socket.emit("endRound", { gameCode: currentGameCode }, () => {
+        socket.emit("endRound", { gameCode: currentGameCode }, (resp) => {
+          if (resp && !resp.ok) {
+            hostStatus.textContent = resp.error || "שגיאה בסיום הסיבוב.";
+            return;
+          }
           hostStatus.textContent = "הסיבוב הסתיים.";
         });
       });
@@ -1004,6 +1014,7 @@
         params.set("code", currentGameCode);
         params.set("name", name);
         if (teamId) params.set("teamId", teamId);
+        params.set("hostMode", "1"); // כדי לדעת במסך השחקן שזה המנהל
 
         const url = "/player.html?" + params.toString();
         window.open(url, "_blank");
@@ -1129,7 +1140,6 @@
         .catch(() => {});
     })();
 
-    // שחזור חיבור של המנהל אחרי רפרש
     (function restoreHostFromStorage() {
       try {
         const storedCode = localStorage.getItem(LS_HOST_GAME_KEY);
@@ -1147,7 +1157,6 @@
       } catch (e) {}
     })();
 
-    // כשחוזרים לטאב – מושכים מצב עדכני מהשרת
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && currentGameCode) {
         socket.emit("getGameState", { gameCode: currentGameCode }, (resp) => {
