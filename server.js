@@ -331,7 +331,7 @@ io.on("connection", (socket) => {
 
       const now = new Date();
 
-      // build teams dynamically (תקלה 1 – שמות אמיתיים)
+      // build teams dynamically
       const numTeams = Math.max(2, Math.min(5, parseInt(rawNumTeams || 2, 10) || 2));
       const teamIds = ["A", "B", "C", "D", "E"];
       const teams = {};
@@ -393,7 +393,7 @@ io.on("connection", (socket) => {
         return callback && callback({ ok: false, error: "המשחק לא נמצא." });
       }
 
-      // תקלה 2 – שחקן מצטרף גם לחדר המשחק
+      // השחקן מצטרף לחדר ה-Socket של המשחק
       socket.join("game-" + code);
 
       const playerName = (name || "").trim();
@@ -532,18 +532,34 @@ io.on("connection", (socket) => {
       clearRoundTimer(code);
       roundTimers[code] = setInterval(() => {
         const g = games[code];
-        if (!g || !g.currentRound || !g.currentRound.active) {
+        if (!g || !g.currentRound) {
           clearRoundTimer(code);
           return;
         }
+
         const nowTs = Date.now();
-        const remainingMs = (g.currentRound.endsAt || nowTs) - nowTs;
+        const endsAtTs = g.currentRound.endsAt || nowTs;
+        const remainingMs = endsAtTs - nowTs;
         const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+
         g.currentRound.secondsLeft = remainingSeconds;
+
         if (remainingSeconds <= 0) {
+          // נגמר הזמן – עוצרים את הסיבוב ושולחים roundTimeUp לכל השחקנים
           g.currentRound.active = false;
           clearRoundTimer(code);
+          g.lastActivity = new Date();
+
+          io.to("game-" + code).emit("roundTimeUp", {
+            code,
+            teamId: g.currentRound.teamId,
+            roundScore: g.currentRound.roundScore || 0,
+          });
+
+          broadcastGame(g);
+          return;
         }
+
         g.lastActivity = new Date();
         broadcastGame(g);
       }, 1000);
@@ -631,7 +647,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // End round
+  // End round (סיום סיבוב ע"י המנהל)
   socket.on("endRound", (data, callback) => {
     try {
       const { gameCode } = data || {};
