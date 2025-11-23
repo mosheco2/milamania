@@ -44,7 +44,6 @@ let pool = null;
     dbReady = true;
     console.log("✅ Connected to Postgres");
 
-    // יצירת טבלאות אם לא קיימות
     await pool.query(`
       CREATE TABLE IF NOT EXISTS games (
         code TEXT PRIMARY KEY,
@@ -117,7 +116,6 @@ let pool = null;
  *   banners: { host: {...}, player: {...} }
  *   teams: {
  *     A: { id: "A", name: "Team A", score: 0, players: [clientId, ...] },
- *     ...
  *   },
  *   playersByClientId: {
  *     socket.id: { clientId, name, teamId }
@@ -182,11 +180,77 @@ function clearRoundTimer(gameCode) {
   }
 }
 
+// סיום סיבוב (גם ידני וגם אוטומטי כשנגמר הזמן)
+async function finishRound(gameCode, options = { reason: "manual" }) {
+  const code = (gameCode || "").toUpperCase().trim();
+  const game = games[code];
+  if (!game || !game.currentRound) return;
+
+  const round = game.currentRound;
+  round.active = false;
+  clearRoundTimer(code);
+
+  const now = new Date();
+  const teamId = round.teamId;
+  const roundScore = round.roundScore || 0;
+
+  if (teamId && game.teams[teamId]) {
+    game.teams[teamId].score =
+      (game.teams[teamId].score || 0) + roundScore;
+  }
+  game.lastActivity = now;
+  game.updatedAt = now;
+
+  if (dbReady && pool) {
+    try {
+      await pool.query(
+        `
+        UPDATE rounds
+        SET 
+          ended_at = $1, round_score = $2
+        WHERE game_code = $3 AND team_id = $4
+          AND ended_at IS NULL
+        ORDER BY id DESC
+        LIMIT 1
+      `,
+        [now, roundScore, code, teamId]
+      );
+
+      if (teamId && game.teams[teamId]) {
+        await pool.query(
+          `
+          UPDATE game_teams
+          SET score = $1
+          WHERE game_code = $2 AND team_id = $3
+        `,
+          [game.teams[teamId].score, code, teamId]
+        );
+      }
+    } catch (err) {
+      console.error("Error logging round end:", err);
+    }
+  }
+
+  console.log(
+    `⏹ Round ended in game ${code}, team ${teamId}, roundScore=${roundScore}, reason=${options.reason}`
+  );
+
+  io.to("game-" + code).emit("roundEnded", {
+    teamId,
+    roundScore,
+    totalScore: teamId && game.teams[teamId]
+      ? game.teams[teamId].score
+      : 0,
+  });
+
+  game.currentRound = null;
+  broadcastGame(game);
+}
+
 // ----------------------
 //   Words / Categories
 // ----------------------
 
-// דוגמת מילים – אפשר להחליף בטעינה מקובץ/DB
 const WORD_BANK = [
   { text: "חתול", category: "animals" },
   { text: "כלב", category: "animals" },
@@ -205,7 +269,6 @@ const WORD_BANK = [
   { text: "מכונת כביסה", category: "objects" },
 ];
 
-// החזרת מילה אקראית לפי קטגוריות שנבחרו
 function getRandomWord(categories) {
   let pool = WORD_BANK;
 
@@ -227,9 +290,7 @@ function getRandomWord(categories) {
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  // ----------------------
-  //   Create Game
-  // ----------------------
+  // CREATE GAME
   socket.on("createGame", async (data, callback) => {
     try {
       const {
@@ -244,7 +305,6 @@ io.on("connection", (socket) => {
         return callback && callback({ ok: false, error: "נא להזין שם מנהל." });
       }
 
-      // יצירת קוד ייחודי
       let code;
       do {
         code = generateGameCode();
@@ -338,9 +398,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ----------------------
-  //   Join Game
-  // ----------------------
+  // JOIN GAME
   socket.on("joinGame", async (data, callback) => {
     try {
       const { gameCode, name, teamId } = data || {};
@@ -411,9 +469,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ----------------------
-  //   Remove Player (by host)
-  // ----------------------
+  // REMOVE PLAYER
   socket.on("removePlayer", async (data, callback) => {
     try {
       const { gameCode, clientId } = data || {};
@@ -423,7 +479,6 @@ io.on("connection", (socket) => {
         return callback && callback({ ok: false, error: "המשחק לא נמצא." });
       }
 
-      // הסרת שחקן מהמבנה הפנימי
       const player = game.playersByClientId[clientId];
       if (!player) {
         return callback && callback({ ok: false, error: "השחקן לא נמצא במשחק." });
@@ -455,7 +510,6 @@ io.on("connection", (socket) => {
         }
       }
 
-      // אם השחקן מחובר – להוציא אותו מהחדר
       io.to(clientId).emit("removedFromGame", { gameCode: code });
 
       callback && callback({ ok: true, game: sanitizeGame(game) });
@@ -466,9 +520,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ----------------------
-  //   Get Game State
-  // ----------------------
+  // GET GAME STATE
   socket.on("getGameState", (data, callback) => {
     try {
       const code = ((data && data.gameCode) || "").toUpperCase().trim();
@@ -487,9 +539,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ----------------------
-  //   Host Reconnect
-  // ----------------------
+  // HOST RECONNECT
   socket.on("hostReconnect", (data, callback) => {
     try {
       const code = ((data && data.gameCode) || "").toUpperCase().trim();
@@ -498,7 +548,6 @@ io.on("connection", (socket) => {
         return callback && callback({ ok: false, error: "המשחק לא נמצא." });
       }
 
-      // עדכון ה-socketId של המנהל לחיבור הנוכחי
       game.hostSocketId = socket.id;
       socket.join("game-" + code);
       game.lastActivity = new Date();
@@ -517,9 +566,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ----------------------
-  //   Start Round
-  // ----------------------
+  // START ROUND
   socket.on("startRound", async (data, callback) => {
     try {
       const {
@@ -573,27 +620,38 @@ io.on("connection", (socket) => {
       };
       game.lastActivity = now;
 
-      // מפסיקים טיימר קודם (אם היה) ומפעילים חדש לסיבוב הזה
       clearRoundTimer(code);
-      roundTimers[code] = setInterval(() => {
+      roundTimers[code] = setInterval(async () => {
         const g = games[code];
-        if (!g || !g.currentRound || !g.currentRound.active) {
+        if (!g || !g.currentRound) {
           clearRoundTimer(code);
           return;
         }
-        const nowTs = Date.now();
-        const remainingMs = (g.currentRound.endsAt || nowTs) - nowTs;
-        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
-        g.currentRound.secondsLeft = remainingSeconds;
-        if (remainingSeconds <= 0) {
-          g.currentRound.secondsLeft = 0;
-          g.currentRound.active = false;
+        const current = g.currentRound;
+        if (!current.active) {
           clearRoundTimer(code);
+          return;
+        }
+
+        const nowTs = Date.now();
+        const remainingMs = (current.endsAt || nowTs) - nowTs;
+        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+        current.secondsLeft = remainingSeconds;
+
+        if (remainingSeconds <= 0) {
+          current.secondsLeft = 0;
+          current.active = false;
+          clearRoundTimer(code);
+
           io.to("game-" + code).emit("roundTimeUp", {
             code,
-            roundScore: g.currentRound.roundScore || 0,
+            roundScore: current.roundScore || 0,
           });
+
+          await finishRound(code, { reason: "timeout" });
+          return;
         }
+
         g.lastActivity = new Date();
         broadcastGame(g);
       }, 1000);
@@ -632,9 +690,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ----------------------
-  //   Change Round Score
-  // ----------------------
+  // CHANGE ROUND SCORE
   socket.on("changeRoundScore", async (data, callback) => {
     try {
       const { gameCode, delta } = data || {};
@@ -645,7 +701,13 @@ io.on("connection", (socket) => {
       }
 
       const d = parseInt(delta, 10) || 0;
-      game.currentRound.roundScore = (game.currentRound.roundScore || 0) + d;
+      if (typeof game.currentRound.roundScore !== "number") {
+        game.currentRound.roundScore = 0;
+      }
+      game.currentRound.roundScore += d;
+      if (game.currentRound.roundScore < 0) {
+        game.currentRound.roundScore = 0;
+      }
       game.lastActivity = new Date();
 
       callback && callback({ ok: true, roundScore: game.currentRound.roundScore });
@@ -657,9 +719,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ----------------------
-  //   Get Next Word
-  // ----------------------
+  // GET NEXT WORD
   socket.on("getNextWord", (data, callback) => {
     try {
       const { gameCode } = data || {};
@@ -682,9 +742,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ----------------------
-  //   End Round
-  // ----------------------
+  // END ROUND (ידני ע"י מנהל)
   socket.on("endRound", async (data, callback) => {
     try {
       const { gameCode } = data || {};
@@ -694,70 +752,15 @@ io.on("connection", (socket) => {
         return callback && callback({ ok: false, error: "אין סיבוב פעיל." });
       }
 
-      const round = game.currentRound;
-      round.active = false;
-      clearRoundTimer(code);
-
-      const now = new Date();
-      const teamId = round.teamId;
-      if (teamId && game.teams[teamId]) {
-        game.teams[teamId].score =
-          (game.teams[teamId].score || 0) + (round.roundScore || 0);
-      }
-      game.lastActivity = now;
-      game.updatedAt = now;
-
-      if (dbReady && pool) {
-        try {
-          await pool.query(
-            `
-            UPDATE rounds
-            SET 
-              ended_at = $1, round_score = $2
-            WHERE game_code = $3 AND team_id = $4
-              AND ended_at IS NULL
-            ORDER BY id DESC
-            LIMIT 1
-          `,
-            [now, round.roundScore || 0, code, teamId]
-          );
-
-          await pool.query(
-            `
-            UPDATE game_teams
-            SET score = $1
-            WHERE game_code = $2 AND team_id = $3
-          `,
-            [game.teams[teamId].score, code, teamId]
-          );
-        } catch (err) {
-          console.error("Error logging round end:", err);
-        }
-      }
-
-      console.log(
-        `⏹ Round ended in game ${code}, team ${teamId}, roundScore=${round.roundScore}`
-      );
-
+      await finishRound(code, { reason: "manual" });
       callback && callback({ ok: true });
-
-      io.to("game-" + code).emit("roundEnded", {
-        teamId,
-        roundScore: round.roundScore || 0,
-        totalScore: game.teams[teamId] ? game.teams[teamId].score : 0,
-      });
-
-      game.currentRound = null;
-      broadcastGame(game);
     } catch (err) {
       console.error("Error in endRound:", err);
       callback && callback({ ok: false, error: "שגיאה בסיום סיבוב." });
     }
   });
 
-  // ----------------------
-  //   End Game
-  // ----------------------
+  // END GAME
   socket.on("endGame", async (data, callback) => {
     try {
       const { gameCode } = data || {};
@@ -798,9 +801,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ----------------------
-  //   Disconnect
-  // ----------------------
+  // DISCONNECT
   socket.on("disconnect", async () => {
     try {
       console.log("Client disconnected:", socket.id);
@@ -809,9 +810,7 @@ io.on("connection", (socket) => {
         const game = games[code];
         if (!game) return;
 
-        // אם זה המנהל
         if (game.hostSocketId === socket.id) {
-          // כרגע לא מוחקים את המשחק אוטומטית, רק מסמנים ניתוק
           console.log(`Host disconnected from game ${code}`);
           return;
         }
@@ -862,7 +861,6 @@ io.on("connection", (socket) => {
 
 const ADMIN_CODE = process.env.ADMIN_CODE || "ONEBTN";
 
-// החזרת תמונת מצב כללי (חדרים, מספר שחקנים וכו')
 app.get("/admin/summary", async (req, res) => {
   try {
     const code = req.query.code || "";
