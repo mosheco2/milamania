@@ -228,6 +228,15 @@
       font-size: 0.9rem;
     }
 
+    #playerBigTimer {
+      margin-top: 6px;
+      font-size: 1.7rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: #F84779;
+      text-align: center;
+    }
+
     @media (max-width: 640px) {
       body { font-size: 1.05rem; }
       .app { padding: 16px 10px 32px; }
@@ -237,6 +246,7 @@
       input, select { font-size: 1rem; }
       .btn { font-size: 1rem; padding: 10px 16px; }
       #presenterWord { font-size: 2.1rem; }
+      #playerBigTimer { font-size: 1.9rem; }
     }
   </style>
 </head>
@@ -298,9 +308,14 @@
     <div class="card hidden" id="playerGameCard">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <h3 style="margin:0 0 6px;">מצב המשחק שלי</h3>
-        <button id="exitGameBtn" class="btn btn-danger btn-small" type="button">
-          יציאה מהמשחק
-        </button>
+        <div style="display:flex; gap:6px;">
+          <button id="backToHostBtn" class="btn btn-ghost btn-small hidden" type="button">
+            ⬅ חזרה למסך ניהול
+          </button>
+          <button id="exitGameBtn" class="btn btn-danger btn-small" type="button">
+            יציאה מהמשחק
+          </button>
+        </div>
       </div>
 
       <div id="myGameInfo" class="status-text" style="margin-bottom:8px;"></div>
@@ -324,6 +339,7 @@
 
       <h3 style="margin:0 0 6px;">מצב הסיבוב</h3>
       <div id="roundStatusPlayer" class="status-text"></div>
+      <div id="playerBigTimer">טיימר: --:--</div>
 
       <!-- מסך מציג למסביר -->
       <div id="presenterSection" class="hidden" style="margin-top:12px; padding-top:8px; border-top:1px dashed rgba(180,169,214,0.6);">
@@ -337,7 +353,7 @@
           <button id="btnSkip" class="btn btn-primary" type="button">⏭ דלג (מינוס נקודה)</button>
         </div>
         <div class="status-text" style="margin-top:6px; text-align:center;">
-          כל "נכון" מוסיף נקודה, כל "דלג" מוריד נקודה. המילה תתחלף אוטומטית בכל לחיצה.
+          כל "נכון" מוסיף נקודה, כל "דלג" מוריד נקודה (לא יורדים מתחת ל־0). המילה תתחלף אוטומטית בכל לחיצה.
         </div>
       </div>
 
@@ -349,10 +365,8 @@
   <script>
     const socket = io();
 
-    // שמירת הצטרפות ב-localStorage למניעת כמה שמות שונים מאותו מכשיר לאותו משחק
     const LOCAL_PLAYER_KEY = "millmania-player-join";
 
-    // אלמנטים
     const gameCodeInput = document.getElementById("gameCodeInput");
     const playerNameInput = document.getElementById("playerNameInput");
     const joinBtn = document.getElementById("joinBtn");
@@ -369,6 +383,7 @@
     const myTeamPlayersEl = document.getElementById("myTeamPlayers");
     const scoreboardEl = document.getElementById("scoreboard");
     const roundStatusPlayerEl = document.getElementById("roundStatusPlayer");
+    const playerBigTimerEl = document.getElementById("playerBigTimer");
 
     const playerLogoEl = document.getElementById("playerLogo");
     const playerBannerSlot = document.getElementById("player-banner-slot");
@@ -379,17 +394,20 @@
     const btnCorrect = document.getElementById("btnCorrect");
     const btnSkip = document.getElementById("btnSkip");
     const exitGameBtn = document.getElementById("exitGameBtn");
+    const backToHostBtn = document.getElementById("backToHostBtn");
 
     let myClientId = null;
     let currentGameCode = null;
     let myTeamId = null;
     let lastGameState = null;
 
-    // לניהול מילים למסביר
     let currentWord = null;
     let currentCategory = "";
     let lastRoundKey = null;
     let iAmCurrentExplainer = false;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const hostModeFlag = urlParams.get("hostMode") === "1";
 
     function formatTime(seconds) {
       const s = Math.max(0, Math.floor(seconds || 0));
@@ -398,7 +416,6 @@
       return m + ":" + ss;
     }
 
-    // טעינת לוגו ובאנר לשחקן
     (function loadPlayerBranding() {
       fetch("/api/banners")
         .then((res) => res.json())
@@ -441,6 +458,13 @@
         .catch(() => {});
     })();
 
+    if (hostModeFlag && backToHostBtn) {
+      backToHostBtn.classList.remove("hidden");
+      backToHostBtn.addEventListener("click", () => {
+        window.location.href = "host.html";
+      });
+    }
+
     function updatePresenterUI() {
       if (!iAmCurrentExplainer || !lastGameState || !lastGameState.currentRound) {
         presenterSection.classList.add("hidden");
@@ -476,7 +500,6 @@
       });
     }
 
-    // רינדור מצב משחק לשחקן
     function renderGameStateForPlayer(game) {
       lastGameState = game;
 
@@ -486,6 +509,7 @@
         myTeamPlayersEl.textContent = "";
         scoreboardEl.textContent = "";
         roundStatusPlayerEl.textContent = "";
+        playerBigTimerEl.textContent = "טיימר: --:--";
         presenterSection.classList.add("hidden");
         return;
       }
@@ -499,6 +523,7 @@
         myTeamPlayersEl.textContent = "";
         scoreboardEl.textContent = "";
         roundStatusPlayerEl.textContent = "";
+        playerBigTimerEl.textContent = "טיימר: --:--";
         presenterSection.classList.add("hidden");
         return;
       }
@@ -525,7 +550,6 @@
         myTeamPlayersEl.textContent = "עדיין לא הוקצו שחקנים לקבוצה שלך.";
       }
 
-      // ניקוד כללי
       if (game.teams) {
         const lines = Object.entries(game.teams).map(([teamId, t]) => {
           const name = t.name || `קבוצה ${teamId}`;
@@ -537,7 +561,6 @@
         scoreboardEl.textContent = "";
       }
 
-      // מצב סיבוב + מסך מציג
       const r = game.currentRound || game.round || null;
       if (r && (r.active === true || r.isActive === true)) {
         const roundSecondsLeft = typeof r.secondsLeft === "number"
@@ -571,11 +594,15 @@
 
         roundStatusPlayerEl.innerHTML = msg;
 
-        // האם אני המסביר?
+        if (roundSecondsLeft !== null) {
+          playerBigTimerEl.textContent = "טיימר: " + formatTime(roundSecondsLeft);
+        } else {
+          playerBigTimerEl.textContent = "טיימר: --:--";
+        }
+
         iAmCurrentExplainer = (r.explainerId && r.explainerId === myClientId);
 
         if (iAmCurrentExplainer) {
-          // מזהים סיבוב חדש לפי startedAt+teamId כדי לא לקרוא מילים בלי סוף
           const roundKey = String(r.startedAt || "") + "|" + String(r.teamId || "");
           if (roundKey !== lastRoundKey) {
             lastRoundKey = roundKey;
@@ -593,12 +620,12 @@
       } else {
         roundStatusPlayerEl.textContent =
           "כרגע אין סיבוב פעיל. חכו שמנהל המשחק יתחיל סיבוב חדש.";
+        playerBigTimerEl.textContent = "טיימר: --:--";
         iAmCurrentExplainer = false;
         presenterSection.classList.add("hidden");
       }
     }
 
-    // הצטרפות למשחק (עם חסימה לשמות שונים מאותו מכשיר לאותו קוד)
     joinBtn.addEventListener("click", () => {
       const rawCode = (gameCodeInput.value || "").trim().toUpperCase();
       const playerName = (playerNameInput.value || "").trim();
@@ -614,7 +641,6 @@
 
       const gameCode = rawCode;
 
-      // בדיקה ב-localStorage – האם כבר הצטרפנו למשחק הזה מדפדפן זה?
       let existingJoin = null;
       try {
         const raw = localStorage.getItem(LOCAL_PLAYER_KEY);
@@ -654,7 +680,6 @@
           return;
         }
 
-        // שמירת ההצטרפות ב-localStorage (למניעת שמות מרובים לאותו משחק)
         try {
           localStorage.setItem(
             LOCAL_PLAYER_KEY,
@@ -664,9 +689,7 @@
               joinedAt: Date.now(),
             })
           );
-        } catch (e) {
-          // אם localStorage לא זמין – מתעלמים בשקט
-        }
+        } catch (e) {}
 
         joinStatus.textContent = "הצטרפת בהצלחה למשחק!";
         myClientId = resp.clientId;
@@ -688,7 +711,6 @@
       });
     });
 
-    // כפתורי "נכון" ו"דלג"
     if (btnCorrect) {
       btnCorrect.addEventListener("click", () => {
         if (!currentGameCode || !iAmCurrentExplainer) return;
@@ -715,17 +737,14 @@
       });
     }
 
-    // כפתור יציאה מהמשחק
     if (exitGameBtn) {
       exitGameBtn.addEventListener("click", () => {
         const ok = confirm("לצאת מהמשחק? תוכל להצטרף שוב אחר כך עם אותו קוד.");
         if (!ok) return;
-        // יציאה מהחדר – פשוט עוברים לדף הבית (הסוקט יתנתק בצד השרת)
         window.location.href = "home.html";
       });
     }
 
-    // עדכוני משחק מהשרת
     socket.on("gameUpdated", (game) => {
       if (!game || (currentGameCode && game.code && game.code !== currentGameCode)) {
         return;
@@ -744,11 +763,11 @@
       if (data && data.code && currentGameCode && data.code !== currentGameCode) return;
 
       roundStatusPlayerEl.textContent = "המשחק הסתיים. תודה ששיחקתם! 🎉";
+      playerBigTimerEl.textContent = "טיימר: --:--";
       iAmCurrentExplainer = false;
       presenterSection.classList.add("hidden");
     });
 
-    // סוף שעון – פופ אפ לכל השחקנים
     socket.on("roundTimeUp", (data) => {
       if (!data) return;
       const score = typeof data.roundScore === "number" ? data.roundScore : 0;
@@ -763,11 +782,11 @@
       }
 
       alert("⏱ נגמר הזמן!\n\n" + msgLine + `\n\n(מספר תשובות נכונות בסיבוב: ${score})`);
+      playerBigTimerEl.textContent = "טיימר: --:--";
       iAmCurrentExplainer = false;
       presenterSection.classList.add("hidden");
     });
 
-    // כשחוזרים לטאב – מושכים מצב עדכני מהשרת (כדי שהשעון והניקוד לא "יקפאו")
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && currentGameCode) {
         socket.emit("getGameState", { gameCode: currentGameCode }, (resp) => {
@@ -778,13 +797,11 @@
       }
     });
 
-    // תמיכה בהזמנה אוטומטית מהלינק (autoJoin, code, name, teamId)
     (function handleAutoJoinFromUrl() {
-      const params = new URLSearchParams(window.location.search);
-      const code = (params.get("code") || "").toUpperCase();
-      const name = params.get("name") || "";
-      const teamId = params.get("teamId") || "";
-      const autoJoin = params.get("autoJoin") === "1";
+      const code = (urlParams.get("code") || "").toUpperCase();
+      const name = urlParams.get("name") || "";
+      const teamId = urlParams.get("teamId") || "";
+      const autoJoin = urlParams.get("autoJoin") === "1";
 
       if (code) {
         gameCodeInput.value = code;
@@ -793,7 +810,6 @@
         playerNameInput.value = name;
       }
       if (teamId) {
-        // נציג את הקבוצה בטקסט בלבד בשלב זה; הבחירה עצמה מתבצעת בצד המנהל
         teamChoiceRow.style.display = "block";
         teamSelect.innerHTML = "";
         const opt = document.createElement("option");
@@ -803,7 +819,7 @@
         teamSelect.value = teamId;
         inviteInfo.style.display = "block";
         inviteInfo.textContent =
-          `קיבלת הזמנה להצטרף לקבוצה "${teamId}". תוכל לשנות אם המנהל יאפשר.`;
+          `קיבלת הזמנה להצטרף לקבוצה "${teamId}".`;
       }
 
       if (autoJoin && code && name) {
