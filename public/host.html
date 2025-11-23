@@ -295,15 +295,8 @@
       color: #b91c1c;
     }
 
-    /* iframe של מסך השחקן */
-    #hostPlayerFrame {
-      width: 100%;
-      min-height: 460px;
-      border-radius: 18px;
-      border: 1px solid rgba(180,169,214,0.6);
-      box-shadow: 0 18px 34px rgba(0,0,0,0.10);
-      margin-top: 10px;
-      background: #000;
+    .team-row {
+      font-size: 0.95rem;
     }
 
     @media (max-width: 640px) {
@@ -372,8 +365,8 @@
       </div>
 
       <p class="status-text" style="margin-top:8px;">
-        בלשונית "מצב מנהל" אתה שולט במשחק. בלשונית "מצב שחקן (אני)" אתה נכנס למשחק כשחקן –
-        בלי לעבור לדף אחר.
+        בלשונית "מצב מנהל" אתה שולט במשחק. בלשונית "מצב שחקן (אני)" תיפתח לך תצוגת שחקן
+        בחלון נפרד – בלי מסך בתוך מסך – ותוכל לחזור לכאן בכל רגע.
       </p>
     </div>
 
@@ -499,7 +492,7 @@
         <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 0;" />
 
         <h3 style="margin:0 0 6px;">שליטה בסיבוב</h3>
-        <div class="status-text" id="roundStatus" style="margin-bottom:6px;"></div>
+        <div id="roundStatus" class="status-text" style="margin-bottom:6px;"></div>
         <div id="roundTimer">טיימר: --:--</div>
 
         <div class="status-text" style="margin-top:6px; margin-bottom:6px;">
@@ -549,13 +542,13 @@
       </div>
     </div>
 
-    <!-- מצב שחקן (באותו דף) -->
+    <!-- מצב שחקן (באותו דף – אבל בחלון נפרד בפועל) -->
     <div id="playerMode" class="hidden">
       <div class="card">
         <h3 style="margin:0 0 6px;">אני כשחקן</h3>
         <p class="status-text" style="margin-bottom:8px;">
-          כאן אתה נכנס למשחק כמו כל שחקן – כדי להסביר מילים מהטלפון שלך – אבל נשאר באותו דף
-          ויכול לחזור בכל רגע ללשונית "מצב מנהל".
+          כאן תגדיר את השם והקבוצה שלך כשחקן. כשתלחץ על הכפתור, ייפתח חלון חדש עם מסך השחקן,
+          ותצטרף אוטומטית למשחק ולקבוצה שבחרת.
         </p>
 
         <div class="row">
@@ -572,15 +565,13 @@
         </div>
 
         <button id="openPlayerViewBtn" class="btn btn-primary" type="button" style="margin-top:6px;">
-          כניסה למסך השחקן בתוך הדף
+          פתח מסך שחקן בחלון חדש
         </button>
 
         <p class="status-text" style="margin-top:8px;">
-          אחרי שתלחץ – ייפתח כאן למטה מסך השחקן (player). בשלב הבא נגדיר שגם ההצטרפות תהיה
-          אוטומטית לפי השם והקבוצה שבחרת.
+          במסך החדש תתנהג כמו כל שחקן רגיל – לראות ניקוד, סיבובים ומילים (כשנחבר את זה).
+          כאן בדף הניהול תוכל להמשיך לשלוט במשחק ולעבור חזרה ללשונית "מצב מנהל".
         </p>
-
-        <iframe id="hostPlayerFrame" class="hidden"></iframe>
       </div>
     </div>
   </div>
@@ -635,7 +626,6 @@
     const hostPlayerNameInput = document.getElementById("hostPlayerName");
     const hostPlayerTeamSelect = document.getElementById("hostPlayerTeamSelect");
     const openPlayerViewBtn = document.getElementById("openPlayerViewBtn");
-    const hostPlayerFrame = document.getElementById("hostPlayerFrame");
 
     function formatTime(seconds) {
       const s = Math.max(0, Math.floor(seconds || 0));
@@ -877,7 +867,7 @@
             roundTeamSelect.appendChild(opt);
           });
         }
-        // ✅ בחירת קבוצה אוטומטית אם אין בחירה קודמת (כדי לאפשר בחירת מסביר)
+        // בחירת קבוצה אוטומטית אם אין בחירה קודמת
         let selectedTeamId = oldValue;
         if (!selectedTeamId) {
           const teamIds = Object.keys(game.teams || {});
@@ -917,7 +907,7 @@
             hostPlayerTeamSelect.appendChild(opt);
           });
         }
-        // בחירה אוטומטית גם כאן אם אין בחירה קודמת
+        // בחירה אוטומטית
         let selectedHostTeam = oldHostTeam;
         if (!selectedHostTeam) {
           const teamIds = Object.keys(game.teams || {});
@@ -931,7 +921,7 @@
       // סנכרון טיימר מהשרת
       updateTimerFromGame(game);
 
-      // עדכון רשימת המסביר לפי הקבוצה שנבחרה (אם נבחרה)
+      // עדכון רשימת המסביר לפי הקבוצה שנבחרה
       refreshExplainerOptions();
     }
 
@@ -998,7 +988,6 @@
               hostPlayerNameInput.value = hostName;
             }
 
-            // ✅ רינדור מיידי של מצב המשחק (כולל קבוצות לבחירת קבוצה/מסביר)
             if (response.game) {
               renderGameState(response.game);
             }
@@ -1013,10 +1002,6 @@
         socket.emit("endGame", { gameCode: currentGameCode }, () => {
           hostStatus.textContent = "המשחק נסגר.";
           currentGameCode = null;
-          if (hostPlayerFrame) {
-            hostPlayerFrame.src = "";
-            hostPlayerFrame.classList.add("hidden");
-          }
           renderGameState(null);
         });
       });
@@ -1046,7 +1031,6 @@
               return;
             }
             hostStatus.textContent = "הסיבוב התחיל. הטיימר והמצב יתעדכנו לפי השרת.";
-            // הכפתורים והטיימר יתעדכנו באירוע gameUpdated שמגיע מהשרת
           }
         );
       });
@@ -1057,7 +1041,6 @@
         if (!currentGameCode) return;
         socket.emit("endRound", { gameCode: currentGameCode }, () => {
           hostStatus.textContent = "הסיבוב הסתיים.";
-          // שאר העדכונים (ניקוד, טיימר, מצב) יגיעו מ-gameUpdated
         });
       });
     }
@@ -1079,8 +1062,8 @@
       });
     }
 
-    // פתיחת מסך השחקן בתוך הדף (iframe)
-    if (openPlayerViewBtn && hostPlayerFrame) {
+    // פתיחת מסך השחקן בחלון חדש
+    if (openPlayerViewBtn) {
       openPlayerViewBtn.addEventListener("click", () => {
         if (!currentGameCode) {
           alert("אין משחק פעיל כרגע. קודם צור משחק.");
@@ -1105,8 +1088,7 @@
         if (teamId) params.set("teamId", teamId);
 
         const url = "/player.html?" + params.toString();
-        hostPlayerFrame.src = url;
-        hostPlayerFrame.classList.remove("hidden");
+        window.open(url, "_blank");
       });
     }
 
@@ -1122,7 +1104,7 @@
       return baseUrl + "?" + params.toString();
     }
 
-    // כפתור הזמנה בוואטסאפ עם טקסט מדליק
+    // כפתור הזמנה בוואטסאפ
     if (whatsappInviteBtn) {
       whatsappInviteBtn.addEventListener("click", () => {
         if (!currentGameCode) {
@@ -1168,14 +1150,10 @@
     socket.on("gameEnded", () => {
       hostStatus.textContent = "המשחק נסגר.";
       currentGameCode = null;
-      if (hostPlayerFrame) {
-        hostPlayerFrame.src = "";
-        hostPlayerFrame.classList.add("hidden");
-      }
       renderGameState(null);
     });
 
-    // טעינת לוגו ובאנר למסך מנהל המשחק (עם מניעת תמונה שבורה)
+    // טעינת לוגו ובאנר למסך מנהל המשחק
     (function loadBrandingForHost() {
       fetch("/api/banners")
         .then((res) => res.json())
