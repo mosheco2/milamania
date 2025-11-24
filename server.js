@@ -203,6 +203,10 @@ function clearRoundTimer(gameCode) {
   }
 }
 
+/**
+ * סיום סיבוב (ידני או ע"י טיימר)
+ * options.reason: "manual" | "timer" | "player_disconnected"
+ */
 async function finishRound(gameCode, options = { reason: "manual" }) {
   const code = (gameCode || "").toUpperCase().trim();
   const game = games[code];
@@ -215,10 +219,21 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   game.updatedAt = new Date();
   game.lastActivity = new Date();
 
+  // עדכון משחק מלא
+  broadcastGame(game);
+
+  // אירוע כללי (למי שמאזין)
   io.to("game-" + code).emit("roundFinished", {
     game: sanitizeGame(game),
     reason: options.reason || "manual",
   });
+
+  // תאימות להוסט / פלייר ישנים – מחכים ל-roundTimeUp
+  if (options.reason === "timer") {
+    io.to("game-" + code).emit("roundTimeUp", {
+      gameCode: code,
+    });
+  }
 
   console.log(
     `⏹️ Round finished for game ${code}, team ${round.teamId}, reason: ${
@@ -360,7 +375,7 @@ io.on("connection", (socket) => {
       let chosenTeamId = (teamId || "").trim();
       if (!chosenTeamId || !game.teams[chosenTeamId]) {
         const teamIds = Object.keys(game.teams);
-        chosenTeamId = teamIds[0];
+        chosenTeamId = teamIds[0]; // תאימות – אם לא בחרו מפורשות, לוקחים את הראשונה
       }
 
       const clientId = socket.id;
@@ -478,7 +493,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // עדכון ניקוד קבוצה
+  // עדכון ניקוד קבוצה (לא סיבוב ספציפי, אלא צבירה כללית)
   socket.on("updateScore", async (data, callback) => {
     try {
       const { gameCode, teamId, delta } = data || {};
@@ -524,21 +539,27 @@ io.on("connection", (socket) => {
   // התחלת סיבוב
   socket.on("startRound", async (data, callback) => {
     try {
-      const { gameCode, teamId, durationSeconds } = data || {};
+      const { gameCode, teamId, durationSeconds, explainerClientId } = data || {};
       const code = (gameCode || "").toUpperCase().trim();
       const game = games[code];
       if (!game) {
         return callback && callback({ ok: false, error: "המשחק לא נמצא." });
       }
 
-      if (!game.teams[teamId]) {
-        return callback &&
-          callback({ ok: false, error: "הקבוצה שנבחרה לא קיימת." });
+      let chosenTeamId = (teamId || "").trim();
+      if (!chosenTeamId || !game.teams[chosenTeamId]) {
+        const teamIds = Object.keys(game.teams || {});
+        if (!teamIds.length) {
+          return callback &&
+            callback({ ok: false, error: "אין קבוצות פעילות במשחק." });
+        }
+        chosenTeamId = teamIds[0]; // תאימות – אם לא נבחרה קבוצה בטופס
       }
 
       clearRoundTimer(code);
 
-      const playersInTeam = (game.teams[teamId].players || []).map(
+      const team = game.teams[chosenTeamId];
+      const playersInTeam = (team.players || []).map(
         (clientId) => game.playersByClientId[clientId]
       );
       if (!playersInTeam.length) {
@@ -546,14 +567,23 @@ io.on("connection", (socket) => {
           callback({ ok: false, error: "אין שחקנים בקבוצה שנבחרה." });
       }
 
-      const explainingPlayer =
-        playersInTeam[Math.floor(Math.random() * playersInTeam.length)];
+      // בחירת המסביר:
+      let explainingPlayer = null;
+      if (explainerClientId) {
+        explainingPlayer = playersInTeam.find(
+          (p) => p && p.clientId === explainerClientId
+        );
+      }
+      if (!explainingPlayer) {
+        explainingPlayer =
+          playersInTeam[Math.floor(Math.random() * playersInTeam.length)];
+      }
 
       const totalSeconds =
         parseInt(durationSeconds, 10) || game.defaultRoundSeconds || 60;
 
       game.currentRound = {
-        teamId,
+        teamId: chosenTeamId,
         explainingPlayer: {
           clientId: explainingPlayer.clientId,
           name: explainingPlayer.name,
@@ -565,10 +595,15 @@ io.on("connection", (socket) => {
       game.updatedAt = new Date();
       game.lastActivity = new Date();
 
+      // אירוע ספציפי למי שמאזין (לא חובה אצלך)
       io.to("game-" + code).emit("roundStarted", {
         game: sanitizeGame(game),
       });
 
+      // שידור מצב משחק מלא – כדי שהטיימר יתעדכן בהוסט
+      broadcastGame(game);
+
+      // טיימר – בכל שנייה נעדכן גם roundTick וגם gameUpdated
       roundTimers[code] = setInterval(() => {
         const g = games[code];
         if (!g || !g.currentRound) {
@@ -578,12 +613,16 @@ io.on("connection", (socket) => {
 
         g.currentRound.secondsLeft -= 1;
         if (g.currentRound.secondsLeft <= 0) {
+          // סיום אוטומטי – יפעיל גם roundTimeUp לצורך תאימות
           finishRound(code, { reason: "timer" });
         } else {
+          // אירוע tick למי שרוצה
           io.to("game-" + code).emit("roundTick", {
             gameCode: code,
             secondsLeft: g.currentRound.secondsLeft,
           });
+          // ושידור gameUpdated – כדי שהטיימר בהוסט/שחקן יתעדכן
+          broadcastGame(g);
         }
       }, 1000);
 
@@ -598,14 +637,14 @@ io.on("connection", (socket) => {
     }
   });
 
-  // סיום סיבוב ידני
-  socket.on("finishRound", async (data, callback) => {
+  // סיום סיבוב ידני (כפתור "סיום סיבוב" ב-host)
+  socket.on("endRound", async (data, callback) => {
     try {
       const { gameCode } = data || {};
       await finishRound(gameCode, { reason: "manual" });
       callback && callback({ ok: true });
     } catch (err) {
-      console.error("Error in finishRound:", err);
+      console.error("Error in endRound:", err);
       callback && callback({ ok: false, error: "שגיאה בסיום סיבוב." });
     }
   });
@@ -741,7 +780,7 @@ io.on("connection", (socket) => {
 
 const ADMIN_CODE = process.env.ADMIN_CODE || "ONEBTN";
 
-// סיכום חדרים (גרסה "חדשה" למסך ניהול חדרים)
+// סיכום חדרים (למסך ניהול חדרים החדש)
 app.get("/admin/summary", async (req, res) => {
   try {
     const code = req.query.code || "";
@@ -808,7 +847,7 @@ app.get("/admin/summary", async (req, res) => {
   }
 });
 
-// גרסה "ישנה" לניהול חדרים (למקרה שה-HTML שלך עדיין משתמש בה)
+// API ישן לניהול חדרים (אם יש HTML ישן שמשתמש בו)
 app.get("/api/admin/rooms", (req, res) => {
   try {
     const rooms = Object.values(games).map((g) => ({
