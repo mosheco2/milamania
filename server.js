@@ -302,26 +302,18 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   // תאימות לפופ־אפ של סוף זמן – host + player משתמשים ב־roundTimeUp
   if (options.reason === "timer") {
     const teamName =
-      teamId && game.teams[teamId] ? game.teams[teamId].name : null;
+      teamId && game.teams[teamId]
+        ? game.teams[teamId].name
+        : `קבוצה ${teamId || ""}`;
 
-// --- FIX: send full team name so popup can show the correct group name ---
-const teamName =
-  teamId && game.teams[teamId]
-    ? game.teams[teamId].name
-    : `קבוצה ${teamId || ""}`;
-
-io.to("game-" + code).emit("roundTimeUp", {
-  code,
-  roundScore,
-  teamId,
-  teamName,
-  totalScore: totalScore || 0,
-});
-
-  // איפוס
-  game.currentRound = null;
+    io.to("game-" + code).emit("roundTimeUp", {
+      code,
+      roundScore,
+      teamId,
+      teamName,
+      totalScore: totalScore || 0,
+    });
 }
-
 // ----------------------
 //   Socket.io
 // ----------------------
