@@ -304,13 +304,19 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
     const teamName =
       teamId && game.teams[teamId] ? game.teams[teamId].name : null;
 
-    io.to("game-" + code).emit("roundTimeUp", {
-      code,
-      roundScore,
-      teamId,
-      teamName,
-    });
-  }
+// --- FIX: send full team name so popup can show the correct group name ---
+const teamName =
+  teamId && game.teams[teamId]
+    ? game.teams[teamId].name
+    : `קבוצה ${teamId || ""}`;
+
+io.to("game-" + code).emit("roundTimeUp", {
+  code,
+  roundScore,
+  teamId,
+  teamName,
+  totalScore: totalScore || 0,
+});
 
   // איפוס
   game.currentRound = null;
