@@ -437,6 +437,16 @@ io.on("connection", (socket) => {
       }
 
       let chosenTeamId = (teamId || "").trim();
+      // --- FIX: allow joining by teamName from WhatsApp invite ---
+if ((!chosenTeamId || !game.teams[chosenTeamId]) && data.teamName) {
+  const targetName = (data.teamName || "").trim();
+  const foundEntry = Object.entries(game.teams).find(
+    ([tid, t]) => t.name === targetName
+  );
+  if (foundEntry) {
+    chosenTeamId = foundEntry[0];
+  }
+}
       if (!chosenTeamId || !game.teams[chosenTeamId]) {
         const teamIds = Object.keys(game.teams || {});
         if (!teamIds.length) {
