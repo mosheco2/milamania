@@ -1,4 +1,4 @@
-// server.js - מילמניה / כהנ'ס
+// server.js - מילמניה / 
 
 const express = require("express");
 const http = require("http");
