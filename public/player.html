@@ -58,20 +58,28 @@
 
     #playerBigTimer { font-size: 4rem; font-weight: 900; color: #F84779; text-align: center; line-height: 1; margin: 16px 0; font-variant-numeric: tabular-nums; }
 
-    /* פאנל ניהול צף למנהל-שחקן */
     #adminFab { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #2B1E4A; color: #FFD76F; padding: 12px 24px; border-radius: 50px; font-weight: 700; box-shadow: 0 10px 25px rgba(43, 30, 74, 0.3); cursor: pointer; z-index: 100; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
     #adminFab:active { transform: translateX(-50%) scale(0.95); }
     #adminFloatingPanel { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 500px; background: #FFFFFF; border-radius: 24px; padding: 20px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2); z-index: 99; border: 2px solid #E2DCEF; }
     .admin-panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
     .close-panel-btn { background:none; border:none; font-size:1.8rem; color:#6B618F; cursor:pointer; padding:4px; line-height:1; }
 
-    /* מודל פופאפ */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(43, 30, 74, 0.7); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
     .modal-overlay.active { opacity: 1; visibility: visible; }
     .modal-box { background: #fff; width: 85%; max-width: 420px; border-radius: 28px; padding: 32px 24px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.3); transform: translateY(40px); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .modal-overlay.active .modal-box { transform: translateY(0); }
     .modal-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 16px; color: #2B1E4A; }
     .modal-content { font-size: 1.1rem; color: #6B618F; margin-bottom: 28px; line-height: 1.6; }
+
+    /* כפתור תמיכה צף */
+    #support-wa-btn {
+        position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+        background: #25D366; color: white; border-radius: 50px;
+        padding: 12px 20px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        display: flex; align-items: center; gap: 8px; cursor: pointer; text-decoration: none;
+        font-family: "Varela Round", sans-serif;
+    }
+    #support-wa-btn:hover { background: #1ebc57; transform: translateY(-2px); }
 
     @media (min-width: 640px) { .row > div { flex: 1 1 45%; } .btn { width: auto; } }
   </style>
@@ -158,8 +166,12 @@
       <div class="modal-box">
           <div class="modal-title" id="modalTitle"></div>
           <div class="modal-content" id="modalContent"></div>
-          <button class="btn btn-primary" id="modalCloseBtn" style="width:100%; font-size:1.1rem;">סגור</button>
+          <button class="btn btn-primary" id="modalCloseBtn" style="width:100%; font-size:1.2rem; padding:16px;">סגור</button>
       </div>
+  </div>
+
+  <div id="support-wa-btn" onclick="openSupportWhatsapp()">
+      <span>💬 עזרה ותמיכה</span>
   </div>
 
 
@@ -196,7 +208,31 @@
     function showModal(title, content) { modalTitle.textContent = title; modalContent.innerHTML = content; customModal.classList.add("active"); }
     modalCloseBtn.addEventListener("click", () => { customModal.classList.remove("active"); });
 
-    // לוגיקת פאנל ניהול צף
+    function openSupportWhatsapp() {
+        let text = "";
+        if (currentGameCode && lastGameState) {
+            let myName = playerNameInput.value || "שחקן";
+            text = `שלום, אני צריך עזרה במשחק מילמניה.\nקוד חדר: ${currentGameCode}\nשם מנהל: ${lastGameState.hostName}\nשם משתמש: ${myName}`;
+        } else {
+            text = "שלום, אני פונה בנושא שאלה/תמיכה במילמניה.";
+        }
+        window.open(`https://wa.me/972504000024?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    viewAllPlayersBtn.addEventListener("click", () => {
+        if(!lastGameState || !lastGameState.teams) return;
+        let html = `<div style="text-align:right;">`;
+        Object.values(lastGameState.teams).forEach(t => {
+            const pNames = t.players.map(cid => lastGameState.playersByClientId[cid]?.name).filter(Boolean).join(", ");
+            html += `<div style="margin-bottom:12px;">
+                        <div style="font-weight:800; color:#2B1E4A; margin-bottom:4px;">${t.name} (${t.score})</div>
+                        <div style="background:#F8F7FF; padding:8px; border-radius:8px; color:#6B618F; font-size:0.9rem;">${pNames || "אין שחקנים"}</div>
+                     </div>`;
+        });
+        html += `</div>`;
+        showModal("רשימת קבוצות ושחקנים", html);
+    });
+
     adminFab.addEventListener("click", () => { adminFloatingPanel.classList.remove("hidden"); adminFab.classList.add("hidden"); populateFloatTeamSelect(); });
     closeAdminPanelBtn.addEventListener("click", () => { adminFloatingPanel.classList.add("hidden"); adminFab.classList.remove("hidden"); });
 
@@ -327,22 +363,6 @@
             window.location.href = 'home.html';
         }
     });
-
-    // הצגת רשימת שחקנים
-    viewAllPlayersBtn.addEventListener("click", () => {
-        if(!lastGameState || !lastGameState.teams) return;
-        let html = `<div style="text-align:right;">`;
-        Object.values(lastGameState.teams).forEach(t => {
-            const pNames = t.players.map(cid => lastGameState.playersByClientId[cid]?.name).filter(Boolean).join(", ");
-            html += `<div style="margin-bottom:12px;">
-                        <div style="font-weight:800; color:#2B1E4A; margin-bottom:4px;">${t.name} (${t.score})</div>
-                        <div style="background:#F8F7FF; padding:8px; border-radius:8px; color:#6B618F; font-size:0.9rem;">${pNames || "אין שחקנים"}</div>
-                     </div>`;
-        });
-        html += `</div>`;
-        showModal("רשימת קבוצות ושחקנים", html);
-    });
-
 
     socket.on("gameUpdated", renderGameStateForPlayer);
     socket.on("roundTimeUp", (data) => {
