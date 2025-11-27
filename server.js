@@ -1,4 +1,4 @@
-// server.js - גרסה סופית: תיקון IP, שמות שחקנים, איפוס נתונים
+// server.js - גרסת Production: עמידות בפני ריסטרטים, שחזור טיימרים, דוחות ומיילים
 
 const express = require("express");
 const http = require("http");
@@ -15,8 +15,12 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const ADMIN_CODE = process.env.ADMIN_CODE || "ONEBTN";
 
+// הגדרות זמנים
+const INACTIVITY_LIMIT = 24 * 60 * 60 * 1000; // 24 שעות
+const CLEANUP_INTERVAL = 60 * 60 * 1000;      // שעה
+
 // ----------------------
-//   שליחת מייל (דרך Webhook)
+//   שליחת מייל (Webhook)
 // ----------------------
 async function sendNewGameEmail(gameInfo) {
   const webhookUrl = process.env.EMAIL_WEBHOOK;
@@ -40,7 +44,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
 // ----------------------
-//   DB Init
+//   DB Init & Persistence
 // ----------------------
 
 let pool = null;
@@ -49,7 +53,7 @@ let dbReady = false;
 async function initDb() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    console.log("⚠️ No DATABASE_URL. Running in memory mode.");
+    console.log("⚠️ No DATABASE_URL. Persistence disabled.");
     return;
   }
 
@@ -59,14 +63,23 @@ async function initDb() {
       ssl: process.env.PGSSL === "false" ? false : { rejectUnauthorized: false },
     });
 
+    // טבלאות היסטוריה
     await pool.query(`CREATE TABLE IF NOT EXISTS games (code TEXT PRIMARY KEY, host_name TEXT, target_score INTEGER, default_round_seconds INTEGER, categories TEXT[], created_at TIMESTAMPTZ DEFAULT NOW());`);
     await pool.query(`CREATE TABLE IF NOT EXISTS game_teams (id SERIAL PRIMARY KEY, game_code TEXT, team_id TEXT, team_name TEXT, score INTEGER DEFAULT 0);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS game_players (id SERIAL PRIMARY KEY, game_code TEXT, client_id TEXT, name TEXT, team_id TEXT, ip_address TEXT);`);
     
+    // טבלה לשמירת מצב חי (למקרה של ריסטרט)
+    await pool.query(`CREATE TABLE IF NOT EXISTS active_states (game_code TEXT PRIMARY KEY, data TEXT, last_updated TIMESTAMPTZ DEFAULT NOW());`);
+
+    // שדרוג עמודות חסרות
     try { await pool.query(`ALTER TABLE game_players ADD COLUMN IF NOT EXISTS ip_address TEXT;`); } catch (e) {}
 
     dbReady = true;
     console.log("✅ Postgres ready.");
+    
+    // שחזור משחקים מיד בעליית השרת
+    await restoreActiveGames();
+
   } catch (err) {
     console.error("❌ DB Error:", err.message);
   }
@@ -75,14 +88,86 @@ async function initDb() {
 initDb();
 
 // ----------------------
-//   In-memory state
+//   State Management
 // ----------------------
 
 const games = {};
 const roundTimers = {};
 
+// שמירת מצב המשחק ל-DB (גיבוי)
+async function saveGameState(game) {
+    if (!dbReady || !game) return;
+    try {
+        const json = JSON.stringify(game);
+        await pool.query(
+            `INSERT INTO active_states (game_code, data, last_updated) VALUES ($1, $2, NOW()) 
+             ON CONFLICT (game_code) DO UPDATE SET data = $2, last_updated = NOW()`,
+            [game.code, json]
+        );
+    } catch (e) { console.error("Save State Error:", e.message); }
+}
+
+// מחיקת מצב משחק (כשהמשחק מסתיים באמת)
+async function deleteGameState(gameCode) {
+    if (!dbReady) return;
+    try {
+        await pool.query(`DELETE FROM active_states WHERE game_code = $1`, [gameCode]);
+    } catch (e) { console.error("Delete State Error:", e.message); }
+}
+
+// שחזור משחקים בעליית שרת
+async function restoreActiveGames() {
+    if (!dbReady) return;
+    console.log("♻️ Restoring active games from DB...");
+    
+    try {
+        const res = await pool.query("SELECT * FROM active_states");
+        res.rows.forEach(row => {
+            try {
+                const game = JSON.parse(row.data);
+                games[game.code] = game;
+                console.log(`   > Restored game: ${game.code}`);
+
+                // שחזור טיימר אם היה באמצע סיבוב
+                if (game.currentRound && game.currentRound.active) {
+                    const now = Date.now();
+                    const startTime = new Date(game.currentRound.startedAt).getTime();
+                    const elapsedSeconds = Math.floor((now - startTime) / 1000);
+                    const originalDuration = parseInt(game.currentRound.secondsLeft) + elapsedSeconds; // הערכה גסה למקור
+                    
+                    // חישוב זמן שנותר באמת
+                    // אנחנו מניחים ש-secondsLeft נשמר בערך המקורי או האחרון, אבל עדיף לחשב מול הזמן שהתחיל
+                    // כדי להיות מדויקים, נשתמש בזמן ההתחלה המקורי
+                    
+                    // תיקון: אם שמרנו את המצב כל הזמן, secondsLeft אולי כבר התעדכן.
+                    // הדרך הכי בטוחה: לחשב כמה זמן עבר מאז startedAt
+                    // נניח ש-game.currentRound.secondsLeft שמר את הזמן שנותר ברגע השמירה האחרונה?
+                    // לא, עדיף להסתמך על זמן שעון.
+                    
+                    // נניח שסך כל הסיבוב היה X שניות. אנחנו לא יודעים כמה בדיוק היה X אם הוא לא נשמר בנפרד,
+                    // אבל אנחנו יכולים להניח שהסיבוב עדיין פעיל.
+                    
+                    // בוא נסמוך על secondsLeft שנשמר, ונחסיר ממנו את הזמן שעבר מאז העדכון האחרון (last_updated ב-DB)
+                    const lastUpdate = new Date(row.last_updated).getTime();
+                    const secondsPassedSinceCrash = Math.floor((now - lastUpdate) / 1000);
+                    
+                    game.currentRound.secondsLeft -= secondsPassedSinceCrash;
+
+                    if (game.currentRound.secondsLeft > 0) {
+                        console.log(`     -> Resuming timer for ${game.code} (${game.currentRound.secondsLeft}s left)`);
+                        startTimerInterval(game.code);
+                    } else {
+                        console.log(`     -> Round ended during downtime for ${game.code}`);
+                        finishRound(game.code, { reason: "timer" });
+                    }
+                }
+            } catch (e) { console.error("Failed to parse game", row.game_code); }
+        });
+    } catch (e) { console.error("Restore Error:", e.message); }
+}
+
 // ----------------------
-//   Utils & Word Bank
+//   Word bank & Helpers
 // ----------------------
 
 const WORD_BANK = [
@@ -143,6 +228,38 @@ function clearRoundTimer(gameCode) {
   if (roundTimers[gameCode]) { clearInterval(roundTimers[gameCode]); delete roundTimers[gameCode]; }
 }
 
+function startTimerInterval(code) {
+    clearRoundTimer(code);
+    roundTimers[code] = setInterval(() => {
+        const g = games[code];
+        if (!g || !g.currentRound) { clearRoundTimer(code); return; }
+        
+        g.currentRound.secondsLeft--;
+        
+        if (g.currentRound.secondsLeft <= 0) {
+            finishRound(code, { reason: "timer" });
+        } else {
+            // טיפ: לא שומרים ל-DB בכל שנייה (כבד מדי), אלא רק באירועים חשובים
+            io.to("game-" + code).emit("roundTick", { gameCode: code, secondsLeft: g.currentRound.secondsLeft });
+        }
+    }, 1000);
+}
+
+// ניקיון אוטומטי (RAM + DB)
+setInterval(() => {
+    const now = Date.now();
+    Object.keys(games).forEach(code => {
+        const game = games[code];
+        if (now - new Date(game.lastActivity).getTime() > INACTIVITY_LIMIT) {
+            console.log(`🧹 Auto-cleaning game: ${code}`);
+            clearRoundTimer(code);
+            delete games[code];
+            deleteGameState(code); // מוחק גם מהגיבוי של המצב הפעיל
+        }
+    });
+}, CLEANUP_INTERVAL);
+
+
 async function finishRound(gameCode, options = { reason: "manual" }) {
   const code = (gameCode || "").toUpperCase().trim();
   const game = games[code];
@@ -162,6 +279,7 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   game.lastActivity = new Date();
   game.updatedAt = new Date();
 
+  // עדכון היסטוריה
   if (dbReady && pool && teamId && game.teams[teamId]) {
     try {
       await pool.query(`UPDATE game_teams SET score = $1 WHERE game_code = $2 AND team_id = $3`, [game.teams[teamId].score, code, teamId]);
@@ -169,6 +287,8 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   }
 
   const totalScore = teamId && game.teams[teamId] ? game.teams[teamId].score : 0;
+  
+  saveGameState(game); // שמירת המצב החדש (סוף סיבוב)
   broadcastGame(game);
 
   io.to("game-" + code).emit("roundFinished", { teamId, roundScore, totalScore, reason: options.reason || "manual" });
@@ -224,6 +344,7 @@ io.on("connection", (socket) => {
         } catch (e) { console.error("DB Create Error:", e); }
       }
 
+      saveGameState(game); // שמירה ראשונית
       sendNewGameEmail(game);
       callback({ ok: true, gameCode: code, game: sanitizeGame(game) });
 
@@ -237,8 +358,13 @@ io.on("connection", (socket) => {
     try {
       const { gameCode, name, teamId } = data || {};
       const code = (gameCode || "").toUpperCase().trim();
-      const game = games[code];
-      if (!game) return callback({ ok: false, error: "המשחק לא נמצא." });
+      let game = games[code]; // נסיון למצוא בזיכרון
+
+      if (!game) {
+          // אם לא בזיכרון, אולי יש ב-DB (שחזור על הדרך)
+          // כרגע restoreActiveGames רץ בהתחלה, אבל ליתר ביטחון
+          return callback({ ok: false, error: "המשחק לא נמצא." });
+      }
 
       const playerName = (name || "").trim();
       if (!playerName) return callback({ ok: false, error: "שם חסר." });
@@ -255,16 +381,13 @@ io.on("connection", (socket) => {
       }
 
       const clientId = socket.id;
-      const isHost = (socket.id === game.hostSocketId);
+      const isHost = (socket.id === game.hostSocketId); // לא תמיד נכון אחרי ריסטרט, אבל המנהל יתחבר עם reconnect
       
-      // <--- תיקון IP: לקיחת הכתובת הראשונה במקרה של פרוקסי
       let rawIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
-      if (rawIp && rawIp.includes(',')) {
-          rawIp = rawIp.split(',')[0].trim();
-      }
+      if (rawIp && rawIp.includes(',')) rawIp = rawIp.split(',')[0].trim();
       const clientIp = rawIp;
 
-      game.playersByClientId[clientId] = { clientId, name: playerName, teamId: chosenTeamId, isHost, ip: clientIp };
+      game.playersByClientId[clientId] = { clientId, name: playerName, teamId: chosenTeamId, isHost: false, ip: clientIp };
       if(!game.teams[chosenTeamId].players.includes(clientId)) {
           game.teams[chosenTeamId].players.push(clientId);
       }
@@ -276,8 +399,11 @@ io.on("connection", (socket) => {
         } catch (e) {}
       }
 
+      game.lastActivity = new Date();
+      saveGameState(game); // עדכון מצב
+
       socket.join("game-" + code);
-      callback({ ok: true, game: sanitizeGame(game), clientId, teamId: chosenTeamId, teamName: game.teams[chosenTeamId].name, isHost });
+      callback({ ok: true, game: sanitizeGame(game), clientId, teamId: chosenTeamId, teamName: game.teams[chosenTeamId].name, isHost: false });
       broadcastGame(game);
 
     } catch (err) {
@@ -289,9 +415,16 @@ io.on("connection", (socket) => {
   socket.on("hostReconnect", (data, callback) => {
       const code = (data?.gameCode || "").toUpperCase().trim();
       const game = games[code];
+      
       if(!game) return callback({ok:false, error:"Not found"});
       
-      if(game.hostName) game.hostSocketId = socket.id;
+      // המנהל חזר! נעדכן את ה-Socket ID שלו
+      // אם ב-DB רשום שהשם שלו הוא X, והוא חזר, נניח שהוא המנהל
+      if(game.hostName) {
+          game.hostSocketId = socket.id;
+          // אופציונלי: לעדכן ברשימת השחקנים אם הוא גם שחקן
+      }
+      
       socket.join("game-" + code);
       callback({ ok: true, game: sanitizeGame(game) });
   });
@@ -312,12 +445,8 @@ io.on("connection", (socket) => {
 
       let explainer = null;
       const pIds = team.players;
-      if(data.explainerClientId) {
-          if(pIds.includes(data.explainerClientId)) explainer = data.explainerClientId;
-      }
-      if(!explainer && pIds.length > 0) {
-          explainer = pIds[Math.floor(Math.random() * pIds.length)];
-      }
+      if(data.explainerClientId && pIds.includes(data.explainerClientId)) explainer = data.explainerClientId;
+      if(!explainer && pIds.length > 0) explainer = pIds[Math.floor(Math.random() * pIds.length)];
       if(!explainer) return callback({ok:false, error: "No players"});
 
       const pObj = game.playersByClientId[explainer];
@@ -331,19 +460,13 @@ io.on("connection", (socket) => {
           active: true, isActive: true, roundScore: 0, startedAt: now.toISOString()
       };
       
+      game.lastActivity = now;
+      saveGameState(game); // שמירה קריטית! סיבוב התחיל
+
       broadcastGame(game);
       io.to("game-" + game.code).emit("roundStarted", { game: sanitizeGame(game) });
 
-      roundTimers[game.code] = setInterval(() => {
-          if(!game.currentRound) { clearRoundTimer(game.code); return; }
-          game.currentRound.secondsLeft--;
-          if(game.currentRound.secondsLeft <= 0) {
-              finishRound(game.code, {reason:"timer"});
-          } else {
-              io.to("game-" + game.code).emit("roundTick", { gameCode: game.code, secondsLeft: game.currentRound.secondsLeft });
-          }
-      }, 1000);
-      
+      startTimerInterval(game.code);
       callback({ok:true});
   });
 
@@ -352,6 +475,10 @@ io.on("connection", (socket) => {
       if(game && game.currentRound && game.currentRound.active) {
           const d = parseInt(data.delta) || 0;
           game.currentRound.roundScore = Math.max(0, (game.currentRound.roundScore || 0) + d);
+          game.lastActivity = new Date();
+          
+          saveGameState(game); // שמירת מצב הניקוד
+          
           cb({ok:true});
           broadcastGame(game);
       }
@@ -374,11 +501,8 @@ io.on("connection", (socket) => {
       if(games[code]) {
           clearRoundTimer(code);
           delete games[code];
-          if(dbReady && pool) {
-              pool.query(`DELETE FROM games WHERE code=$1`, [code]).catch(()=>{});
-              pool.query(`DELETE FROM game_players WHERE game_code=$1`, [code]).catch(()=>{});
-              pool.query(`DELETE FROM game_teams WHERE game_code=$1`, [code]).catch(()=>{});
-          }
+          deleteGameState(code); // מוחק מהמצב הפעיל, אבל ההיסטוריה נשארת ב-DB (game_teams וכו')
+          
           io.to("game-" + code).emit("gameEnded", { code });
           cb({ok:true});
       }
@@ -395,9 +519,8 @@ io.on("connection", (socket) => {
           if(game.teams[p.teamId]) {
               game.teams[p.teamId].players = game.teams[p.teamId].players.filter(id=>id!==pid);
           }
-          if(dbReady && pool) {
-              pool.query(`DELETE FROM game_players WHERE game_code=$1 AND client_id=$2`, [game.code, pid]).catch(()=>{});
-          }
+          saveGameState(game); // עדכון מצב
+          
           if(game.currentRound && game.currentRound.explainerId === pid) {
               finishRound(game.code, {reason:"player_disconnected"});
           } else {
@@ -410,16 +533,16 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
       const pid = socket.id;
       Object.values(games).forEach(g => {
-          if(g.hostSocketId === pid) return; 
+          if(g.hostSocketId === pid) return; // לא מוחקים מנהל
           if(g.playersByClientId[pid]) {
               const p = g.playersByClientId[pid];
               delete g.playersByClientId[pid];
               if(g.teams[p.teamId]) {
                   g.teams[p.teamId].players = g.teams[p.teamId].players.filter(id=>id!==pid);
               }
-              if(dbReady && pool) {
-                  pool.query(`DELETE FROM game_players WHERE game_code=$1 AND client_id=$2`, [g.code, pid]).catch(()=>{});
-              }
+              
+              saveGameState(g); // עדכון מצב
+
               if(g.currentRound && g.currentRound.explainerId === pid) {
                   finishRound(g.code, {reason:"player_disconnected"});
               } else {
@@ -468,7 +591,6 @@ app.get("/admin/stats", async (req, res) => {
   res.json({ activeGames, dbStats });
 });
 
-// API דוחות (עם שמות שחקנים)
 app.get("/admin/reports", async (req, res) => {
     const { code, type, from, to } = req.query;
     if (code !== ADMIN_CODE) return res.status(403).json({ error: "Forbidden" });
@@ -481,7 +603,6 @@ app.get("/admin/reports", async (req, res) => {
         const toDate = to || '2030-01-01';
 
         if (type === 'ips') {
-            // <--- שינוי: הוספת שליפת השם (MAX(name))
             query = `
                 SELECT ip_address, MAX(name) as last_name, COUNT(*) as games_count, MAX(created_at) as last_seen 
                 FROM game_players 
@@ -511,14 +632,13 @@ app.get("/admin/reports", async (req, res) => {
     }
 });
 
-// <--- נקודת קצה חדשה: איפוס נתונים
 app.post("/admin/reset", async (req, res) => {
     const code = req.query.code || "";
     if (code !== ADMIN_CODE) return res.status(403).json({ ok: false });
     
     if (dbReady && pool) {
         try {
-            await pool.query("TRUNCATE TABLE game_players, game_teams, games RESTART IDENTITY");
+            await pool.query("TRUNCATE TABLE game_players, game_teams, games, active_states RESTART IDENTITY");
             console.log("⚠️ DB Reset performed by Admin");
             res.json({ ok: true });
         } catch(e) {
@@ -536,10 +656,8 @@ app.post("/admin/game/:gameCode/close", (req, res) => {
     if(games[code]) {
         clearRoundTimer(code);
         delete games[code];
+        deleteGameState(code); // ניקוי הגיבוי
         io.to("game-" + code).emit("gameEnded", { code });
-        if(dbReady && pool) {
-             pool.query(`DELETE FROM games WHERE code=$1`, [code]).catch(()=>{});
-        }
         res.json({ok:true});
     } else res.status(404).send();
 });
@@ -552,6 +670,8 @@ app.post("/admin/game/:gameCode/player/:clientId/disconnect", (req, res) => {
         const p = g.playersByClientId[clientId];
         delete g.playersByClientId[clientId];
         if(g.teams[p.teamId]) g.teams[p.teamId].players = g.teams[p.teamId].players.filter(id=>id!==clientId);
+        
+        saveGameState(g); // עדכון מצב
         broadcastGame(g);
         res.json({ok:true});
     } else res.status(404).send();
