@@ -1,4 +1,4 @@
-// server.js - גרסה יציבה עם תיקון למיילים (IPv4)
+// server.js - ניסיון אחרון למיילים (Service Mode)
 
 const express = require("express");
 const http = require("http");
@@ -17,43 +17,37 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_CODE = process.env.ADMIN_CODE || "ONEBTN";
 
 // ----------------------
-//   הגדרות אימייל (עם תיקון Timeout)
+//   הגדרות אימייל (Service Mode)
 // ----------------------
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // שימוש בשירות המובנה של ג'ימייל
+  service: 'gmail', // נותן לספרייה לנהל את החיבור והפורטים לבד
   auth: {
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS
-  },
-  // התיקון הקריטי: מכריח שימוש ב-IPv4 כדי למנוע תקיעות ב-Render
-  family: 4 
+  }
 });
 
 async function sendNewGameEmail(gameInfo) {
-  if (!process.env.EMAIL_USER) return; 
-
-  try {
-    // שליחה ללא await כדי לא לעכב את יצירת המשחק
-    transporter.sendMail({
-      from: '"Millmania System" <no-reply@millmania.com>',
-      to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER, 
-      subject: `🚀 חדר חדש נפתח: ${gameInfo.code}`,
-      html: `
-        <div style="direction: rtl; font-family: sans-serif; padding: 20px; background: #f0f0f0; border-radius: 10px;">
-          <h2 style="color: #2c3e50;">משחק חדש יצא לדרך!</h2>
-          <ul style="font-size: 16px;">
-            <li><strong>קוד משחק:</strong> ${gameInfo.code}</li>
-            <li><strong>מנהל:</strong> ${gameInfo.hostName}</li>
-            <li><strong>זמן:</strong> ${new Date().toLocaleString("he-IL", {timeZone: "Asia/Jerusalem"})}</li>
-          </ul>
-        </div>
-      `,
-    }).then(() => console.log(`✅ Email sent for ${gameInfo.code}`))
-      .catch(err => console.error("❌ Email failed:", err.message));
-      
-  } catch (error) {
-    console.error("❌ Email setup error:", error.message);
+  if (!process.env.EMAIL_USER) {
+      console.log("ℹ️ Email skipped: No config.");
+      return; 
   }
+
+  // שליחה "שגר ושכח" - לא תוקע את המשחק
+  transporter.sendMail({
+    from: '"Millmania" <no-reply@millmania.com>',
+    to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER, 
+    subject: `🎮 חדר חדש: ${gameInfo.code}`,
+    html: `
+      <div style="direction: rtl; font-family: sans-serif;">
+        <h3>משחק חדש נפתח!</h3>
+        <p><strong>קוד:</strong> ${gameInfo.code}</p>
+        <p><strong>מנהל:</strong> ${gameInfo.hostName}</p>
+        <p><strong>זמן:</strong> ${new Date().toLocaleString("he-IL", {timeZone: "Asia/Jerusalem"})}</p>
+      </div>
+    `,
+  }).then(() => console.log(`✅ Email sent: ${gameInfo.code}`))
+    .catch(err => console.error("⚠️ Email blocked by server:", err.message));
 }
 
 // ----------------------
@@ -73,7 +67,7 @@ let dbReady = false;
 async function initDb() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    console.log("⚠️ No DATABASE_URL. Running in-memory only.");
+    console.log("⚠️ No DATABASE_URL. Running in memory mode.");
     return;
   }
 
@@ -87,7 +81,6 @@ async function initDb() {
     await pool.query(`CREATE TABLE IF NOT EXISTS game_teams (id SERIAL PRIMARY KEY, game_code TEXT, team_id TEXT, team_name TEXT, score INTEGER DEFAULT 0);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS game_players (id SERIAL PRIMARY KEY, game_code TEXT, client_id TEXT, name TEXT, team_id TEXT, ip_address TEXT);`);
     
-    // וידוא עמודת IP
     try { await pool.query(`ALTER TABLE game_players ADD COLUMN IF NOT EXISTS ip_address TEXT;`); } catch (e) {}
 
     dbReady = true;
@@ -215,6 +208,8 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
 // ----------------------
 
 io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+
   socket.on("createGame", async (data, callback) => {
     try {
       const { hostName, targetScore=40, defaultRoundSeconds=60, categories=[], teamNames={} } = data || {};
@@ -254,7 +249,9 @@ io.on("connection", (socket) => {
         } catch (e) { console.error("DB Create Error:", e); }
       }
 
+      // שליחת מייל ללא המתנה (לא חוסם את המשחק)
       sendNewGameEmail(game);
+
       callback({ ok: true, gameCode: code, game: sanitizeGame(game) });
 
     } catch (err) {
