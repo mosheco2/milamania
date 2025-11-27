@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>מילמניה - מסך שחקן</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +15,7 @@
       box-sizing: border-box;
       font-family: "Varela Round", system-ui, -apple-system, BlinkMacSystemFont,
         "Segoe UI", sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
     body {
       margin: 0;
@@ -24,343 +25,407 @@
       min-height: 100vh;
       font-size: 1rem;
       position: relative;
+      overflow-x: hidden; /* מונע גלילה אופקית */
     }
+    /* <--- שינוי: רקעי Gradient עדינים יותר */
     body::before,
     body::after {
       content: "";
       position: fixed;
-      width: 260px;
-      height: 260px;
+      width: 300px;
+      height: 300px;
       border-radius: 50%;
       z-index: -1;
+      filter: blur(40px);
+      opacity: 0.15;
     }
     body::before {
-      top: -120px;
-      left: -60px;
-      background: radial-gradient(circle at center,
-        rgba(248, 71, 121, 0.30),
-        transparent 60%);
+      top: -100px;
+      left: -100px;
+      background: radial-gradient(circle, #F84779 0%, transparent 70%);
     }
     body::after {
-      bottom: -140px;
-      right: -40px;
-      background: radial-gradient(circle at center,
-        rgba(21, 196, 193, 0.28),
-        transparent 60%);
+      bottom: -100px;
+      right: -100px;
+      background: radial-gradient(circle, #15C4C1 0%, transparent 70%);
     }
 
     .app {
-      max-width: 900px;
+      max-width: 600px; /* <--- שינוי: רוחב צר יותר למובייל */
       width: 100%;
-      padding: 20px 14px 40px;
+      padding: 20px 16px 80px; /* הוספנו פדינג תחתון לפאנל צף */
       margin: 0 auto;
     }
     .card {
       background: #FFFFFF;
       border-radius: 24px;
-      padding: 18px 16px 20px;
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.06);
-      border: 1px solid rgba(43, 30, 74, 0.06);
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(43, 30, 74, 0.04);
       margin-bottom: 16px;
+      transition: all 0.2s ease;
     }
 
-    h1, h2, h3 { margin-top: 0; }
-    h1 { font-size: 1.6rem; }
+    h1, h2, h3 { margin-top: 0; color: #2B1E4A; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; margin-bottom: 1rem; }
 
     label {
       display: block;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       font-size: 0.9rem;
       color: #6B618F;
+      font-weight: 500;
     }
 
     input, select {
       width: 100%;
-      padding: 9px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(43, 30, 74, 0.22);
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 2px solid rgba(43, 30, 74, 0.1);
       background: #FFFDF7;
       color: #2B1E4A;
-      font-size: 0.98rem;
+      font-size: 1rem;
+      transition: all 0.2s;
     }
     input::placeholder { color: #B0A6CC; }
     input:focus, select:focus {
       outline: none;
       border-color: #F84779;
-      box-shadow: 0 0 0 1px rgba(248, 71, 121, 0.55);
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(248, 71, 121, 0.1);
     }
 
     .row {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
-    .row > div { flex: 1 1 200px; }
+    .row > div { flex: 1 1 100%; }
 
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 10px 18px;
-      border-radius: 999px;
+      padding: 12px 24px;
+      border-radius: 16px;
       border: none;
       cursor: pointer;
-      font-size: 0.95rem;
-      font-weight: 600;
-      transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
+      font-size: 1rem;
+      font-weight: 700;
+      transition: all 0.2s;
       white-space: nowrap;
+      width: 100%; /* כפתורים רחבים במובייל */
+      letter-spacing: 0.02em;
     }
+    .btn:active { transform: scale(0.98); }
+
     .btn-primary {
-      background: linear-gradient(135deg, #F84779, #F7C948);
-      color: #2B1E4A;
-      box-shadow: 0 10px 25px rgba(248, 71, 121, 0.35);
-    }
-    .btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 14px 35px rgba(248, 71, 121, 0.5);
+      background: linear-gradient(135deg, #F84779, #FF8566);
+      color: #ffffff;
+      box-shadow: 0 8px 20px rgba(248, 71, 121, 0.25);
     }
     .btn-success {
-      background: linear-gradient(135deg, #15C4C1, #2DD4BF);
-      color: #083344;
-      box-shadow: 0 10px 24px rgba(21, 196, 193, 0.35);
-    }
-    .btn-success:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 14px 32px rgba(21, 196, 193, 0.5);
+      background: linear-gradient(135deg, #15C4C1, #42E695);
+      color: #ffffff;
+      box-shadow: 0 8px 20px rgba(21, 196, 193, 0.25);
     }
     .btn-danger {
-      background: linear-gradient(135deg, #EF4444, #F97373);
-      color: #FFF7F7;
-      box-shadow: 0 10px 24px rgba(239, 68, 68, 0.35);
-    }
-    .btn-danger:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 14px 32px rgba(239, 68, 68, 0.5);
+      background: rgba(239, 68, 68, 0.1);
+      color: #EF4444;
+      border: 2px solid currentColor;
     }
     .btn-ghost {
       background: transparent;
-      border: 1px solid rgba(107, 97, 143, 0.55);
       color: #6B618F;
+      border: 2px solid rgba(107, 97, 143, 0.2);
+      padding: 8px 16px;
+      font-size: 0.9rem;
     }
-    .btn-ghost:hover { background: rgba(248, 249, 255, 0.9); }
-    .btn-small { padding: 6px 10px; font-size: 0.82rem; }
-    .btn-wide { width: 100%; }
+    .btn-small { padding: 8px 16px; font-size: 0.9rem; width: auto; }
 
     .chip {
       display: inline-flex;
       align-items: center;
-      padding: 4px 10px;
+      padding: 6px 12px;
       border-radius: 999px;
-      border: 1px solid rgba(180, 169, 214, 0.7);
-      font-size: 0.8rem;
-      color: #58457F;
-      gap: 6px;
-      background: radial-gradient(circle at top left,
-        rgba(248, 71, 121, 0.18),
-        rgba(255, 255, 255, 0.96));
-      margin-bottom: 4px;
+      background: rgba(248, 71, 121, 0.1);
+      color: #F84779;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 8px;
     }
 
     .page-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .page-header-main {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
+      margin-bottom: 20px;
     }
 
     .logo-small {
-      height: 52px;
+      height: 48px;
       width: auto;
-      border-radius: 16px;
-      object-fit: contain;
-      background: #FFFFFF;
-      padding: 4px 8px;
-      border: 1px solid rgba(180, 169, 214, 0.65);
-      box-shadow: 0 0 0 3px #FFF8EA, 0 10px 26px rgba(0, 0, 0, 0.12);
+      border-radius: 12px;
     }
 
     .status-text {
-      font-size: 0.9rem;
-      color: #7C7598;
+      font-size: 0.95rem;
+      color: #6B618F;
+      line-height: 1.5;
     }
 
     .hidden { display: none !important; }
 
-    .team-block-title {
+    .data-block {
+        background: #F8F7FF;
+        padding: 12px 16px;
+        border-radius: 14px;
+        margin-bottom: 8px;
+    }
+    .data-label {
+      font-size: 0.85rem;
+      color: #A18CCF;
+      margin-bottom: 4px;
       font-weight: 600;
-      font-size: 0.95rem;
-      margin-bottom: 2px;
-      color: #433362;
+    }
+    .data-value {
+        font-size: 1rem;
+        color: #433362;
+        font-weight: 600;
     }
 
+    /* --- איזור המסביר --- */
+    #presenterSection {
+        background: linear-gradient(135deg, #FFFDF7, #FFF);
+        border: 2px dashed #E2DCEF;
+        border-radius: 20px;
+        padding: 24px 16px;
+        text-align: center;
+        margin-top: 20px;
+    }
+    #presenterTitle { font-size: 1.1rem; color: #F84779; font-weight: 700; margin-bottom: 12px; }
     #presenterWord {
-      font-size: 2rem;
+      font-size: 2.8rem;
       font-weight: 800;
-      text-align: center;
-      margin: 10px 0 4px;
-      letter-spacing: 0.03em;
       color: #2B1E4A;
+      margin: 0 0 8px;
+      line-height: 1.1;
     }
     #presenterCategory {
-      text-align: center;
+      display: inline-block;
+      background: #E2DCEF;
+      color: #6B618F;
+      padding: 4px 12px;
+      border-radius: 20px;
       font-size: 0.9rem;
-      color: #A18CCF;
-      margin-bottom: 10px;
+      margin-bottom: 20px;
     }
-
     .presenter-actions {
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 4px;
+      gap: 12px;
     }
+    .presenter-actions .btn { flex: 1; padding: 16px; font-size: 1.1rem; }
 
-    .team-players-list {
-      font-size: 0.9rem;
-    }
-
+    /* --- טיימר גדול --- */
     #playerBigTimer {
-      margin-top: 6px;
-      font-size: 1.7rem;
+      font-size: 3.5rem;
       font-weight: 800;
-      letter-spacing: 0.06em;
       color: #F84779;
       text-align: center;
+      line-height: 1;
+      margin: 16px 0;
+      font-variant-numeric: tabular-nums;
     }
 
-    @media (max-width: 640px) {
-      body { font-size: 1.05rem; }
-      .app { padding: 16px 10px 32px; }
-      .card { padding: 18px 14px 20px; border-radius: 20px; }
-      h1 { font-size: 1.5rem; }
-      h3 { font-size: 1.1rem; }
-      input, select { font-size: 1rem; }
-      .btn { font-size: 1rem; padding: 10px 16px; }
-      #presenterWord { font-size: 2.1rem; }
-      #playerBigTimer { font-size: 1.9rem; }
+    /* --- <--- שינוי: עיצוב לפאנל ניהול צף --- */
+    #adminFab {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2B1E4A;
+      color: #FFD76F;
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-weight: 700;
+      box-shadow: 0 10px 25px rgba(43, 30, 74, 0.3);
+      cursor: pointer;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    #adminFab:active { transform: translateX(-50%) scale(0.95); }
+
+    #adminFloatingPanel {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 92%;
+      max-width: 500px;
+      background: #FFFFFF;
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+      z-index: 99;
+      border: 2px solid #E2DCEF;
+    }
+    .admin-panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .close-panel-btn { background:none; border:none; font-size:1.5rem; color:#6B618F; cursor:pointer; padding:4px; }
+
+
+    /* --- <--- שינוי: עיצוב למודל (פופאפ) --- */
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(43, 30, 74, 0.6);
+        backdrop-filter: blur(4px);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-box {
+        background: #fff; width: 85%; max-width: 400px;
+        border-radius: 28px; padding: 28px 24px;
+        text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        transform: translateY(30px); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .modal-overlay.active .modal-box { transform: translateY(0); }
+    .modal-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 12px; color: #2B1E4A; }
+    .modal-content { font-size: 1.05rem; color: #6B618F; margin-bottom: 24px; line-height: 1.5; }
+
+    @media (min-width: 640px) {
+        .row > div { flex: 1 1 45%; }
+        .btn { width: auto; }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <!-- כותרת עליונה -->
-    <div class="card">
-      <div class="page-header">
-        <div class="page-header-main">
-          <img id="playerLogo" class="logo-small hidden" alt="מילמניה לוגו" />
-          <div>
-            <div class="chip">מילמניה · מסך שחקן 🎮</div>
-            <h1 style="margin:4px 0 0;">ברוכים הבאים למשחק</h1>
-          </div>
+    <div class="page-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+             <img id="playerLogo" class="logo-small hidden" alt="לוגו" />
+             <div>
+                 <div class="chip">מסך שחקן 🎮</div>
+             </div>
         </div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
-          <button class="btn btn-ghost btn-small" type="button" onclick="location.href='instructions.html'">❔ הוראות</button>
-          <button class="btn btn-ghost btn-small" type="button" onclick="location.href='home.html'">⬅ מסך הבית</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-ghost btn-small" onclick="location.href='instructions.html'">❔ הוראות</button>
+          <button class="btn btn-ghost btn-small" onclick="location.href='home.html'">🏠 בית</button>
         </div>
-      </div>
-
-      <p class="status-text" style="margin-top:8px;">
-        מצטרפים לחדר עם קוד המשחק, בוחרים שם מצחיק, ונכנסים לקבוצה שהוגדרה לכם על ידי מנהל המשחק 😄
-      </p>
     </div>
 
-    <!-- הצטרפות למשחק -->
     <div class="card" id="joinSection">
-      <h3 style="margin:0 0 8px;">הצטרפות למשחק</h3>
+      <h1>הצטרפות למשחק</h1>
+      <p class="status-text" style="margin-bottom: 20px;">הכניסו את קוד המשחק שקיבלתם, בחרו שם מצחיק וכנסו לקבוצה!</p>
 
-      <div id="inviteInfo" class="status-text" style="margin-bottom:8px; display:none;"></div>
+      <div id="inviteInfo" class="data-block" style="display:none; background:#F0EBFF; color:#58457F;"></div>
 
       <div class="row">
         <div>
           <label for="gameCodeInput">קוד משחק</label>
-          <input id="gameCodeInput" type="text" placeholder="לדוגמה: AB12" />
+          <input id="gameCodeInput" type="text" placeholder="AB12" style="text-transform:uppercase; font-weight:700; letter-spacing:1px; text-align:center;" />
         </div>
         <div>
-          <label for="playerNameInput">השם שלך במשחק</label>
-          <input id="playerNameInput" type="text" placeholder="לדוגמה: סופר-מילולן" />
+          <label for="playerNameInput">השם שלך</label>
+          <input id="playerNameInput" type="text" placeholder="לדוגמה: בובספוג" style="text-align:center;" />
         </div>
       </div>
 
       <div class="row" id="teamChoiceRow" style="display:none;">
         <div>
-          <label for="teamSelect">הקבוצה שלך</label>
-          <select id="teamSelect">
-            <option value="">בחר קבוצה...</option>
+          <label for="teamSelect">בחירת קבוצה</label>
+          <select id="teamSelect" style="text-align:center; font-weight:600;">
+            <option value="">טוען קבוצות...</option>
           </select>
         </div>
       </div>
 
-      <button id="joinBtn" class="btn btn-primary" type="button">הצטרפות למשחק</button>
-
-      <div id="joinStatus" class="status-text" style="margin-top:8px;"></div>
+      <button id="joinBtn" class="btn btn-primary" type="button" style="margin-top:12px;">🚀 הצטרפות למשחק</button>
+      <div id="joinStatus" class="status-text" style="margin-top:16px; text-align:center; font-weight:600;"></div>
     </div>
 
-    <!-- אחרי הצטרפות למשחק -->
     <div class="card hidden" id="playerGameCard">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <h3 style="margin:0 0 6px;">מצב המשחק שלי</h3>
-        <div style="display:flex; gap:6px;">
-          <button id="backToHostBtn" class="btn btn-ghost btn-small hidden" type="button">
-            ⬅ חזרה למסך ניהול
-          </button>
-          <button id="exitGameBtn" class="btn btn-danger btn-small" type="button">
-            יציאה מהמשחק
-          </button>
-        </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h1 style="margin:0;">חדר המשחק</h1>
+        <button id="exitGameBtn" class="btn btn-danger btn-small" type="button">יציאה</button>
       </div>
 
-      <div id="myGameInfo" class="status-text" style="margin-bottom:8px;"></div>
-
-      <div style="margin-bottom:8px;">
-        <div class="team-block-title">הקבוצה שלי</div>
-        <div id="myTeamName" class="status-text"></div>
+      <div class="data-block">
+          <div id="myGameInfo" style="font-weight:600; color:#433362;"></div>
       </div>
 
-      <div style="margin-bottom:8px;">
-        <div class="team-block-title">השחקנים בקבוצה שלי</div>
-        <div id="myTeamPlayers" class="team-players-list status-text"></div>
+      <div class="row">
+          <div class="data-block">
+            <div class="data-label">הקבוצה שלי</div>
+            <div id="myTeamName" class="data-value"></div>
+          </div>
+          <div class="data-block">
+            <div class="data-label">חברי הקבוצה</div>
+            <div id="myTeamPlayers" class="data-value" style="font-weight:400; font-size:0.95rem;"></div>
+          </div>
       </div>
 
-      <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 0;" />
+      <div style="text-align:center; padding: 20px 0;">
+          <div id="roundStatusPlayer" class="status-text" style="font-weight:600; font-size:1.1rem; color:#2B1E4A;"></div>
+          <div id="playerBigTimer">--:--</div>
+      </div>
 
-      <h3 style="margin:0 0 6px;">ניקוד כללי</h3>
-      <div id="scoreboard" class="status-text"></div>
-
-      <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 0;" />
-
-      <h3 style="margin:0 0 6px;">מצב הסיבוב</h3>
-      <div id="roundStatusPlayer" class="status-text"></div>
-      <div id="playerBigTimer">טיימר: --:--</div>
-
-      <!-- מסך מציג למסביר -->
-      <div id="presenterSection" class="hidden" style="margin-top:12px; padding-top:8px; border-top:1px dashed rgba(180,169,214,0.6);">
-        <div class="team-block-title" style="text-align:center; margin-bottom:4px;">
-          אתה המסביר בסיבוב הזה! 🗣️
-        </div>
-        <div id="presenterWord">מילה תופיע כאן...</div>
-        <div id="presenterCategory"></div>
+      <div id="presenterSection" class="hidden">
+        <div id="presenterTitle">אתה המסביר! 🗣️</div>
+        <div id="presenterWord">...</div>
+        <div id="presenterCategory">טוען...</div>
         <div class="presenter-actions">
-          <button id="btnCorrect" class="btn btn-success" type="button">✅ נכון</button>
-          <button id="btnSkip" class="btn btn-primary" type="button">⏭ דלג (מינוס נקודה)</button>
-        </div>
-        <div class="status-text" style="margin-top:6px; text-align:center;">
-          כל "נכון" מוסיף נקודה, כל "דלג" מוריד נקודה (לא יורדים מתחת ל־0). המילה תתחלף אוטומטית בכל לחיצה.
+          <button id="btnSkip" class="btn btn-primary" style="background: #FFB4CB; color:#A11C4B; box-shadow:none;">⏭ דלג (-1)</button>
+          <button id="btnCorrect" class="btn btn-success" style="flex:1.5; font-size:1.2rem;">✅ נכון! (+1)</button>
         </div>
       </div>
 
-</div>
-      <div id="player-banner-slot" style="margin-top:10px;"></div>
+      <hr style="border:none; border-top:2px dashed #E2DCEF; margin: 24px 0;" />
+
+      <h3>טבלת ניקוד</h3>
+      <div id="scoreboard" class="data-block" style="font-family:monospace; white-space:pre-wrap;"></div>
+
+      <div id="player-banner-slot" style="margin-top:20px; text-align:center;"></div>
     </div>
   </div>
+
+  <div id="adminFab" class="hidden">
+      <span>👑</span> ניהול סבב
+  </div>
+
+  <div id="adminFloatingPanel" class="hidden">
+      <div class="admin-panel-header">
+          <h3 style="margin:0;">ניהול סבב מהיר</h3>
+          <button class="close-panel-btn" id="closeAdminPanel">×</button>
+      </div>
+      <div class="row">
+          <div>
+             <label for="floatTeamSelect">קבוצה</label>
+             <select id="floatTeamSelect"></select>
+          </div>
+          <div>
+             <label for="floatSeconds">שניות</label>
+             <input type="number" id="floatSeconds" value="60" min="10" max="300">
+          </div>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:12px;">
+          <button id="floatStartBtn" class="btn btn-success" style="flex:1;">▶ התחל</button>
+          <button id="floatStopBtn" class="btn btn-danger" style="flex:1;" disabled>⏹ סיים</button>
+      </div>
+  </div>
+
+  <div class="modal-overlay" id="customModal">
+      <div class="modal-box">
+          <div class="modal-title" id="modalTitle"></div>
+          <div class="modal-content" id="modalContent"></div>
+          <button class="btn btn-primary" id="modalCloseBtn">סגור</button>
+      </div>
+  </div>
+
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -368,6 +433,7 @@
 
     const LOCAL_PLAYER_KEY = "millmania-player-join";
 
+    // אלמנטים כלליים
     const gameCodeInput = document.getElementById("gameCodeInput");
     const playerNameInput = document.getElementById("playerNameInput");
     const joinBtn = document.getElementById("joinBtn");
@@ -379,6 +445,7 @@
     const teamChoiceRow = document.getElementById("teamChoiceRow");
     const teamSelect = document.getElementById("teamSelect");
 
+    // אלמנטים בתוך המשחק
     const myGameInfo = document.getElementById("myGameInfo");
     const myTeamNameEl = document.getElementById("myTeamName");
     const myTeamPlayersEl = document.getElementById("myTeamPlayers");
@@ -389,26 +456,43 @@
     const playerLogoEl = document.getElementById("playerLogo");
     const playerBannerSlot = document.getElementById("player-banner-slot");
 
+    // אלמנטים של המסביר
     const presenterSection = document.getElementById("presenterSection");
     const presenterWordEl = document.getElementById("presenterWord");
     const presenterCategoryEl = document.getElementById("presenterCategory");
     const btnCorrect = document.getElementById("btnCorrect");
     const btnSkip = document.getElementById("btnSkip");
     const exitGameBtn = document.getElementById("exitGameBtn");
-    const backToHostBtn = document.getElementById("backToHostBtn");
+
+    // <--- שינוי: אלמנטים של פאנל ניהול צף
+    const adminFab = document.getElementById("adminFab");
+    const adminFloatingPanel = document.getElementById("adminFloatingPanel");
+    const closeAdminPanelBtn = document.getElementById("closeAdminPanel");
+    const floatTeamSelect = document.getElementById("floatTeamSelect");
+    const floatSecondsInput = document.getElementById("floatSeconds");
+    const floatStartBtn = document.getElementById("floatStartBtn");
+    const floatStopBtn = document.getElementById("floatStopBtn");
+
+    // <--- שינוי: אלמנטים של המודל
+    const customModal = document.getElementById("customModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalContent = document.getElementById("modalContent");
+    const modalCloseBtn = document.getElementById("modalCloseBtn");
+
 
     let myClientId = null;
     let currentGameCode = null;
     let myTeamId = null;
+    let iAmHost = false; // <--- שינוי: דגל לזיהוי אם אני המנהל
     let lastGameState = null;
 
     let currentWord = null;
     let currentCategory = "";
     let lastRoundKey = null;
     let iAmCurrentExplainer = false;
+    let roundTimerInterval = null;
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const hostModeFlag = urlParams.get("hostMode") === "1";
+    // --- פונקציות עזר ---
 
     function formatTime(seconds) {
       const s = Math.max(0, Math.floor(seconds || 0));
@@ -416,6 +500,67 @@
       const ss = (s % 60).toString().padStart(2, "0");
       return m + ":" + ss;
     }
+
+    // <--- שינוי: פונקציה להצגת המודל המעוצב
+    function showModal(title, content) {
+        modalTitle.textContent = title;
+        modalContent.innerHTML = content;
+        customModal.classList.add("active");
+    }
+
+    modalCloseBtn.addEventListener("click", () => {
+        customModal.classList.remove("active");
+    });
+
+
+    // --- לוגיקת פאנל ניהול צף ---
+    adminFab.addEventListener("click", () => {
+        adminFloatingPanel.classList.remove("hidden");
+        adminFab.classList.add("hidden");
+        populateFloatTeamSelect(); // <--- שינוי: מילוי הרשימה בפתיחה
+    });
+
+    closeAdminPanelBtn.addEventListener("click", () => {
+        adminFloatingPanel.classList.add("hidden");
+        adminFab.classList.remove("hidden");
+    });
+
+    function populateFloatTeamSelect() {
+        if (!lastGameState || !lastGameState.teams) return;
+        floatTeamSelect.innerHTML = "";
+        Object.entries(lastGameState.teams).forEach(([tid, team]) => {
+            const opt = document.createElement("option");
+            opt.value = tid;
+            opt.textContent = team.name || tid;
+            floatTeamSelect.appendChild(opt);
+        });
+        // ניסיון לבחור את הקבוצה הבאה בתור (פשוטה)
+        if (lastGameState.currentRound && lastGameState.currentRound.teamId) {
+             const teamIds = Object.keys(lastGameState.teams);
+             const currentIdx = teamIds.indexOf(lastGameState.currentRound.teamId);
+             const nextIdx = (currentIdx + 1) % teamIds.length;
+             floatTeamSelect.value = teamIds[nextIdx];
+        }
+    }
+
+    floatStartBtn.addEventListener("click", () => {
+        if(!currentGameCode) return;
+        socket.emit("startRound", {
+            gameCode: currentGameCode,
+            teamId: floatTeamSelect.value,
+            roundSeconds: parseInt(floatSecondsInput.value) || 60
+        });
+        adminFloatingPanel.classList.add("hidden");
+        adminFab.classList.remove("hidden");
+    });
+
+    floatStopBtn.addEventListener("click", () => {
+         if(!currentGameCode) return;
+         socket.emit("endRound", { gameCode: currentGameCode });
+    });
+
+
+    // --- טעינת נתונים ראשונית ---
 
     (function loadPlayerBranding() {
       fetch("/api/banners")
@@ -425,11 +570,7 @@
 
           if (data.logo && data.logo.imageUrl && playerLogoEl) {
             playerLogoEl.src = data.logo.imageUrl;
-            playerLogoEl.alt = data.logo.altText || "מילמניה";
             playerLogoEl.classList.remove("hidden");
-            playerLogoEl.addEventListener("error", () => {
-              playerLogoEl.classList.add("hidden");
-            });
           }
 
           if (!playerBannerSlot) return;
@@ -439,61 +580,48 @@
           const a = document.createElement("a");
           a.href = cfg.linkUrl;
           a.target = "_blank";
-          a.rel = "noopener";
-
           const img = document.createElement("img");
           img.src = cfg.imageUrl;
-          img.alt = cfg.altText || "Banner";
           img.style.maxWidth = "100%";
-          img.style.borderRadius = "18px";
-          img.style.display = "block";
-          img.style.marginTop = "8px";
-
-          img.addEventListener("error", () => {
-            a.style.display = "none";
-          });
-
+          img.style.borderRadius = "16px";
           a.appendChild(img);
           playerBannerSlot.appendChild(a);
         })
         .catch(() => {});
     })();
 
-    if (hostModeFlag && backToHostBtn) {
-      backToHostBtn.classList.remove("hidden");
-      backToHostBtn.addEventListener("click", () => {
-        window.location.href = "host.html";
-      });
-    }
-document.getElementById("hostControlsAsPlayer").classList.remove("hidden");
-    
+
+    // --- לוגיקת משחק ---
+
     function updatePresenterUI() {
-      if (!iAmCurrentExplainer || !lastGameState || !lastGameState.currentRound) {
+      if (!iAmCurrentExplainer) {
         presenterSection.classList.add("hidden");
         return;
       }
-
       presenterSection.classList.remove("hidden");
 
       if (!currentWord) {
-        presenterWordEl.textContent = "ממתין למילה מהשרת...";
-        presenterCategoryEl.textContent = "";
+        presenterWordEl.textContent = "טוען מילה...";
+        presenterCategoryEl.textContent = "...";
+        btnCorrect.disabled = true;
+        btnSkip.disabled = true;
       } else {
         presenterWordEl.textContent = currentWord;
-        presenterCategoryEl.textContent = currentCategory
-          ? "קטגוריה: " + currentCategory
-          : "";
+        // תרגום קטגוריות בסיסי (אפשר להרחיב)
+        const catMap = { general: 'כללי', animals:'חיות', food:'אוכל', objects:'חפצים', technology:'טכנולוגיה', family:'משפחה', travel:'טיולים', sports:'ספורט', entertainment:'בידור', music:'מוזיקה', nature:'טבע', holidays:'חגים', school:'לימודים', work:'עבודה', hard:'קשה' };
+        presenterCategoryEl.textContent = catMap[currentCategory] || currentCategory || 'כללי';
+        btnCorrect.disabled = false;
+        btnSkip.disabled = false;
       }
     }
 
     function requestNextWord() {
       if (!currentGameCode) return;
+      btnCorrect.disabled = true;
+      btnSkip.disabled = true;
       socket.emit("getNextWord", { gameCode: currentGameCode }, (resp) => {
         if (!resp || !resp.ok) {
-          presenterWordEl.textContent = resp && resp.error
-            ? resp.error
-            : "שגיאה בטעינת מילה.";
-          presenterCategoryEl.textContent = "";
+          presenterWordEl.textContent = "שגיאה";
           return;
         }
         currentWord = resp.word || "";
@@ -506,13 +634,7 @@ document.getElementById("hostControlsAsPlayer").classList.remove("hidden");
       lastGameState = game;
 
       if (!myClientId || !game) {
-        myGameInfo.textContent = "עדיין לא מחובר למשחק.";
-        myTeamNameEl.textContent = "";
-        myTeamPlayersEl.textContent = "";
-        scoreboardEl.textContent = "";
-        roundStatusPlayerEl.textContent = "";
-        playerBigTimerEl.textContent = "טיימר: --:--";
-        presenterSection.classList.add("hidden");
+        resetPlayerState();
         return;
       }
 
@@ -520,98 +642,81 @@ document.getElementById("hostControlsAsPlayer").classList.remove("hidden");
       const me = playersMap[myClientId];
 
       if (!me) {
-        myGameInfo.textContent = "לא נמצאת ברשימת השחקנים. ייתכן שהוסרת מהמשחק.";
-        myTeamNameEl.textContent = "";
-        myTeamPlayersEl.textContent = "";
-        scoreboardEl.textContent = "";
-        roundStatusPlayerEl.textContent = "";
-        playerBigTimerEl.textContent = "טיימר: --:--";
-        presenterSection.classList.add("hidden");
+        // אם השחקן נמחק, נחזיר אותו למסך הבית
+        resetPlayerState();
+        joinStatus.textContent = "נותקת מהמשחק.";
         return;
       }
 
-      currentGameCode = game.code || currentGameCode;
-      myTeamId = me.teamId || myTeamId;
+      currentGameCode = game.code;
+      myTeamId = me.teamId;
+      iAmHost = me.isHost || false; // <--- שינוי: שמירת סטטוס המנהל
 
-      const team = game.teams && myTeamId ? game.teams[myTeamId] : null;
-      const teamName = team ? (team.name || `קבוצה ${myTeamId}`) : "ללא קבוצה";
+      // <--- שינוי: הצגה/הסתרה של כפתור הניהול הצף
+      if (iAmHost) {
+          adminFab.classList.remove("hidden");
+      } else {
+          adminFab.classList.add("hidden");
+          adminFloatingPanel.classList.add("hidden");
+      }
 
-      myGameInfo.innerHTML =
-        `אתה מחובר לחדר בקוד <strong>${currentGameCode || "-"}</strong> בשם <strong>${me.name || ""}</strong>.`;
 
+      const team = game.teams ? game.teams[myTeamId] : null;
+      // <--- שינוי: שימוש בשם הקבוצה האמיתי
+      const teamName = team ? (team.name || myTeamId) : "ללא קבוצה";
+
+      myGameInfo.innerHTML = `מחובר כ-<strong>${me.name}</strong> (קוד: ${currentGameCode})`;
       myTeamNameEl.textContent = teamName;
 
-      if (team && team.players && team.players.length) {
+      if (team && team.players) {
         const names = team.players
-          .map((cid) => (playersMap[cid] && playersMap[cid].name) ? playersMap[cid].name : null)
+          .map((cid) => playersMap[cid]?.name)
           .filter(Boolean);
-        myTeamPlayersEl.textContent = names.length
-          ? names.join(", ")
-          : "אין עדיין שחקנים נוספים בקבוצה שלך.";
-      } else {
-        myTeamPlayersEl.textContent = "עדיין לא הוקצו שחקנים לקבוצה שלך.";
+        myTeamPlayersEl.textContent = names.length ? names.join(", ") : "ממתין לשחקנים...";
       }
 
+      // טבלת ניקוד מעוצבת יותר
       if (game.teams) {
-        const lines = Object.entries(game.teams).map(([teamId, t]) => {
-          const name = t.name || `קבוצה ${teamId}`;
-          const score = t.score || 0;
-          return `${name}: ${score} נקודות`;
-        });
-        scoreboardEl.innerHTML = lines.join("<br/>");
-      } else {
-        scoreboardEl.textContent = "";
+        scoreboardEl.innerHTML = Object.values(game.teams)
+          .map(t => `<div style="display:flex; justify-content:space-between;"><span>${t.name || t.id}</span><strong>${t.score}</strong></div>`)
+          .join("");
       }
 
-      const r = game.currentRound || game.round || null;
-      if (r && (r.active === true || r.isActive === true)) {
-        const roundSecondsLeft = typeof r.secondsLeft === "number"
-          ? r.secondsLeft
-          : null;
-        const explainerName = r.explainerName || "";
-        const explainerTeamId = r.teamId || "";
-        const teamObj = explainerTeamId && game.teams ? game.teams[explainerTeamId] : null;
-        const explainerTeamName = teamObj ? (teamObj.name || `קבוצה ${explainerTeamId}`) : "";
-        const explainerTeamText = explainerTeamName
-          || (explainerTeamId ? `קבוצה ${explainerTeamId}` : "");
+      // מצב סבב
+      const r = game.currentRound;
+      clearInterval(roundTimerInterval); // איפוס טיימר מקומי ישן
 
-        let msg = "סיבוב פעיל כרגע.";
-        if (explainerName && explainerTeamText) {
-          msg = `עכשיו מסביר/ה: <strong>${explainerName}</strong> (${explainerTeamText}).`;
-        } else if (explainerName) {
-          msg = `עכשיו מסביר/ה: <strong>${explainerName}</strong>.`;
+      if (r && r.isActive) {
+        floatStopBtn.disabled = false; // <--- שינוי: אפשור כפתור עצירה למנהל
+        floatStartBtn.disabled = true;
+
+        const explainerName = r.explainerName || "?";
+        // <--- שינוי: שימוש בשם הקבוצה האמיתי של המסביר
+        const explainerTeam = game.teams[r.teamId];
+        const explainerTeamName = explainerTeam ? (explainerTeam.name || r.teamId) : r.teamId;
+
+        let statusHtml = `בסבב: <strong>${explainerTeamName}</strong><br>מסביר/ה: ${explainerName}`;
+        if(r.teamId === myTeamId) statusHtml += " <span style='color:#F84779;'>Your Team!</span>";
+        roundStatusPlayerEl.innerHTML = statusHtml;
+
+        // טיימר מקומי חכם שמסתנכרן
+        let secondsLeft = r.secondsLeft || 0;
+        playerBigTimerEl.textContent = formatTime(secondsLeft);
+        if(secondsLeft > 0) {
+             roundTimerInterval = setInterval(() => {
+                 secondsLeft--;
+                 playerBigTimerEl.textContent = formatTime(secondsLeft);
+                 if(secondsLeft <= 0) clearInterval(roundTimerInterval);
+             }, 1000);
         }
 
-        if (roundSecondsLeft !== null) {
-          msg += ` · נשארו כ־${roundSecondsLeft} שניות.`;
-        }
 
-        if (myTeamId && explainerTeamId && myTeamId === explainerTeamId) {
-          msg += " זה הסיבוב של הקבוצה שלך – תרימו לו/לה! 🎯";
-        }
-
-        if (typeof r.roundScore === "number") {
-          msg += ` · ניקוד בסיבוב: ${r.roundScore}`;
-        }
-
-        roundStatusPlayerEl.innerHTML = msg;
-
-        if (roundSecondsLeft !== null) {
-          playerBigTimerEl.textContent = "טיימר: " + formatTime(roundSecondsLeft);
-        } else {
-          playerBigTimerEl.textContent = "טיימר: --:--";
-        }
-
-        iAmCurrentExplainer = (r.explainerId && r.explainerId === myClientId);
-
+        iAmCurrentExplainer = (r.explainerId === myClientId);
         if (iAmCurrentExplainer) {
-          const roundKey = String(r.startedAt || "") + "|" + String(r.teamId || "");
+          const roundKey = r.startedAt + r.teamId;
           if (roundKey !== lastRoundKey) {
             lastRoundKey = roundKey;
             currentWord = null;
-            currentCategory = "";
-          }
-          if (!currentWord) {
             requestNextWord();
           } else {
             updatePresenterUI();
@@ -619,221 +724,162 @@ document.getElementById("hostControlsAsPlayer").classList.remove("hidden");
         } else {
           presenterSection.classList.add("hidden");
         }
+
       } else {
-        roundStatusPlayerEl.textContent =
-          "כרגע אין סיבוב פעיל. חכו שמנהל המשחק יתחיל סיבוב חדש.";
-        playerBigTimerEl.textContent = "טיימר: --:--";
+        // אין סבב פעיל
+        roundStatusPlayerEl.textContent = "ממתין לתחילת סבב...";
+        playerBigTimerEl.textContent = "--:--";
         iAmCurrentExplainer = false;
         presenterSection.classList.add("hidden");
+        floatStopBtn.disabled = true; // <--- שינוי: כיבוי כפתורים למנהל
+        floatStartBtn.disabled = false;
       }
     }
 
+    function resetPlayerState() {
+        playerGameCard.classList.add("hidden");
+        joinSection.classList.remove("hidden");
+        adminFab.classList.add("hidden"); // <--- שינוי: הסתרת פאנל ניהול
+        localStorage.removeItem(LOCAL_PLAYER_KEY);
+        myClientId = null; currentGameCode = null; iAmHost = false;
+    }
+
+
+    // --- אירועים (Events) ---
+
     joinBtn.addEventListener("click", () => {
-      const rawCode = (gameCodeInput.value || "").trim().toUpperCase();
-      const playerName = (playerNameInput.value || "").trim();
+      const code = gameCodeInput.value.toUpperCase().trim();
+      const name = playerNameInput.value.trim();
+      const teamId = teamSelect.value;
 
-      if (!rawCode || rawCode.length < 3) {
-        joinStatus.textContent = "נא להקליד קוד משחק תקין.";
-        return;
-      }
-      if (!playerName || playerName.length < 2) {
-        joinStatus.textContent = "נא לבחור שם לשחקן (לפחות 2 תווים).";
+      if (code.length < 3 || name.length < 2) {
+        joinStatus.textContent = "נא למלא קוד תקין ושם (לפחות 2 תווים)";
         return;
       }
 
-      const gameCode = rawCode;
-
-      let existingJoin = null;
-      try {
-        const raw = localStorage.getItem(LOCAL_PLAYER_KEY);
-        existingJoin = raw ? JSON.parse(raw) : null;
-      } catch (e) {
-        existingJoin = null;
-      }
-
-      if (
-        existingJoin &&
-        existingJoin.gameCode === gameCode &&
-        existingJoin.name &&
-        existingJoin.name !== playerName
-      ) {
-        joinStatus.textContent =
-          `בדפדפן הזה כבר הצטרפת למשחק ${gameCode} בשם "${existingJoin.name}". ` +
-          "אי אפשר להצטרף שוב לאותו משחק עם שם אחר מאותו מכשיר.";
-        return;
-      }
-
-      const payload = {
-        gameCode,
-        name: playerName,
-        teamId: teamSelect.value || null,
-      };
-
-      joinStatus.textContent = "מצטרף למשחק...";
+      joinStatus.textContent = "מתחבר...";
       joinBtn.disabled = true;
 
-      socket.emit("joinGame", payload, (resp) => {
+      socket.emit("joinGame", { gameCode: code, name, teamId }, (resp) => {
         joinBtn.disabled = false;
-
         if (!resp || !resp.ok) {
-          joinStatus.textContent =
-            (resp && resp.error) ||
-            "לא הצלחנו לצרף אותך למשחק. בדוק את הקוד ונסה שוב.";
+          joinStatus.textContent = resp?.error || "תקלה בהתחברות";
           return;
         }
 
-        try {
-          localStorage.setItem(
-            LOCAL_PLAYER_KEY,
-            JSON.stringify({
-              gameCode,
-              name: playerName,
-              joinedAt: Date.now(),
-            })
-          );
-        } catch (e) {}
-
-        joinStatus.textContent = "הצטרפת בהצלחה למשחק!";
+        // חיבור מוצלח
         myClientId = resp.clientId;
-        currentGameCode = gameCode;
-        myTeamId = resp.teamId || null;
+        iAmHost = resp.isHost || false; // <--- שינוי: קבלת סטטוס מנהל מהשרת
+        localStorage.setItem(LOCAL_PLAYER_KEY, JSON.stringify({ gameCode: code, name }));
 
         joinSection.classList.add("hidden");
         playerGameCard.classList.remove("hidden");
 
-        if (resp.game) {
-          renderGameStateForPlayer(resp.game);
-        } else {
-          socket.emit("getGameState", { gameCode }, (resp2) => {
-            if (resp2 && resp2.ok && resp2.game) {
-              renderGameStateForPlayer(resp2.game);
-            }
-          });
-        }
+        if (resp.game) renderGameStateForPlayer(resp.game);
       });
     });
 
-    if (btnCorrect) {
-      btnCorrect.addEventListener("click", () => {
-        if (!currentGameCode || !iAmCurrentExplainer) return;
-        socket.emit(
-          "changeRoundScore",
-          { gameCode: currentGameCode, delta: +1 },
-          () => {
-            requestNextWord();
-          }
-        );
-      });
-    }
 
-    if (btnSkip) {
-      btnSkip.addEventListener("click", () => {
-        if (!currentGameCode || !iAmCurrentExplainer) return;
-        socket.emit(
-          "changeRoundScore",
-          { gameCode: currentGameCode, delta: -1 },
-          () => {
-            requestNextWord();
-          }
-        );
-      });
-    }
-
-    if (exitGameBtn) {
-      exitGameBtn.addEventListener("click", () => {
-        const ok = confirm("לצאת מהמשחק? תוכל להצטרף שוב אחר כך עם אותו קוד.");
-        if (!ok) return;
-        window.location.href = "home.html";
-      });
-    }
-
-    socket.on("gameUpdated", (game) => {
-      if (!game || (currentGameCode && game.code && game.code !== currentGameCode)) {
-        return;
-      }
-      renderGameStateForPlayer(game);
+    btnCorrect.addEventListener("click", () => {
+      if (!iAmCurrentExplainer) return;
+      socket.emit("changeRoundScore", { gameCode: currentGameCode, delta: 1 }, requestNextWord);
     });
 
-    socket.on("gameState", (game) => {
-      if (!game || (currentGameCode && game.code && game.code !== currentGameCode)) {
-        return;
-      }
-      renderGameStateForPlayer(game);
+    btnSkip.addEventListener("click", () => {
+       if (!iAmCurrentExplainer) return;
+      socket.emit("changeRoundScore", { gameCode: currentGameCode, delta: -1 }, requestNextWord);
     });
 
-    socket.on("gameEnded", (data) => {
-      if (data && data.code && currentGameCode && data.code !== currentGameCode) return;
-
-      roundStatusPlayerEl.textContent = "המשחק הסתיים. תודה ששיחקתם! 🎉";
-      playerBigTimerEl.textContent = "טיימר: --:--";
-      iAmCurrentExplainer = false;
-      presenterSection.classList.add("hidden");
+    exitGameBtn.addEventListener("click", () => {
+      if(confirm("לצאת מהמשחק?")) resetPlayerState();
     });
 
+    // --- סוקטים ---
+
+    socket.on("gameUpdated", renderGameStateForPlayer);
+
+    // <--- שינוי: טיפול באירוע סיום זמן עם המודל החדש
     socket.on("roundTimeUp", (data) => {
       if (!data) return;
-      const score = typeof data.roundScore === "number" ? data.roundScore : 0;
+      const score = data.roundScore || 0;
+      // <--- שינוי: שימוש בשם הקבוצה המלא שהגיע מהשרת
+      const teamName = data.teamName || "הקבוצה";
 
-      let msgLine;
-      if (score <= 5) {
-        msgLine = "אתם צוות חלש, כדאי שתתאמנו יותר";
-      } else if (score <= 10) {
-        msgLine = "אתם צוות נחמד, בטוח שאתם יכולים יותר";
-      } else {
-        msgLine = "אתם צוות על, השארתם להם אבק...";
-      }
+      let title = "⏰ הזמן נגמר!";
+      let body = `<div style="font-size:1.2rem; font-weight:bold; margin-bottom:10px;">${teamName}</div>`;
 
-const tName = data.teamName || "הקבוצה";
+      if (score <= 4) body += "לא נורא, אתם עדיין מתחממים... 🧊";
+      else if (score <= 9) body += "סבב סבבה לגמרי! 👍";
+      else body += "וואו! שיחקתם אותה בענק! 🔥";
 
-alert(
-  `⏱ נגמר הזמן!\n\n${tName} סיימה את הסיבוב!\n\n${msgLine}\n\n(ניקוד בסיבוב: ${score})`
-);
-      playerBigTimerEl.textContent = "טיימר: --:--";
+      body += `<div style="margin-top:16px; font-size:1.4rem; font-weight:800; color:#F84779;">ניקוד בסבב: ${score}</div>`;
+
+      showModal(title, body);
+
+      // איפוס מצב מקומי
       iAmCurrentExplainer = false;
       presenterSection.classList.add("hidden");
+      playerBigTimerEl.textContent = "00:00";
     });
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && currentGameCode) {
-        socket.emit("getGameState", { gameCode: currentGameCode }, (resp) => {
-          if (resp && resp.ok && resp.game) {
-            renderGameStateForPlayer(resp.game);
-          }
-        });
-      }
+    socket.on("gameEnded", () => {
+        showModal("המשחק הסתיים!", "תודה ששיחקתם במילמניה! 🎉");
+        resetPlayerState();
     });
 
-    (function handleAutoJoinFromUrl() {
-      const code = (urlParams.get("code") || "").toUpperCase();
-      const name = urlParams.get("name") || "";
-      const teamId = urlParams.get("teamId") || "";
-      const autoJoin = urlParams.get("autoJoin") === "1";
 
-      if (code) {
-        gameCodeInput.value = code;
-      }
-      if (name) {
-        playerNameInput.value = name;
-      }
-      if (teamId) {
-        teamChoiceRow.style.display = "block";
-        teamSelect.innerHTML = "";
-        const opt = document.createElement("option")
-opt.value = teamId;
-opt.textContent = teamId;
-        teamSelect.appendChild(opt);
-        teamSelect.value = teamId;
-        inviteInfo.style.display = "block";
-        inviteInfo.textContent =
-          `קיבלת הזמנה להצטרף לקבוצה "${teamId}".`;
-      }
+    // --- אתחול ---
 
-      if (autoJoin && code && name) {
-        setTimeout(() => {
-          joinBtn.click();
-        }, 200);
+    // שחזור חיבור אוטומטי
+    const saved = JSON.parse(localStorage.getItem(LOCAL_PLAYER_KEY));
+    if(saved && saved.gameCode && saved.name) {
+        gameCodeInput.value = saved.gameCode;
+        playerNameInput.value = saved.name;
+        // ניסיון חיבור מהיר (אפשר לשפר)
+        joinBtn.click();
+    }
+
+
+    // <--- שינוי: טיפול משופר בכניסה מקישור (AutoJoin) וטעינת קבוצות
+    (function handleUrlAndTeams() {
+      const params = new URLSearchParams(window.location.search);
+      const urlCode = params.get("code");
+      const urlTeamId = params.get("teamId");
+      const urlTeamName = params.get("teamName"); // <--- שינוי: קריאת שם הקבוצה
+
+      if(urlCode) {
+          gameCodeInput.value = urlCode;
+          // טעינת רשימת קבוצות
+          socket.emit("getGameState", { gameCode: urlCode }, (resp) => {
+              if(resp && resp.ok && resp.game && resp.game.teams) {
+                  teamChoiceRow.style.display = "block";
+                  teamSelect.innerHTML = "";
+                  Object.entries(resp.game.teams).forEach(([tid, team]) => {
+                      // <--- שינוי: שימוש בשם האמיתי
+                      const tName = team.name || tid;
+                      const opt = document.createElement("option");
+                      opt.value = tid;
+                      opt.textContent = tName;
+                      teamSelect.appendChild(opt);
+
+                      // <--- שינוי: בחירה אוטומטית לפי ID או לפי שם
+                      if(urlTeamId === tid || (urlTeamName && urlTeamName === tName)) {
+                          teamSelect.value = tid;
+                          inviteInfo.style.display = "block";
+                          inviteInfo.textContent = `הוזמנת לקבוצת "${tName}"`;
+                      }
+                  });
+
+                  if(params.get("autoJoin") && playerNameInput.value) {
+                       joinBtn.click();
+                  }
+              } else {
+                  teamSelect.innerHTML = '<option>לא ניתן לטעון קבוצות</option>';
+              }
+          });
       }
     })();
+
   </script>
 </body>
 </html>
