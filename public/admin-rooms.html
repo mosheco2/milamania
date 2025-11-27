@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <title>כהנ'ס - ניהול מתקדם</title>
+  <title>דשבורד ניהול מילמניה</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -11,13 +11,13 @@
     body { margin: 0; padding: 0; background: #020617; color: #e5e7eb; }
     .app { max-width: 1000px; width: 100%; padding: 20px; margin: 0 auto; }
     
-    /* Cards */
+    .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    
     .card {
       background: #0f172a; border-radius: 16px; padding: 20px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #1e293b; margin-bottom: 20px;
     }
     
-    /* Navigation Tabs */
     .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
     .nav-btn {
         background: #1e293b; color: #94a3b8; border: none; padding: 10px 20px;
@@ -25,31 +25,30 @@
     }
     .nav-btn.active { background: #38bdf8; color: #020617; }
 
-    /* Stats */
     .stats-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    /* קוביות לחיצות */
     .stat-box {
-      flex: 1; min-width: 200px; background: #1e293b; border-radius: 16px; padding: 16px;
-      text-align: center; border: 1px solid #334155;
+      flex: 1; min-width: 150px; background: #1e293b; border-radius: 16px; padding: 16px;
+      text-align: center; border: 1px solid #334155; cursor: pointer; transition: all 0.2s;
     }
+    .stat-box:hover { transform: translateY(-3px); border-color: #38bdf8; }
     .stat-number { font-size: 2.5rem; font-weight: 800; color: #38bdf8; }
     .stat-label { font-size: 0.9rem; color: #94a3b8; }
 
-    /* Active Rooms List */
     .room-item {
         display: flex; justify-content: space-between; align-items: center;
         background: #1e293b; padding: 12px; border-radius: 12px; margin-bottom: 8px; border: 1px solid #334155;
     }
     .room-timer { color: #4ade80; font-weight: bold; font-family: monospace; }
     .btn-close { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+    .btn-reset { background: #ef4444; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight:bold; }
 
-    /* Reports Form */
     .form-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
-    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; flex:1; }
     label { font-size: 0.85rem; color: #94a3b8; }
     input, select { background: #020617; border: 1px solid #334155; color: white; padding: 8px; border-radius: 6px; }
     .btn-submit { background: #38bdf8; color: #020617; border: none; padding: 9px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
 
-    /* Table */
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { text-align: right; padding: 10px; border-bottom: 1px solid #334155; font-size: 0.9rem; }
     th { color: #94a3b8; }
@@ -59,7 +58,10 @@
 </head>
 <body>
   <div class="app">
-    <h1>📊 דשבורד ניהול</h1>
+    <div class="header-row">
+        <h1>📊 דשבורד ניהול מילמניה</h1>
+        <button class="btn-reset" onclick="resetAllData()">⚠️ מחיקת היסטוריה</button>
+    </div>
     
     <div class="nav-tabs">
         <button class="nav-btn active" onclick="switchTab('dashboard')">דשבורד חי</button>
@@ -68,13 +70,17 @@
 
     <div id="tab-dashboard">
         <div class="stats-row">
-            <div class="stat-box">
+            <div class="stat-box" onclick="jumpToReport('ips')">
                 <div class="stat-number" id="uniqueIps">0</div>
-                <div class="stat-label">סה"כ יוניקים (IP)</div>
+                <div class="stat-label">סה"כ יוניקים (IP) 👆</div>
             </div>
-            <div class="stat-box">
+            <div class="stat-box" onclick="jumpToReport('games')">
                 <div class="stat-number" id="gamesMonth">0</div>
-                <div class="stat-label">משחקים החודש</div>
+                <div class="stat-label">משחקים החודש 👆</div>
+            </div>
+            <div class="stat-box" style="cursor: default; border-color: #4ade80;">
+                <div class="stat-number" id="openGamesNow" style="color: #4ade80;">0</div>
+                <div class="stat-label">משחקים פתוחים כרגע</div>
             </div>
         </div>
 
@@ -114,7 +120,7 @@
 
         <div class="card">
             <h3>תוצאות</h3>
-            <div id="reportResults">בחר פרמטרים ולחץ על הצג...</div>
+            <div id="reportResults" style="overflow-x:auto;">בחר פרמטרים ולחץ על הצג...</div>
         </div>
     </div>
   </div>
@@ -133,7 +139,30 @@
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         
         document.getElementById('tab-'+tabName).classList.remove('hidden');
-        event.target.classList.add('active');
+        if(tabName === 'dashboard') document.querySelectorAll('.nav-btn')[0].classList.add('active');
+        else document.querySelectorAll('.nav-btn')[1].classList.add('active');
+    }
+
+    function jumpToReport(type) {
+        switchTab('reports');
+        document.getElementById('reportType').value = type;
+        fetchReport();
+    }
+
+    async function resetAllData() {
+        const pass = prompt("פעולה זו תמחק את כל היסטוריית המשחקים והשחקנים!\nכדי לאשר, הקלד: DELETE");
+        if(pass === "DELETE") {
+            try {
+                const res = await fetch(`/admin/reset?code=${ADMIN_CODE}`, { method: 'POST' });
+                const json = await res.json();
+                if(json.ok) {
+                    alert("הנתונים אופסו בהצלחה.");
+                    location.reload();
+                } else {
+                    alert("שגיאה באיפוס.");
+                }
+            } catch(e) { alert("תקלה ברשת"); }
+        }
     }
 
     // --- Dashboard Logic ---
@@ -146,6 +175,7 @@
             document.getElementById('uniqueIps').innerText = data.dbStats.totalUniqueIps || 0;
             const totalGames = data.dbStats.gamesByDay.reduce((sum, d) => sum + parseInt(d.count), 0);
             document.getElementById('gamesMonth').innerText = totalGames;
+            document.getElementById('openGamesNow').innerText = data.activeGames.length;
 
             // Chart
             renderChart(data.dbStats.gamesByDay);
@@ -238,14 +268,15 @@
             }
 
             let html = '<table><thead><tr>';
-            if(type === 'ips') html += '<th>כתובת IP</th><th>משחקים</th><th>נראה לאחרונה</th>';
+            if(type === 'ips') html += '<th>כתובת IP</th><th>שם אחרון</th><th>משחקים</th><th>נראה לאחרונה</th>';
             if(type === 'games') html += '<th>קוד</th><th>מנהל</th><th>תאריך פתיחה</th>';
             html += '</tr></thead><tbody>';
 
             data.forEach(row => {
                 html += '<tr>';
                 if(type === 'ips') {
-                    html += `<td>${row.ip_address}</td><td>${row.games_count}</td><td>${new Date(row.last_seen).toLocaleString()}</td>`;
+                    // הוספת שם השחקן
+                    html += `<td>${row.ip_address}</td><td>${row.last_name || '-'}</td><td>${row.games_count}</td><td>${new Date(row.last_seen).toLocaleString()}</td>`;
                 }
                 if(type === 'games') {
                     html += `<td>${row.code}</td><td>${row.host_name}</td><td>${new Date(row.created_at).toLocaleString()}</td>`;
