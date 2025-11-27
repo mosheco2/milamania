@@ -58,27 +58,20 @@
 
     #playerBigTimer { font-size: 4rem; font-weight: 900; color: #F84779; text-align: center; line-height: 1; margin: 16px 0; font-variant-numeric: tabular-nums; }
 
+    /* פאנל ניהול צף למנהל-שחקן */
     #adminFab { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #2B1E4A; color: #FFD76F; padding: 12px 24px; border-radius: 50px; font-weight: 700; box-shadow: 0 10px 25px rgba(43, 30, 74, 0.3); cursor: pointer; z-index: 100; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
     #adminFab:active { transform: translateX(-50%) scale(0.95); }
     #adminFloatingPanel { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 500px; background: #FFFFFF; border-radius: 24px; padding: 20px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2); z-index: 99; border: 2px solid #E2DCEF; }
     .admin-panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
     .close-panel-btn { background:none; border:none; font-size:1.8rem; color:#6B618F; cursor:pointer; padding:4px; line-height:1; }
 
+    /* מודל פופאפ */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(43, 30, 74, 0.7); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
     .modal-overlay.active { opacity: 1; visibility: visible; }
     .modal-box { background: #fff; width: 85%; max-width: 420px; border-radius: 28px; padding: 32px 24px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.3); transform: translateY(40px); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .modal-overlay.active .modal-box { transform: translateY(0); }
     .modal-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 16px; color: #2B1E4A; }
     .modal-content { font-size: 1.1rem; color: #6B618F; margin-bottom: 28px; line-height: 1.6; }
-
-    /* כפתור תמיכה צף */
-    #support-wa-btn {
-        position: fixed; bottom: 24px; right: 24px; z-index: 101;
-        background: #25D366; color: white; border-radius: 50px;
-        padding: 12px 20px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        display: flex; align-items: center; gap: 8px; cursor: pointer; text-decoration: none;
-    }
-    #support-wa-btn:hover { background: #1ebc57; transform: translateY(-2px); }
 
     @media (min-width: 640px) { .row > div { flex: 1 1 45%; } .btn { width: auto; } }
   </style>
@@ -88,7 +81,7 @@
     <div class="page-header">
         <div style="display:flex; align-items:center; gap:12px;">
              <img id="playerLogo" class="logo-small hidden" alt="לוגו" />
-             <div><div class="chip" style="border:none; background: rgba(248, 71, 121, 0.1);">מסך שחקן 🎮</div></div>
+             <div><div class="chip">מסך שחקן 🎮</div></div>
         </div>
         <div style="display:flex; gap:8px;">
           <button class="btn btn-ghost" onclick="location.href='instructions.html'">❔ הוראות</button>
@@ -115,7 +108,7 @@
       <div style="background:#fff; border-radius:24px; padding:24px; box-shadow: 0 10px 30px rgba(0,0,0,0.05);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
             <h1 style="margin:0;">חדר המשחק</h1>
-            <button id="exitGameBtn" class="btn btn-danger" type="button">יציאה</button>
+            <button id="exitGameBtn" class="btn btn-danger" type="button">יציאה מהמשחק</button>
           </div>
           <div class="data-block" style="background:#F8F7FF; color:#433362;" id="myGameInfo"></div>
           <div class="row">
@@ -169,16 +162,13 @@
       </div>
   </div>
 
-  <div id="support-wa-btn" onclick="openSupportWhatsapp()">
-      <span>💬 עזרה ותמיכה</span>
-  </div>
-
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
     const LOCAL_PLAYER_KEY = "millmania-player-join";
 
+    // אלמנטים
     const gameCodeInput = document.getElementById("gameCodeInput"), playerNameInput = document.getElementById("playerNameInput");
     const joinBtn = document.getElementById("joinBtn"), joinStatus = document.getElementById("joinStatus"), joinSection = document.getElementById("joinSection");
     const playerGameCard = document.getElementById("playerGameCard"), inviteInfo = document.getElementById("inviteInfo");
@@ -206,31 +196,7 @@
     function showModal(title, content) { modalTitle.textContent = title; modalContent.innerHTML = content; customModal.classList.add("active"); }
     modalCloseBtn.addEventListener("click", () => { customModal.classList.remove("active"); });
 
-    function openSupportWhatsapp() {
-        let text = "";
-        if (currentGameCode && lastGameState) {
-            let myName = playerNameInput.value || "שחקן";
-            text = `שלום, אני צריך עזרה במשחק מילמניה.\nקוד חדר: ${currentGameCode}\nשם מנהל: ${lastGameState.hostName}\nשם משתמש: ${myName}`;
-        } else {
-            text = "שלום, אני פונה בנושא שאלה/תמיכה במילמניה.";
-        }
-        window.open(`https://wa.me/972504000024?text=${encodeURIComponent(text)}`, '_blank');
-    }
-
-    viewAllPlayersBtn.addEventListener("click", () => {
-        if(!lastGameState || !lastGameState.teams) return;
-        let html = `<div style="text-align:right;">`;
-        Object.values(lastGameState.teams).forEach(t => {
-            const pNames = t.players.map(cid => lastGameState.playersByClientId[cid]?.name).filter(Boolean).join(", ");
-            html += `<div style="margin-bottom:12px;">
-                        <div style="font-weight:800; color:#2B1E4A; margin-bottom:4px;">${t.name} (${t.score})</div>
-                        <div style="background:#F8F7FF; padding:8px; border-radius:8px; color:#6B618F; font-size:0.9rem;">${pNames || "אין שחקנים"}</div>
-                     </div>`;
-        });
-        html += `</div>`;
-        showModal("רשימת קבוצות ושחקנים", html);
-    });
-
+    // לוגיקת פאנל ניהול צף
     adminFab.addEventListener("click", () => { adminFloatingPanel.classList.remove("hidden"); adminFab.classList.add("hidden"); populateFloatTeamSelect(); });
     closeAdminPanelBtn.addEventListener("click", () => { adminFloatingPanel.classList.add("hidden"); adminFab.classList.remove("hidden"); });
 
@@ -349,7 +315,34 @@
 
     btnCorrect.addEventListener("click", () => { if (iAmCurrentExplainer) socket.emit("changeRoundScore", { gameCode: currentGameCode, delta: 1 }, requestNextWord); });
     btnSkip.addEventListener("click", () => { if (iAmCurrentExplainer) socket.emit("changeRoundScore", { gameCode: currentGameCode, delta: -1 }, requestNextWord); });
-    exitGameBtn.addEventListener("click", () => { if(confirm("לצאת מהמשחק?")) resetPlayerState(); });
+    
+    // יציאה מהמשחק
+    exitGameBtn.addEventListener("click", () => { 
+        if(confirm("האם אתה בטוח שברצונך לצאת?")) {
+            localStorage.removeItem(LOCAL_PLAYER_KEY);
+            // ננסה לנתק מהשרת אבל גם נצא מיד
+            if(currentGameCode) {
+                 // אופציונלי: לשלוח הודעת עזיבה לשרת אם רוצים
+            }
+            window.location.href = 'home.html';
+        }
+    });
+
+    // הצגת רשימת שחקנים
+    viewAllPlayersBtn.addEventListener("click", () => {
+        if(!lastGameState || !lastGameState.teams) return;
+        let html = `<div style="text-align:right;">`;
+        Object.values(lastGameState.teams).forEach(t => {
+            const pNames = t.players.map(cid => lastGameState.playersByClientId[cid]?.name).filter(Boolean).join(", ");
+            html += `<div style="margin-bottom:12px;">
+                        <div style="font-weight:800; color:#2B1E4A; margin-bottom:4px;">${t.name} (${t.score})</div>
+                        <div style="background:#F8F7FF; padding:8px; border-radius:8px; color:#6B618F; font-size:0.9rem;">${pNames || "אין שחקנים"}</div>
+                     </div>`;
+        });
+        html += `</div>`;
+        showModal("רשימת קבוצות ושחקנים", html);
+    });
+
 
     socket.on("gameUpdated", renderGameStateForPlayer);
     socket.on("roundTimeUp", (data) => {
@@ -357,7 +350,9 @@
       const score = data.roundScore || 0;
       const teamName = data.teamName || "הקבוצה";
       let title = "⏰ הזמן נגמר!";
-      let body = `<div style="font-size:1.3rem; font-weight:800; margin-bottom:12px; color:#F84779;">${teamName}</div>`;
+      // <--- כאן הוספתי את התמונה m3.png לפופאפ של השחקן
+      let body = `<div style="text-align:center; margin-bottom:10px;"><img src="m3.png" style="height:80px; width:auto;"></div>`;
+      body += `<div style="font-size:1.3rem; font-weight:800; margin-bottom:12px; color:#F84779;">${teamName}</div>`;
       if (score <= 4) body += "לא נורא, אתם עדיין מתחממים... 🧊";
       else if (score <= 9) body += "סבב סבבה לגמרי! 👍";
       else body += "וואו! שיחקתם אותה בענק! 🔥";
