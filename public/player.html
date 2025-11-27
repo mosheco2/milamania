@@ -60,7 +60,7 @@
 
     #adminFab { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #2B1E4A; color: #FFD76F; padding: 12px 24px; border-radius: 50px; font-weight: 700; box-shadow: 0 10px 25px rgba(43, 30, 74, 0.3); cursor: pointer; z-index: 100; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
     #adminFab:active { transform: translateX(-50%) scale(0.95); }
-    #adminFloatingPanel { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 500px; background: #FFFFFF; border-radius: 24px; padding: 24px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2); z-index: 99; border: 2px solid #E2DCEF; }
+    #adminFloatingPanel { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 500px; background: #FFFFFF; border-radius: 24px; padding: 20px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2); z-index: 99; border: 2px solid #E2DCEF; }
     .admin-panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
     .close-panel-btn { background:none; border:none; font-size:1.8rem; color:#6B618F; cursor:pointer; padding:4px; line-height:1; }
 
@@ -178,7 +178,6 @@
     const adminFab = document.getElementById("adminFab"), adminFloatingPanel = document.getElementById("adminFloatingPanel"), closeAdminPanelBtn = document.getElementById("closeAdminPanel");
     const floatTeamSelect = document.getElementById("floatTeamSelect"), floatExplainerSelect = document.getElementById("floatExplainerSelect"), floatSecondsInput = document.getElementById("floatSeconds"), floatStartBtn = document.getElementById("floatStartBtn"), floatStopBtn = document.getElementById("floatStopBtn");
     const customModal = document.getElementById("customModal"), modalTitle = document.getElementById("modalTitle"), modalContent = document.getElementById("modalContent"), modalCloseBtn = document.getElementById("modalCloseBtn");
-    // <--- תוספת: רפרנס לכפתור הצגת שחקנים
     const viewAllPlayersBtn = document.getElementById("viewAllPlayersBtn");
 
     let myClientId = null, currentGameCode = null, myTeamId = null, iAmHost = false, lastGameState = null;
@@ -194,7 +193,6 @@
     function showModal(title, content) { modalTitle.textContent = title; modalContent.innerHTML = content; customModal.classList.add("active"); }
     modalCloseBtn.addEventListener("click", () => { customModal.classList.remove("active"); });
 
-    // <--- תוספת: לוגיקת כפתור הצגת כל השחקנים
     viewAllPlayersBtn.addEventListener("click", () => {
         if(!lastGameState || !lastGameState.teams) return;
         let html = `<div style="text-align:right;">`;
@@ -212,7 +210,6 @@
     adminFab.addEventListener("click", () => { adminFloatingPanel.classList.remove("hidden"); adminFab.classList.add("hidden"); populateFloatTeamSelect(); });
     closeAdminPanelBtn.addEventListener("click", () => { adminFloatingPanel.classList.add("hidden"); adminFab.classList.remove("hidden"); });
 
-    // <--- תוספת: רענון רשימת מסבירים
     function refreshFloatExplainerOptions() {
         const teamId = floatTeamSelect.value;
         floatExplainerSelect.innerHTML = '<option value="">אוטומטי</option>';
@@ -331,8 +328,17 @@
     exitGameBtn.addEventListener("click", () => { if(confirm("לצאת מהמשחק?")) resetPlayerState(); });
 
     socket.on("gameUpdated", renderGameStateForPlayer);
+    
+    // <--- תיקון תקלה 1: משיכת ניקוד בכוח בסיום סיבוב
     socket.on("roundTimeUp", (data) => {
       if (!data) return;
+      
+      if(currentGameCode) {
+           socket.emit("getGameState", { gameCode: currentGameCode }, (resp) => {
+               if(resp.ok && resp.game) renderGameStateForPlayer(resp.game);
+           });
+      }
+
       const score = data.roundScore || 0;
       const teamName = data.teamName || "הקבוצה";
       let title = "⏰ הזמן נגמר!";
@@ -344,6 +350,7 @@
       showModal(title, body);
       iAmCurrentExplainer = false; presenterSection.classList.add("hidden"); playerBigTimerEl.textContent = "00:00";
     });
+    
     socket.on("gameEnded", () => { showModal("המשחק הסתיים!", "תודה ששיחקתם במילמניה! 🎉"); resetPlayerState(); });
 
     fetch("/api/banners").then(r=>r.json()).then(d => {
