@@ -1,4 +1,4 @@
-// server.js - מילמניה: הגרסה המלאה והמתוקנת (סופי)
+// server.js - גרסה כוללת דוחות ודיבאג מיילים
 
 const express = require("express");
 const http = require("http");
@@ -28,7 +28,12 @@ const transporter = nodemailer.createTransport({
 });
 
 async function sendNewGameEmail(gameInfo) {
-  if (!process.env.EMAIL_USER) return; 
+  console.log("📧 Starting email process..."); // לוג לבדיקה
+  
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.log("⚠️ Email Env Vars are MISSING. Check Render settings.");
+      return; 
+  }
 
   try {
     await transporter.sendMail({
@@ -40,13 +45,13 @@ async function sendNewGameEmail(gameInfo) {
           <h2>משחק חדש יצא לדרך!</h2>
           <p><strong>קוד משחק:</strong> ${gameInfo.code}</p>
           <p><strong>מנהל:</strong> ${gameInfo.hostName}</p>
-          <p><strong>זמן:</strong> ${new Date().toLocaleString("he-IL")}</p>
+          <p><strong>זמן:</strong> ${new Date().toLocaleString("he-IL", {timeZone: "Asia/Jerusalem"})}</p>
         </div>
       `,
     });
-    console.log(`📧 Email sent for game ${gameInfo.code}`);
+    console.log(`✅ Email sent successfully for game ${gameInfo.code}`);
   } catch (error) {
-    console.error("❌ Error sending email:", error.message);
+    console.error("❌ Email sending FAILED:", error.message);
   }
 }
 
@@ -67,7 +72,7 @@ let dbReady = false;
 async function initDb() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    console.log("⚠️ No DATABASE_URL provided. Running in memory mode.");
+    console.log("⚠️ No DATABASE_URL. Reports will not work.");
     return;
   }
 
@@ -77,46 +82,16 @@ async function initDb() {
       ssl: process.env.PGSSL === "false" ? false : { rejectUnauthorized: false },
     });
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS games (
-        code TEXT PRIMARY KEY,
-        host_name TEXT NOT NULL,
-        target_score INTEGER,
-        default_round_seconds INTEGER,
-        categories TEXT[],
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS game_teams (
-        id SERIAL PRIMARY KEY,
-        game_code TEXT,
-        team_id TEXT,
-        team_name TEXT,
-        score INTEGER DEFAULT 0
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS game_players (
-        id SERIAL PRIMARY KEY,
-        game_code TEXT,
-        client_id TEXT,
-        name TEXT,
-        team_id TEXT,
-        ip_address TEXT
-      );
-    `);
+    await pool.query(`CREATE TABLE IF NOT EXISTS games (code TEXT PRIMARY KEY, host_name TEXT, target_score INTEGER, default_round_seconds INTEGER, categories TEXT[], created_at TIMESTAMPTZ DEFAULT NOW());`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS game_teams (id SERIAL PRIMARY KEY, game_code TEXT, team_id TEXT, team_name TEXT, score INTEGER DEFAULT 0);`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS game_players (id SERIAL PRIMARY KEY, game_code TEXT, client_id TEXT, name TEXT, team_id TEXT, ip_address TEXT);`);
     
-    try {
-        await pool.query(`ALTER TABLE game_players ADD COLUMN IF NOT EXISTS ip_address TEXT;`);
-    } catch (e) {}
+    try { await pool.query(`ALTER TABLE game_players ADD COLUMN IF NOT EXISTS ip_address TEXT;`); } catch (e) {}
 
     dbReady = true;
     console.log("✅ Postgres ready.");
   } catch (err) {
-    console.error("❌ Failed to init Postgres:", err.message);
+    console.error("❌ DB Init Error:", err.message);
   }
 }
 
@@ -214,11 +189,9 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   game.lastActivity = new Date();
   game.updatedAt = new Date();
 
-  // DB update
   if (dbReady && pool && teamId && game.teams[teamId]) {
     try {
-      await pool.query(`UPDATE game_teams SET score = $1 WHERE game_code = $2 AND team_id = $3`, 
-      [game.teams[teamId].score, code, teamId]);
+      await pool.query(`UPDATE game_teams SET score = $1 WHERE game_code = $2 AND team_id = $3`, [game.teams[teamId].score, code, teamId]);
     } catch (err) {}
   }
 
@@ -235,12 +208,10 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
 }
 
 // ----------------------
-//   Socket.io Handlers
+//   Socket.io
 // ----------------------
 
 io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
-
   socket.on("createGame", async (data, callback) => {
     try {
       const { hostName, targetScore=40, defaultRoundSeconds=60, categories=[], teamNames={} } = data || {};
@@ -294,7 +265,7 @@ io.on("connection", (socket) => {
       const { gameCode, name, teamId } = data || {};
       const code = (gameCode || "").toUpperCase().trim();
       const game = games[code];
-      if (!game) return callback({ ok: false, error: "המשחק לא נמצא (אולי נסגר)." });
+      if (!game) return callback({ ok: false, error: "המשחק לא נמצא." });
 
       const playerName = (name || "").trim();
       if (!playerName) return callback({ ok: false, error: "שם חסר." });
@@ -340,7 +311,6 @@ io.on("connection", (socket) => {
       const code = (data?.gameCode || "").toUpperCase().trim();
       const game = games[code];
       if(!game) return callback({ok:false, error:"Not found"});
-      
       if(game.hostName) game.hostSocketId = socket.id;
       socket.join("game-" + code);
       callback({ ok: true, game: sanitizeGame(game) });
@@ -360,7 +330,6 @@ io.on("connection", (socket) => {
       const team = game.teams[data.teamId];
       if(!team) return callback({ok:false});
 
-      // בחירת מסביר
       let explainer = null;
       const pIds = team.players;
       if(data.explainerClientId) {
@@ -461,7 +430,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
       const pid = socket.id;
       Object.values(games).forEach(g => {
-          if(g.hostSocketId === pid) return; // לא מוחקים מנהל
+          if(g.hostSocketId === pid) return; 
           if(g.playersByClientId[pid]) {
               const p = g.playersByClientId[pid];
               delete g.playersByClientId[pid];
@@ -517,6 +486,52 @@ app.get("/admin/stats", async (req, res) => {
   }));
 
   res.json({ activeGames, dbStats });
+});
+
+// API חדש לדוחות
+app.get("/admin/reports", async (req, res) => {
+    const { code, type, from, to } = req.query;
+    if (code !== ADMIN_CODE) return res.status(403).json({ error: "Forbidden" });
+    if (!dbReady) return res.json({ error: "No DB connection" });
+
+    try {
+        let query = "";
+        let params = [];
+        
+        // תאריכים (ברירת מחדל: כל הזמן)
+        const fromDate = from || '2020-01-01';
+        const toDate = to || '2030-01-01';
+
+        if (type === 'ips') {
+            // דוח כתובות IP
+            query = `
+                SELECT ip_address, COUNT(*) as games_count, MAX(created_at) as last_seen 
+                FROM game_players 
+                WHERE created_at BETWEEN $1 AND $2 
+                GROUP BY ip_address 
+                ORDER BY last_seen DESC
+            `;
+            params = [fromDate, toDate];
+        } else if (type === 'games') {
+            // דוח היסטוריית משחקים
+            query = `
+                SELECT code, host_name, created_at 
+                FROM games 
+                WHERE created_at BETWEEN $1 AND $2 
+                ORDER BY created_at DESC
+            `;
+            params = [fromDate, toDate];
+        } else {
+            return res.json({ error: "Invalid type" });
+        }
+
+        const result = await pool.query(query, params);
+        res.json({ data: result.rows });
+
+    } catch (e) {
+        console.error("Report Error", e);
+        res.status(500).json({ error: "DB Error" });
+    }
 });
 
 app.post("/admin/game/:gameCode/close", (req, res) => {
