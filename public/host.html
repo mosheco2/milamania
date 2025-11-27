@@ -82,15 +82,6 @@
     .modal-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 16px; color: #2B1E4A; }
     .modal-content { font-size: 1.1rem; color: #6B618F; margin-bottom: 28px; line-height: 1.6; }
 
-    /* כפתור תמיכה צף */
-    #support-wa-btn {
-        position: fixed; bottom: 24px; right: 24px; z-index: 101;
-        background: #25D366; color: white; border-radius: 50px;
-        padding: 12px 20px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        display: flex; align-items: center; gap: 8px; cursor: pointer; text-decoration: none;
-    }
-    #support-wa-btn:hover { background: #1ebc57; transform: translateY(-2px); }
-
     @media (max-width: 768px) { .app { padding: 16px 12px 90px; } .card { padding: 20px 16px; } h1 { font-size: 1.6rem; } .btn { padding: 12px 16px; } #roundTimer { font-size: 1.8rem; } }
   </style>
 </head>
@@ -211,6 +202,7 @@
                     </div>
                     <button id="whatsappInviteBtn" class="btn btn-whatsapp">📲 הזמן בווצאפ</button>
                 </div>
+                <button onclick="socket.emit('endGame', {gameCode: currentGameCode})" class="btn btn-danger" style="width:100%; margin-top:10px;">🛑 סגור משחק לכולם</button>
             </div>
           </div>
 
@@ -353,10 +345,6 @@
       </div>
   </div>
 
-  <div id="support-wa-btn" onclick="openSupportWhatsapp()">
-      <span>💬 עזרה ותמיכה</span>
-  </div>
-
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -456,17 +444,6 @@
         customModal.classList.add("active");
     }
     modalCloseBtn.addEventListener("click", () => { customModal.classList.remove("active"); });
-
-    function openSupportWhatsapp() {
-        let text = "";
-        if (currentGameCode && lastGameState) {
-            let myName = hostPlayerNameInput.value || "מנהל";
-            text = `שלום, אני צריך עזרה במשחק מילמניה.\nקוד חדר: ${currentGameCode}\nשם מנהל: ${lastGameState.hostName}\nשם משתמש: ${myName}`;
-        } else {
-            text = "שלום, אני פונה בנושא שאלה/תמיכה במילמניה.";
-        }
-        window.open(`https://wa.me/972504000024?text=${encodeURIComponent(text)}`, '_blank');
-    }
 
     refreshPlayersBtn.addEventListener("click", () => {
         if(currentGameCode) {
@@ -713,17 +690,11 @@
             const wrap = document.createElement("div"); wrap.style.marginBottom="16px";
             wrap.innerHTML = `<div style="font-weight:700; margin-bottom:8px; font-size:1.1rem;">${t.name}:</div>`;
             const list = document.createElement("div");
-            
-            // <--- התיקון הקריטי לזמן אמת: איפוס הרשימה בכל רענון
-            list.innerHTML = "";
-            
             t.players.forEach(cid => {
                 const p = game.playersByClientId[cid];
-                if(p) {
-                    const pill = document.createElement("span"); pill.className = "player-pill";
-                    pill.innerHTML = `<span>${p.name}</span><button class="remove-player-btn" onclick="removePlayer('${cid}')">×</button>`;
-                    list.appendChild(pill);
-                }
+                const pill = document.createElement("span"); pill.className = "player-pill";
+                pill.innerHTML = `<span>${p.name}</span><button class="remove-player-btn" onclick="removePlayer('${cid}')">×</button>`;
+                list.appendChild(pill);
             });
             wrap.appendChild(list.children.length ? list : document.createTextNode("אין שחקנים"));
             playersByTeamEl.appendChild(wrap);
@@ -822,7 +793,9 @@
         const teamName = data.teamName || "הקבוצה";
 
         let title = "⏰ הזמן נגמר!";
-        let body = `<div style="font-size:1.4rem; font-weight:800; margin-bottom:16px; color:#F84779;">${teamName}</div>`;
+        // <--- כאן הוספתי את התמונה m3.png לפופאפ של המנהל
+        let body = `<div style="text-align:center; margin-bottom:10px;"><img src="m3.png" style="height:80px; width:auto;"></div>`;
+        body += `<div style="font-size:1.4rem; font-weight:800; margin-bottom:16px; color:#F84779;">${teamName}</div>`;
         if (score <= 4) body += "לא נורא, אתם עדיין מתחממים... 🧊";
         else if (score <= 9) body += "סבב סבבה לגמרי! 👍";
         else body += "וואו! שיחקתם אותה בענק! 🔥";
