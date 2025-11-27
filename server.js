@@ -1,4 +1,4 @@
-// server.js - גרסת Production: עמידות בפני ריסטרטים, שחזור טיימרים, דוחות ומיילים
+// server.js - גרסה יציבה עם הגנה מפני קריסות (cb check)
 
 const express = require("express");
 const http = require("http");
@@ -63,21 +63,18 @@ async function initDb() {
       ssl: process.env.PGSSL === "false" ? false : { rejectUnauthorized: false },
     });
 
-    // טבלאות היסטוריה
     await pool.query(`CREATE TABLE IF NOT EXISTS games (code TEXT PRIMARY KEY, host_name TEXT, target_score INTEGER, default_round_seconds INTEGER, categories TEXT[], created_at TIMESTAMPTZ DEFAULT NOW());`);
     await pool.query(`CREATE TABLE IF NOT EXISTS game_teams (id SERIAL PRIMARY KEY, game_code TEXT, team_id TEXT, team_name TEXT, score INTEGER DEFAULT 0);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS game_players (id SERIAL PRIMARY KEY, game_code TEXT, client_id TEXT, name TEXT, team_id TEXT, ip_address TEXT);`);
     
-    // טבלה לשמירת מצב חי (למקרה של ריסטרט)
+    // טבלה לשמירת מצב חי
     await pool.query(`CREATE TABLE IF NOT EXISTS active_states (game_code TEXT PRIMARY KEY, data TEXT, last_updated TIMESTAMPTZ DEFAULT NOW());`);
 
-    // שדרוג עמודות חסרות
     try { await pool.query(`ALTER TABLE game_players ADD COLUMN IF NOT EXISTS ip_address TEXT;`); } catch (e) {}
 
     dbReady = true;
     console.log("✅ Postgres ready.");
     
-    // שחזור משחקים מיד בעליית השרת
     await restoreActiveGames();
 
   } catch (err) {
@@ -94,7 +91,6 @@ initDb();
 const games = {};
 const roundTimers = {};
 
-// שמירת מצב המשחק ל-DB (גיבוי)
 async function saveGameState(game) {
     if (!dbReady || !game) return;
     try {
@@ -107,7 +103,6 @@ async function saveGameState(game) {
     } catch (e) { console.error("Save State Error:", e.message); }
 }
 
-// מחיקת מצב משחק (כשהמשחק מסתיים באמת)
 async function deleteGameState(gameCode) {
     if (!dbReady) return;
     try {
@@ -115,7 +110,6 @@ async function deleteGameState(gameCode) {
     } catch (e) { console.error("Delete State Error:", e.message); }
 }
 
-// שחזור משחקים בעליית שרת
 async function restoreActiveGames() {
     if (!dbReady) return;
     console.log("♻️ Restoring active games from DB...");
@@ -128,26 +122,8 @@ async function restoreActiveGames() {
                 games[game.code] = game;
                 console.log(`   > Restored game: ${game.code}`);
 
-                // שחזור טיימר אם היה באמצע סיבוב
                 if (game.currentRound && game.currentRound.active) {
                     const now = Date.now();
-                    const startTime = new Date(game.currentRound.startedAt).getTime();
-                    const elapsedSeconds = Math.floor((now - startTime) / 1000);
-                    const originalDuration = parseInt(game.currentRound.secondsLeft) + elapsedSeconds; // הערכה גסה למקור
-                    
-                    // חישוב זמן שנותר באמת
-                    // אנחנו מניחים ש-secondsLeft נשמר בערך המקורי או האחרון, אבל עדיף לחשב מול הזמן שהתחיל
-                    // כדי להיות מדויקים, נשתמש בזמן ההתחלה המקורי
-                    
-                    // תיקון: אם שמרנו את המצב כל הזמן, secondsLeft אולי כבר התעדכן.
-                    // הדרך הכי בטוחה: לחשב כמה זמן עבר מאז startedAt
-                    // נניח ש-game.currentRound.secondsLeft שמר את הזמן שנותר ברגע השמירה האחרונה?
-                    // לא, עדיף להסתמך על זמן שעון.
-                    
-                    // נניח שסך כל הסיבוב היה X שניות. אנחנו לא יודעים כמה בדיוק היה X אם הוא לא נשמר בנפרד,
-                    // אבל אנחנו יכולים להניח שהסיבוב עדיין פעיל.
-                    
-                    // בוא נסמוך על secondsLeft שנשמר, ונחסיר ממנו את הזמן שעבר מאז העדכון האחרון (last_updated ב-DB)
                     const lastUpdate = new Date(row.last_updated).getTime();
                     const secondsPassedSinceCrash = Math.floor((now - lastUpdate) / 1000);
                     
@@ -239,13 +215,11 @@ function startTimerInterval(code) {
         if (g.currentRound.secondsLeft <= 0) {
             finishRound(code, { reason: "timer" });
         } else {
-            // טיפ: לא שומרים ל-DB בכל שנייה (כבד מדי), אלא רק באירועים חשובים
             io.to("game-" + code).emit("roundTick", { gameCode: code, secondsLeft: g.currentRound.secondsLeft });
         }
     }, 1000);
 }
 
-// ניקיון אוטומטי (RAM + DB)
 setInterval(() => {
     const now = Date.now();
     Object.keys(games).forEach(code => {
@@ -254,7 +228,7 @@ setInterval(() => {
             console.log(`🧹 Auto-cleaning game: ${code}`);
             clearRoundTimer(code);
             delete games[code];
-            deleteGameState(code); // מוחק גם מהגיבוי של המצב הפעיל
+            deleteGameState(code);
         }
     });
 }, CLEANUP_INTERVAL);
@@ -279,7 +253,6 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   game.lastActivity = new Date();
   game.updatedAt = new Date();
 
-  // עדכון היסטוריה
   if (dbReady && pool && teamId && game.teams[teamId]) {
     try {
       await pool.query(`UPDATE game_teams SET score = $1 WHERE game_code = $2 AND team_id = $3`, [game.teams[teamId].score, code, teamId]);
@@ -288,7 +261,7 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
 
   const totalScore = teamId && game.teams[teamId] ? game.teams[teamId].score : 0;
   
-  saveGameState(game); // שמירת המצב החדש (סוף סיבוב)
+  saveGameState(game);
   broadcastGame(game);
 
   io.to("game-" + code).emit("roundFinished", { teamId, roundScore, totalScore, reason: options.reason || "manual" });
@@ -305,10 +278,15 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
 // ----------------------
 
 io.on("connection", (socket) => {
+  // פונקציית עזר להרצת קולבק בטוחה
+  const safeCb = (cb, data) => {
+      if (typeof cb === 'function') cb(data);
+  };
+
   socket.on("createGame", async (data, callback) => {
     try {
       const { hostName, targetScore=40, defaultRoundSeconds=60, categories=[], teamNames={} } = data || {};
-      if (!hostName) return callback({ ok: false, error: "Missing host name" });
+      if (!hostName) return safeCb(callback, { ok: false, error: "Missing host name" });
 
       let code;
       do { code = generateGameCode(); } while (games[code]);
@@ -344,13 +322,13 @@ io.on("connection", (socket) => {
         } catch (e) { console.error("DB Create Error:", e); }
       }
 
-      saveGameState(game); // שמירה ראשונית
+      saveGameState(game);
       sendNewGameEmail(game);
-      callback({ ok: true, gameCode: code, game: sanitizeGame(game) });
+      safeCb(callback, { ok: true, gameCode: code, game: sanitizeGame(game) });
 
     } catch (err) {
       console.error("CreateGame Error:", err);
-      callback({ ok: false, error: "Server Error" });
+      safeCb(callback, { ok: false, error: "Server Error" });
     }
   });
 
@@ -358,16 +336,14 @@ io.on("connection", (socket) => {
     try {
       const { gameCode, name, teamId } = data || {};
       const code = (gameCode || "").toUpperCase().trim();
-      let game = games[code]; // נסיון למצוא בזיכרון
+      let game = games[code];
 
       if (!game) {
-          // אם לא בזיכרון, אולי יש ב-DB (שחזור על הדרך)
-          // כרגע restoreActiveGames רץ בהתחלה, אבל ליתר ביטחון
-          return callback({ ok: false, error: "המשחק לא נמצא." });
+          return safeCb(callback, { ok: false, error: "המשחק לא נמצא." });
       }
 
       const playerName = (name || "").trim();
-      if (!playerName) return callback({ ok: false, error: "שם חסר." });
+      if (!playerName) return safeCb(callback, { ok: false, error: "שם חסר." });
 
       let chosenTeamId = teamId;
       if (!chosenTeamId && data.teamName) {
@@ -377,11 +353,10 @@ io.on("connection", (socket) => {
       if (!chosenTeamId || !game.teams[chosenTeamId]) {
          const keys = Object.keys(game.teams);
          if(keys.length) chosenTeamId = keys[0];
-         else return callback({ok:false, error:"No teams"});
+         else return safeCb(callback, {ok:false, error:"No teams"});
       }
 
       const clientId = socket.id;
-      const isHost = (socket.id === game.hostSocketId); // לא תמיד נכון אחרי ריסטרט, אבל המנהל יתחבר עם reconnect
       
       let rawIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
       if (rawIp && rawIp.includes(',')) rawIp = rawIp.split(',')[0].trim();
@@ -400,15 +375,15 @@ io.on("connection", (socket) => {
       }
 
       game.lastActivity = new Date();
-      saveGameState(game); // עדכון מצב
+      saveGameState(game);
 
       socket.join("game-" + code);
-      callback({ ok: true, game: sanitizeGame(game), clientId, teamId: chosenTeamId, teamName: game.teams[chosenTeamId].name, isHost: false });
+      safeCb(callback, { ok: true, game: sanitizeGame(game), clientId, teamId: chosenTeamId, teamName: game.teams[chosenTeamId].name, isHost: false });
       broadcastGame(game);
 
     } catch (err) {
       console.error("JoinGame Error:", err);
-      callback({ ok: false, error: "Join Error" });
+      safeCb(callback, { ok: false, error: "Join Error" });
     }
   });
 
@@ -416,38 +391,32 @@ io.on("connection", (socket) => {
       const code = (data?.gameCode || "").toUpperCase().trim();
       const game = games[code];
       
-      if(!game) return callback({ok:false, error:"Not found"});
+      if(!game) return safeCb(callback, {ok:false, error:"Not found"});
       
-      // המנהל חזר! נעדכן את ה-Socket ID שלו
-      // אם ב-DB רשום שהשם שלו הוא X, והוא חזר, נניח שהוא המנהל
-      if(game.hostName) {
-          game.hostSocketId = socket.id;
-          // אופציונלי: לעדכן ברשימת השחקנים אם הוא גם שחקן
-      }
-      
+      if(game.hostName) game.hostSocketId = socket.id;
       socket.join("game-" + code);
-      callback({ ok: true, game: sanitizeGame(game) });
+      safeCb(callback, { ok: true, game: sanitizeGame(game) });
   });
 
   socket.on("getGameState", (data, callback) => {
       const code = (data?.gameCode || "").toUpperCase().trim();
-      if(games[code]) callback({ ok: true, game: sanitizeGame(games[code]) });
-      else callback({ ok: false });
+      if(games[code]) safeCb(callback, { ok: true, game: sanitizeGame(games[code]) });
+      else safeCb(callback, { ok: false });
   });
 
   socket.on("startRound", async (data, callback) => {
       const game = games[data.gameCode];
-      if(!game) return callback({ok:false});
+      if(!game) return safeCb(callback, {ok:false});
       
       clearRoundTimer(data.gameCode);
       const team = game.teams[data.teamId];
-      if(!team) return callback({ok:false});
+      if(!team) return safeCb(callback, {ok:false});
 
       let explainer = null;
       const pIds = team.players;
       if(data.explainerClientId && pIds.includes(data.explainerClientId)) explainer = data.explainerClientId;
       if(!explainer && pIds.length > 0) explainer = pIds[Math.floor(Math.random() * pIds.length)];
-      if(!explainer) return callback({ok:false, error: "No players"});
+      if(!explainer) return safeCb(callback, {ok:false, error: "No players"});
 
       const pObj = game.playersByClientId[explainer];
       const now = new Date();
@@ -461,13 +430,13 @@ io.on("connection", (socket) => {
       };
       
       game.lastActivity = now;
-      saveGameState(game); // שמירה קריטית! סיבוב התחיל
+      saveGameState(game);
 
       broadcastGame(game);
       io.to("game-" + game.code).emit("roundStarted", { game: sanitizeGame(game) });
 
       startTimerInterval(game.code);
-      callback({ok:true});
+      safeCb(callback, {ok:true});
   });
 
   socket.on("changeRoundScore", (data, cb) => {
@@ -476,10 +445,9 @@ io.on("connection", (socket) => {
           const d = parseInt(data.delta) || 0;
           game.currentRound.roundScore = Math.max(0, (game.currentRound.roundScore || 0) + d);
           game.lastActivity = new Date();
+          saveGameState(game);
           
-          saveGameState(game); // שמירת מצב הניקוד
-          
-          cb({ok:true});
+          safeCb(cb, {ok:true});
           broadcastGame(game);
       }
   });
@@ -488,12 +456,13 @@ io.on("connection", (socket) => {
       const game = games[data.gameCode];
       if(game && game.currentRound) {
           const w = getRandomWord(game.categories);
-          cb({ok:true, word: w.text, category: w.category});
+          safeCb(cb, {ok:true, word: w.text, category: w.category});
       }
   });
 
-  socket.on("endRound", (data) => {
+  socket.on("endRound", (data, cb) => {
       finishRound(data.gameCode, {reason:"manual"});
+      safeCb(cb, {ok:true});
   });
 
   socket.on("endGame", (data, cb) => {
@@ -501,16 +470,16 @@ io.on("connection", (socket) => {
       if(games[code]) {
           clearRoundTimer(code);
           delete games[code];
-          deleteGameState(code); // מוחק מהמצב הפעיל, אבל ההיסטוריה נשארת ב-DB (game_teams וכו')
+          deleteGameState(code);
           
           io.to("game-" + code).emit("gameEnded", { code });
-          cb({ok:true});
+          safeCb(cb, {ok:true});
       }
   });
 
   socket.on("removePlayer", (data, cb) => {
       const game = games[data.gameCode];
-      if(!game) return cb({ok:false});
+      if(!game) return safeCb(cb, {ok:false});
       
       const pid = data.clientId;
       const p = game.playersByClientId[pid];
@@ -519,7 +488,7 @@ io.on("connection", (socket) => {
           if(game.teams[p.teamId]) {
               game.teams[p.teamId].players = game.teams[p.teamId].players.filter(id=>id!==pid);
           }
-          saveGameState(game); // עדכון מצב
+          saveGameState(game);
           
           if(game.currentRound && game.currentRound.explainerId === pid) {
               finishRound(game.code, {reason:"player_disconnected"});
@@ -527,13 +496,13 @@ io.on("connection", (socket) => {
               broadcastGame(game);
           }
       }
-      cb({ok:true});
+      safeCb(cb, {ok:true});
   });
 
   socket.on("disconnect", () => {
       const pid = socket.id;
       Object.values(games).forEach(g => {
-          if(g.hostSocketId === pid) return; // לא מוחקים מנהל
+          if(g.hostSocketId === pid) return; 
           if(g.playersByClientId[pid]) {
               const p = g.playersByClientId[pid];
               delete g.playersByClientId[pid];
@@ -541,7 +510,7 @@ io.on("connection", (socket) => {
                   g.teams[p.teamId].players = g.teams[p.teamId].players.filter(id=>id!==pid);
               }
               
-              saveGameState(g); // עדכון מצב
+              saveGameState(g);
 
               if(g.currentRound && g.currentRound.explainerId === pid) {
                   finishRound(g.code, {reason:"player_disconnected"});
@@ -656,7 +625,7 @@ app.post("/admin/game/:gameCode/close", (req, res) => {
     if(games[code]) {
         clearRoundTimer(code);
         delete games[code];
-        deleteGameState(code); // ניקוי הגיבוי
+        deleteGameState(code);
         io.to("game-" + code).emit("gameEnded", { code });
         res.json({ok:true});
     } else res.status(404).send();
@@ -671,7 +640,7 @@ app.post("/admin/game/:gameCode/player/:clientId/disconnect", (req, res) => {
         delete g.playersByClientId[clientId];
         if(g.teams[p.teamId]) g.teams[p.teamId].players = g.teams[p.teamId].players.filter(id=>id!==clientId);
         
-        saveGameState(g); // עדכון מצב
+        saveGameState(g);
         broadcastGame(g);
         res.json({ok:true});
     } else res.status(404).send();
