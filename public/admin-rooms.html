@@ -26,7 +26,6 @@
     .nav-btn.active { background: #38bdf8; color: #020617; }
 
     .stats-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-    /* קוביות לחיצות */
     .stat-box {
       flex: 1; min-width: 150px; background: #1e293b; border-radius: 16px; padding: 16px;
       text-align: center; border: 1px solid #334155; cursor: pointer; transition: all 0.2s;
@@ -54,6 +53,12 @@
     th { color: #94a3b8; }
 
     .hidden { display: none; }
+    
+    /* מחולל קישורים */
+    .link-output {
+        width: 100%; background: #1e293b; border: 1px solid #334155; color: #38bdf8; 
+        padding: 10px; border-radius: 8px; font-family: monospace; margin-top: 8px;
+    }
   </style>
 </head>
 <body>
@@ -66,6 +71,7 @@
     <div class="nav-tabs">
         <button class="nav-btn active" onclick="switchTab('dashboard')">דשבורד חי</button>
         <button class="nav-btn" onclick="switchTab('reports')">דוחות ונתונים</button>
+        <button class="nav-btn" onclick="switchTab('generator')">מחולל מיתוג</button>
     </div>
 
     <div id="tab-dashboard">
@@ -123,24 +129,51 @@
             <div id="reportResults" style="overflow-x:auto;">בחר פרמטרים ולחץ על הצג...</div>
         </div>
     </div>
+    
+    <div id="tab-generator" class="hidden">
+        <div class="card">
+            <h3>יצירת לינק ממותג ללקוח</h3>
+            <div class="form-group" style="margin-bottom:10px;">
+                <label>שם הלקוח (באנגלית/מספרים, למשל coca-cola)</label>
+                <input type="text" id="genBrandName">
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+                <label>לינק ללוגו (URL)</label>
+                <input type="text" id="genLogoUrl" placeholder="https://...">
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+                <label>צבע רקע (Hex, למשל #ff0000)</label>
+                <input type="color" id="genColor" value="#ffffff">
+            </div>
+            <button class="btn-submit" onclick="generateLink()">צור לינק</button>
+            
+            <div id="genResultArea" class="hidden" style="margin-top:20px;">
+                <label>לינק למנהל:</label>
+                <input type="text" class="link-output" id="finalLink" readonly>
+                <button class="btn-submit" style="margin-top:10px; background:#25D366;" onclick="sendToWhatsapp()">שלח ללקוח בוואטסאפ 📲</button>
+            </div>
+        </div>
+    </div>
   </div>
 
   <script>
     const ADMIN_CODE = "ONEBTN"; 
     let chartInstance = null;
 
-    // אתחול תאריכים
     document.getElementById('dateFrom').valueAsDate = new Date(Date.now() - 30*24*60*60*1000);
     document.getElementById('dateTo').valueAsDate = new Date();
 
     function switchTab(tabName) {
         document.getElementById('tab-dashboard').classList.add('hidden');
         document.getElementById('tab-reports').classList.add('hidden');
+        document.getElementById('tab-generator').classList.add('hidden');
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         
         document.getElementById('tab-'+tabName).classList.remove('hidden');
+        // Simple active toggle logic
         if(tabName === 'dashboard') document.querySelectorAll('.nav-btn')[0].classList.add('active');
-        else document.querySelectorAll('.nav-btn')[1].classList.add('active');
+        if(tabName === 'reports') document.querySelectorAll('.nav-btn')[1].classList.add('active');
+        if(tabName === 'generator') document.querySelectorAll('.nav-btn')[2].classList.add('active');
     }
 
     function jumpToReport(type) {
@@ -150,63 +183,39 @@
     }
 
     async function resetAllData() {
-        const pass = prompt("פעולה זו תמחק את כל היסטוריית המשחקים והשחקנים!\nכדי לאשר, הקלד: DELETE");
+        const pass = prompt("פעולה זו תמחק את כל ההיסטוריה!\nהקלד: DELETE");
         if(pass === "DELETE") {
-            try {
-                const res = await fetch(`/admin/reset?code=${ADMIN_CODE}`, { method: 'POST' });
-                const json = await res.json();
-                if(json.ok) {
-                    alert("הנתונים אופסו בהצלחה.");
-                    location.reload();
-                } else {
-                    alert("שגיאה באיפוס.");
-                }
-            } catch(e) { alert("תקלה ברשת"); }
+            await fetch(`/admin/reset?code=${ADMIN_CODE}`, { method: 'POST' });
+            location.reload();
         }
     }
 
-    // --- Dashboard Logic ---
+    // --- Dashboard ---
     async function loadDashboard() {
         try {
             const res = await fetch(`/admin/stats?code=${ADMIN_CODE}`);
             const data = await res.json();
 
-            // Stats
             document.getElementById('uniqueIps').innerText = data.dbStats.totalUniqueIps || 0;
             const totalGames = data.dbStats.gamesByDay.reduce((sum, d) => sum + parseInt(d.count), 0);
             document.getElementById('gamesMonth').innerText = totalGames;
             document.getElementById('openGamesNow').innerText = data.activeGames.length;
 
-            // Chart
             renderChart(data.dbStats.gamesByDay);
-
-            // Active Rooms (Live Timer)
             renderActiveRooms(data.activeGames);
-
         } catch (e) { console.error("Dash Error", e); }
     }
 
     function renderChart(dataPoints) {
         const ctx = document.getElementById('gamesChart').getContext('2d');
-        const labels = dataPoints.map(d => d.date);
-        const counts = dataPoints.map(d => d.count);
-
         if (chartInstance) chartInstance.destroy();
         chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
-                datasets: [{
-                    label: 'משחקים',
-                    data: counts,
-                    backgroundColor: '#38bdf8',
-                    borderRadius: 4
-                }]
+                labels: dataPoints.map(d => d.date),
+                datasets: [{ label: 'משחקים', data: dataPoints.map(d => d.count), backgroundColor: '#38bdf8' }]
             },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true, grid: { color: '#334155' } }, x: { grid: { display: false } } }
-            }
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#334155' } }, x: { grid: { display: false } } } }
         });
     }
 
@@ -220,11 +229,7 @@
 
     function renderActiveRooms(games) {
         const container = document.getElementById('activeRoomsList');
-        if(games.length === 0) {
-            container.innerHTML = '<div style="color:#94a3b8">אין חדרים פעילים כרגע</div>';
-            return;
-        }
-        
+        if(games.length === 0) { container.innerHTML = '<div style="color:#94a3b8">אין חדרים פעילים כרגע</div>'; return; }
         let html = '';
         games.forEach(g => {
             html += `
@@ -243,17 +248,16 @@
     }
 
     async function closeGame(code) {
-        if(!confirm('לסגור את החדר?')) return;
+        if(!confirm('לסגור?')) return;
         await fetch(`/admin/game/${code}/close?code=${ADMIN_CODE}`, {method:'POST'});
         loadDashboard();
     }
 
-    // --- Reports Logic ---
+    // --- Reports ---
     async function fetchReport() {
         const type = document.getElementById('reportType').value;
         const from = document.getElementById('dateFrom').value;
         const to = document.getElementById('dateTo').value;
-        
         const container = document.getElementById('reportResults');
         container.innerHTML = "טוען...";
 
@@ -262,40 +266,48 @@
             const json = await res.json();
             const data = json.data || [];
 
-            if(data.length === 0) {
-                container.innerHTML = "לא נמצאו נתונים לטווח זה.";
-                return;
-            }
+            if(data.length === 0) { container.innerHTML = "אין נתונים."; return; }
 
             let html = '<table><thead><tr>';
             if(type === 'ips') html += '<th>כתובת IP</th><th>שם אחרון</th><th>משחקים</th><th>נראה לאחרונה</th>';
-            if(type === 'games') html += '<th>קוד</th><th>מנהל</th><th>תאריך פתיחה</th>';
+            if(type === 'games') html += '<th>קוד</th><th>מנהל</th><th>תאריך פתיחה</th><th>משך זמן</th>';
             html += '</tr></thead><tbody>';
 
             data.forEach(row => {
                 html += '<tr>';
-                if(type === 'ips') {
-                    // הוספת שם השחקן
-                    html += `<td>${row.ip_address}</td><td>${row.last_name || '-'}</td><td>${row.games_count}</td><td>${new Date(row.last_seen).toLocaleString()}</td>`;
-                }
-                if(type === 'games') {
-                    html += `<td>${row.code}</td><td>${row.host_name}</td><td>${new Date(row.created_at).toLocaleString()}</td>`;
-                }
+                if(type === 'ips') html += `<td>${row.ip_address}</td><td>${row.last_name || '-'}</td><td>${row.games_count}</td><td>${new Date(row.last_seen).toLocaleString()}</td>`;
+                if(type === 'games') html += `<td>${row.code}</td><td>${row.host_name}</td><td>${new Date(row.created_at).toLocaleString()}</td><td>${formatDuration(row.created_at)}</td>`;
                 html += '</tr>';
             });
             html += '</tbody></table>';
             container.innerHTML = html;
-
-        } catch (e) { console.error(e); container.innerHTML = "שגיאה בטעינת דוח"; }
+        } catch (e) { container.innerHTML = "שגיאה"; }
+    }
+    
+    // --- Generator ---
+    function generateLink() {
+        const brand = document.getElementById('genBrandName').value;
+        const logo = document.getElementById('genLogoUrl').value;
+        const color = document.getElementById('genColor').value.replace('#', '');
+        
+        const baseUrl = window.location.origin + '/host.html';
+        const params = new URLSearchParams();
+        if(brand) params.append('brand', brand);
+        if(logo) params.append('logo', logo);
+        if(color) params.append('color', color);
+        
+        const final = `${baseUrl}?${params.toString()}`;
+        document.getElementById('finalLink').value = final;
+        document.getElementById('genResultArea').classList.remove('hidden');
+    }
+    
+    function sendToWhatsapp() {
+        const link = document.getElementById('finalLink').value;
+        const text = `היי, הנה הלינק למשחק הממותג שלכם:\n${link}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
 
-    // עדכון אוטומטי כל 10 שניות לדשבורד החי
-    setInterval(() => {
-        if(!document.getElementById('tab-dashboard').classList.contains('hidden')) {
-            loadDashboard();
-        }
-    }, 10000);
-    
+    setInterval(() => { if(!document.getElementById('tab-dashboard').classList.contains('hidden')) loadDashboard(); }, 10000);
     loadDashboard();
   </script>
 </body>
