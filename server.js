@@ -1,5 +1,3 @@
-// server.js - גרסה יציבה (חזרה ללוגיקת קבוצות מקורית + מיתוג)
-
 const express = require("express");
 const http = require("http");
 const path = require("path");
@@ -52,14 +50,18 @@ async function initDb() {
       ssl: process.env.PGSSL === "false" ? false : { rejectUnauthorized: false },
     });
 
+    // וידוא טבלאות ועמודות
     await pool.query(`CREATE TABLE IF NOT EXISTS games (code TEXT PRIMARY KEY, host_name TEXT, target_score INTEGER, default_round_seconds INTEGER, categories TEXT[], created_at TIMESTAMPTZ DEFAULT NOW());`);
+    try { await pool.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS host_ip TEXT;`); } catch (e) {}
+    try { await pool.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS branding JSONB;`); } catch (e) {}
+    try { await pool.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS game_title TEXT;`); } catch (e) {}
+
     await pool.query(`CREATE TABLE IF NOT EXISTS game_teams (id SERIAL PRIMARY KEY, game_code TEXT, team_id TEXT, team_name TEXT, score INTEGER DEFAULT 0);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS game_players (id SERIAL PRIMARY KEY, game_code TEXT, client_id TEXT, name TEXT, team_id TEXT, ip_address TEXT);`);
+    try { await pool.query(`ALTER TABLE game_players ADD COLUMN IF NOT EXISTS ip_address TEXT;`); } catch (e) {}
+
     await pool.query(`CREATE TABLE IF NOT EXISTS active_states (game_code TEXT PRIMARY KEY, data TEXT, last_updated TIMESTAMPTZ DEFAULT NOW());`);
     
-    try { await pool.query(`ALTER TABLE game_players ADD COLUMN IF NOT EXISTS ip_address TEXT;`); } catch (e) {}
-    try { await pool.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS branding JSONB;`); } catch (e) {}
-
     dbReady = true;
     console.log("✅ Postgres ready.");
     await restoreActiveGames();
@@ -78,7 +80,9 @@ const safeCb = (cb, data) => { if (typeof cb === 'function') cb(data); };
 async function saveGameState(game) {
     if (!dbReady || !game) return;
     try {
-        const json = JSON.stringify(game);
+        // לא שומרים את המילים המותאמות אישית ב-DB כדי לחסוך מקום, הן זמניות בזיכרון
+        const gameToSave = { ...game, customWordsList: [] }; 
+        const json = JSON.stringify(gameToSave);
         await pool.query(
             `INSERT INTO active_states (game_code, data, last_updated) VALUES ($1, $2, NOW()) 
              ON CONFLICT (game_code) DO UPDATE SET data = $2, last_updated = NOW()`,
@@ -119,6 +123,7 @@ async function restoreActiveGames() {
     } catch (e) { console.error("Restore Error:", e.message); }
 }
 
+// בנק מילים בסיסי
 const WORD_BANK = [
   { text: "חתול", category: "animals" }, { text: "כלב", category: "animals" }, { text: "פיל", category: "animals" },
   { text: "שולחן", category: "objects" }, { text: "מחשב", category: "technology" }, { text: "טלפון", category: "technology" },
@@ -131,13 +136,25 @@ const WORD_BANK = [
   { text: "משרד", category: "work" }
 ];
 
-function getRandomWord(categories) {
-  let pool = WORD_BANK;
-  if (Array.isArray(categories) && categories.length > 0) {
+// פונקציית הגרלת מילה (כולל תמיכה במילים מותאמות אישית)
+function getRandomWord(game) {
+  let pool = [];
+  // עדיפות ראשונה: מילים מותאמות אישית
+  if (game.customWordsList && game.customWordsList.length > 0) {
+      pool = game.customWordsList.map(word => ({ text: word, category: 'מותאם אישית' }));
+  }
+
+  // הוספת מילים מהבנק לפי קטגוריות
+  const categories = game.categories || [];
+  if (Array.isArray(categories) && categories.length > 0 && !categories.includes('all')) {
     const catSet = new Set(categories);
     const filtered = WORD_BANK.filter((w) => catSet.has(w.category));
-    if (filtered.length > 0) pool = filtered;
+    pool = pool.concat(filtered);
+  } else {
+    pool = pool.concat(WORD_BANK);
   }
+
+  if (pool.length === 0) return { text: "אין מילים", category: "כללי" };
   const idx = Math.floor(Math.random() * pool.length);
   return pool[idx];
 }
@@ -160,7 +177,9 @@ function sanitizeGame(game) {
     playersByClientId[cid] = { clientId: cid, name: p.name, teamId: p.teamId, isHost: p.isHost || false };
   });
   return {
-    code: game.code, hostName: game.hostName, targetScore: game.targetScore,
+    code: game.code, hostName: game.hostName,
+    gameTitle: game.gameTitle || null,
+    targetScore: game.targetScore,
     defaultRoundSeconds: game.defaultRoundSeconds, categories: game.categories || [],
     createdAt: game.createdAt, updatedAt: game.updatedAt, lastActivity: game.lastActivity,
     logoUrl: game.logoUrl || null, banners: game.banners || {},
@@ -187,6 +206,7 @@ function startTimerInterval(code) {
         g.currentRound.secondsLeft--;
         
         if (g.currentRound.secondsLeft <= 0) {
+            g.currentRound.secondsLeft = 0;
             finishRound(code, { reason: "timer" });
         } else {
             io.to("game-" + code).emit("roundTick", { gameCode: code, secondsLeft: g.currentRound.secondsLeft });
@@ -218,6 +238,7 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   const teamId = round.teamId;
   const roundScore = typeof round.roundScore === "number" && round.roundScore > 0 ? round.roundScore : 0;
 
+  // עדכון הניקוד הסופי של הקבוצה
   if (teamId && game.teams[teamId]) {
     game.teams[teamId].score = (game.teams[teamId].score || 0) + roundScore;
   }
@@ -235,7 +256,7 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   const totalScore = teamId && game.teams[teamId] ? game.teams[teamId].score : 0;
   
   saveGameState(game);
-  broadcastGame(game);
+  broadcastGame(game); // שידור עדכון אחרון עם הניקוד הסופי
 
   io.to("game-" + code).emit("roundFinished", { teamId, roundScore, totalScore, reason: options.reason || "manual" });
 
@@ -249,8 +270,11 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
 io.on("connection", (socket) => {
   socket.on("createGame", async (data, callback) => {
     try {
-      const { hostName, targetScore=40, defaultRoundSeconds=60, categories=[], teamNames={}, branding=null } = data || {};
+      const { hostName, gameTitle="", targetScore=40, defaultRoundSeconds=60, categories=[], teamNames={}, branding=null, customWords="" } = data || {};
       if (!hostName) return safeCb(callback, { ok: false, error: "Missing host name" });
+
+      let clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
+      if (clientIp && clientIp.includes(',')) clientIp = clientIp.split(',')[0].trim();
 
       let code;
       do { code = generateGameCode(); } while (games[code]);
@@ -258,7 +282,6 @@ io.on("connection", (socket) => {
       const teams = {};
       const now = new Date();
       
-      // חזרה ללוגיקה המקורית והיציבה (A, B, C...)
       ["A", "B", "C", "D", "E"].forEach((id) => {
         const name = (teamNames[id] || "").trim();
         if (name) teams[id] = { id, name, score: 0, players: [] };
@@ -269,11 +292,19 @@ io.on("connection", (socket) => {
         teams["B"] = { id: "B", name: "קבוצה B", score: 0, players: [] };
       }
 
+      let customWordsList = [];
+      if (customWords && typeof customWords === 'string') {
+          customWordsList = customWords.split(',').map(w => w.trim()).filter(w => w.length > 0);
+      }
+
       const game = {
-        code, hostSocketId: socket.id, hostName, targetScore, defaultRoundSeconds, categories,
+        code, hostSocketId: socket.id, hostName,
+        gameTitle: gameTitle.trim(),
+        targetScore, defaultRoundSeconds, categories,
         createdAt: now, updatedAt: now, lastActivity: now, 
         logoUrl: null, banners: {}, branding, 
         teams, playersByClientId: {}, currentRound: null,
+        customWordsList
       };
 
       games[code] = game;
@@ -281,8 +312,8 @@ io.on("connection", (socket) => {
 
       if (dbReady && pool) {
         try {
-          await pool.query(`INSERT INTO games (code, host_name, target_score, default_round_seconds, categories) VALUES ($1, $2, $3, $4, $5)`,
-            [code, hostName, targetScore, defaultRoundSeconds, categories]);
+          await pool.query(`INSERT INTO games (code, host_name, target_score, default_round_seconds, categories, host_ip, game_title) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [code, hostName, targetScore, defaultRoundSeconds, categories, clientIp, game.gameTitle]);
           
           if(branding) {
              try { await pool.query(`UPDATE games SET branding = $1 WHERE code = $2`, [JSON.stringify(branding), code]); } catch(e){}
@@ -328,9 +359,8 @@ io.on("connection", (socket) => {
       }
 
       const clientId = socket.id;
-      let rawIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
-      if (rawIp && rawIp.includes(',')) rawIp = rawIp.split(',')[0].trim();
-      const clientIp = rawIp;
+      let clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
+      if (clientIp && clientIp.includes(',')) clientIp = clientIp.split(',')[0].trim();
 
       game.playersByClientId[clientId] = { clientId, name: playerName, teamId: chosenTeamId, isHost: false, ip: clientIp };
       if(!game.teams[chosenTeamId].players.includes(clientId)) {
@@ -410,16 +440,25 @@ io.on("connection", (socket) => {
       safeCb(callback, {ok:true});
   });
 
+  // שינוי ניקוד - כולל שידור מהיר ללקוחות
   socket.on("changeRoundScore", (data, cb) => {
       const game = games[data.gameCode];
       if(game && game.currentRound && game.currentRound.active) {
           const d = parseInt(data.delta) || 0;
+          // עדכון הניקוד הזמני בזיכרון
           game.currentRound.roundScore = Math.max(0, (game.currentRound.roundScore || 0) + d);
           game.lastActivity = new Date();
           saveGameState(game);
           
           safeCb(cb, {ok:true});
-          broadcastGame(game);
+          
+          // שידור אירוע מהיר ספציפי לשינוי ניקוד (Real-time update)
+          io.to("game-" + game.code).emit("roundScoreUpdated", {
+              gameCode: game.code,
+              roundScore: game.currentRound.roundScore,
+              teamId: game.currentRound.teamId
+          });
+          
       } else {
           safeCb(cb, {ok:false, error: "Round not active"});
       }
@@ -428,7 +467,7 @@ io.on("connection", (socket) => {
   socket.on("getNextWord", (data, cb) => {
       const game = games[data.gameCode];
       if(game && game.currentRound) {
-          const w = getRandomWord(game.categories);
+          const w = getRandomWord(game);
           safeCb(cb, {ok:true, word: w.text, category: w.category});
       }
   });
@@ -462,6 +501,8 @@ io.on("connection", (socket) => {
           }
           saveGameState(game);
           
+          io.to(pid).emit("playerRemoved");
+
           if(game.currentRound && game.currentRound.explainerId === pid) {
               finishRound(game.code, {reason:"player_disconnected"});
           } else {
@@ -533,7 +574,7 @@ app.get("/admin/reports", async (req, res) => {
         if (type === 'ips') {
             query = `SELECT ip_address, MAX(name) as last_name, COUNT(*) as games_count, MAX(created_at) as last_seen FROM game_players WHERE created_at >= $1::date AND created_at <= ($2::date + 1) GROUP BY ip_address ORDER BY last_seen DESC`;
         } else if (type === 'games') {
-            query = `SELECT code, host_name, created_at FROM games WHERE created_at >= $1::date AND created_at <= ($2::date + 1) ORDER BY created_at DESC`;
+            query = `SELECT code, host_name, host_ip, created_at FROM games WHERE created_at >= $1::date AND created_at <= ($2::date + 1) ORDER BY created_at DESC`;
         }
         const result = await pool.query(query, params);
         res.json({ data: result.rows });
