@@ -1,4 +1,4 @@
-// server.js - גרסה יציבה + תמיכה במיתוג וקבוצות דינמיות
+// server.js - גרסה יציבה (חזרה ללוגיקת קבוצות מקורית + מיתוג)
 
 const express = require("express");
 const http = require("http");
@@ -15,13 +15,10 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const ADMIN_CODE = process.env.ADMIN_CODE || "ONEBTN";
 
-// הגדרות זמנים
 const INACTIVITY_LIMIT = 24 * 60 * 60 * 1000; // 24 שעות
-const CLEANUP_INTERVAL = 60 * 60 * 1000;      // שעה
+const CLEANUP_INTERVAL = 60 * 60 * 1000;      // בדיקה כל שעה
 
-// ----------------------
-//   שליחת מייל (Webhook)
-// ----------------------
+// --- Webhook Email ---
 async function sendNewGameEmail(gameInfo) {
   const webhookUrl = process.env.EMAIL_WEBHOOK;
   if (!webhookUrl) return; 
@@ -36,16 +33,9 @@ async function sendNewGameEmail(gameInfo) {
   }).catch(err => console.error("Webhook error:", err.message));
 }
 
-// ----------------------
-//   Static & JSON
-// ----------------------
-
+// --- Setup ---
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
-
-// ----------------------
-//   DB Init & Persistence
-// ----------------------
 
 let pool = null;
 let dbReady = false;
@@ -62,36 +52,27 @@ async function initDb() {
       ssl: process.env.PGSSL === "false" ? false : { rejectUnauthorized: false },
     });
 
-    // יצירת טבלאות
     await pool.query(`CREATE TABLE IF NOT EXISTS games (code TEXT PRIMARY KEY, host_name TEXT, target_score INTEGER, default_round_seconds INTEGER, categories TEXT[], created_at TIMESTAMPTZ DEFAULT NOW());`);
     await pool.query(`CREATE TABLE IF NOT EXISTS game_teams (id SERIAL PRIMARY KEY, game_code TEXT, team_id TEXT, team_name TEXT, score INTEGER DEFAULT 0);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS game_players (id SERIAL PRIMARY KEY, game_code TEXT, client_id TEXT, name TEXT, team_id TEXT, ip_address TEXT);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS active_states (game_code TEXT PRIMARY KEY, data TEXT, last_updated TIMESTAMPTZ DEFAULT NOW());`);
     
-    // שדרוגי סכמה (הוספת עמודות חסרות אם צריך)
     try { await pool.query(`ALTER TABLE game_players ADD COLUMN IF NOT EXISTS ip_address TEXT;`); } catch (e) {}
-    try { await pool.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS branding JSONB;`); } catch (e) {} // <--- תמיכה במיתוג
+    try { await pool.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS branding JSONB;`); } catch (e) {}
 
     dbReady = true;
     console.log("✅ Postgres ready.");
-    
-    // שחזור משחקים בעליית השרת
     await restoreActiveGames();
-
   } catch (err) {
     console.error("❌ DB Error:", err.message);
   }
 }
 initDb();
 
-// ----------------------
-//   State Management
-// ----------------------
-
+// --- State ---
 const games = {};
 const roundTimers = {};
 
-// פונקציית עזר למניעת קריסה אם אין קולבק
 const safeCb = (cb, data) => { if (typeof cb === 'function') cb(data); };
 
 async function saveGameState(game) {
@@ -122,15 +103,11 @@ async function restoreActiveGames() {
             try {
                 const game = JSON.parse(row.data);
                 games[game.code] = game;
-                
-                // שחזור טיימר פעיל
                 if (game.currentRound && game.currentRound.active) {
                     const now = Date.now();
                     const lastUpdate = new Date(row.last_updated).getTime();
                     const secondsPassed = Math.floor((now - lastUpdate) / 1000);
-                    
                     game.currentRound.secondsLeft -= secondsPassed;
-
                     if (game.currentRound.secondsLeft > 0) {
                         startTimerInterval(game.code);
                     } else {
@@ -141,10 +118,6 @@ async function restoreActiveGames() {
         });
     } catch (e) { console.error("Restore Error:", e.message); }
 }
-
-// ----------------------
-//   Word bank & Helpers
-// ----------------------
 
 const WORD_BANK = [
   { text: "חתול", category: "animals" }, { text: "כלב", category: "animals" }, { text: "פיל", category: "animals" },
@@ -191,7 +164,7 @@ function sanitizeGame(game) {
     defaultRoundSeconds: game.defaultRoundSeconds, categories: game.categories || [],
     createdAt: game.createdAt, updatedAt: game.updatedAt, lastActivity: game.lastActivity,
     logoUrl: game.logoUrl || null, banners: game.banners || {},
-    branding: game.branding || null, // <--- שליחת נתוני מיתוג ללקוח
+    branding: game.branding || null,
     teams, playersByClientId, currentRound: game.currentRound || null,
   };
 }
@@ -221,7 +194,6 @@ function startTimerInterval(code) {
     }, 1000);
 }
 
-// ניקיון אוטומטי
 setInterval(() => {
     const now = Date.now();
     Object.keys(games).forEach(code => {
@@ -274,44 +246,33 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   game.currentRound = null;
 }
 
-// --- Sockets ---
-
 io.on("connection", (socket) => {
   socket.on("createGame", async (data, callback) => {
     try {
-      // הוספתי כאן branding ו-teamNames
-      const { hostName, targetScore=40, defaultRoundSeconds=60, categories=[], teamNames=[], branding=null } = data || {};
+      const { hostName, targetScore=40, defaultRoundSeconds=60, categories=[], teamNames={}, branding=null } = data || {};
       if (!hostName) return safeCb(callback, { ok: false, error: "Missing host name" });
 
       let code;
       do { code = generateGameCode(); } while (games[code]);
 
       const teams = {};
+      const now = new Date();
       
-      // <--- תמיכה בקבוצות דינמיות (מערך שמות) או בשיטה הישנה
-      if (Array.isArray(teamNames) && teamNames.length > 0) {
-          teamNames.forEach((name, idx) => {
-              const id = (idx + 1).toString();
-              if(name.trim()) teams[id] = { id, name: name.trim(), score: 0, players: [] };
-          });
-      } else {
-          // Fallback לשיטה הישנה (אם הקליינט ישן)
-          ["A", "B", "C", "D", "E"].forEach((id) => {
-            const name = (teamNames[id] || "").trim();
-            if (name) teams[id] = { id, name, score: 0, players: [] };
-          });
-      }
+      // חזרה ללוגיקה המקורית והיציבה (A, B, C...)
+      ["A", "B", "C", "D", "E"].forEach((id) => {
+        const name = (teamNames[id] || "").trim();
+        if (name) teams[id] = { id, name, score: 0, players: [] };
+      });
       
-      if (Object.keys(teams).length < 2) {
-        teams["1"] = { id: "1", name: "קבוצה 1", score: 0, players: [] };
-        teams["2"] = { id: "2", name: "קבוצה 2", score: 0, players: [] };
+      if (Object.keys(teams).length === 0) {
+        teams["A"] = { id: "A", name: "קבוצה A", score: 0, players: [] };
+        teams["B"] = { id: "B", name: "קבוצה B", score: 0, players: [] };
       }
 
-      const now = new Date();
       const game = {
         code, hostSocketId: socket.id, hostName, targetScore, defaultRoundSeconds, categories,
-        createdAt: now, updatedAt: now, lastActivity: now, logoUrl: null, banners: {},
-        branding, // <--- שמירת המיתוג באובייקט
+        createdAt: now, updatedAt: now, lastActivity: now, 
+        logoUrl: null, banners: {}, branding, 
         teams, playersByClientId: {}, currentRound: null,
       };
 
@@ -323,7 +284,6 @@ io.on("connection", (socket) => {
           await pool.query(`INSERT INTO games (code, host_name, target_score, default_round_seconds, categories) VALUES ($1, $2, $3, $4, $5)`,
             [code, hostName, targetScore, defaultRoundSeconds, categories]);
           
-          // <--- שמירת מיתוג ל-DB אם קיים
           if(branding) {
              try { await pool.query(`UPDATE games SET branding = $1 WHERE code = $2`, [JSON.stringify(branding), code]); } catch(e){}
           }
@@ -357,7 +317,6 @@ io.on("connection", (socket) => {
       if (!playerName) return safeCb(callback, { ok: false, error: "שם חסר." });
 
       let chosenTeamId = teamId;
-      // תמיכה בהצטרפות ע"י שם קבוצה
       if (!chosenTeamId && data.teamName) {
          const entry = Object.entries(game.teams).find(([k,v]) => v.name === data.teamName);
          if(entry) chosenTeamId = entry[0];
