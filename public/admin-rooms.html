@@ -50,6 +50,10 @@
     .btn-submit:hover { background: #0ea5e9; }
     .btn-danger { background: #ef444420; color: #ef4444; border: 1px solid #ef4444; }
     .btn-danger:hover { background: #ef4444; color: white; }
+    .btn-whatsapp { background: #25D366; color: white; width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-whatsapp:hover { background: #1da851; }
+
+    .link-output { width: 100%; background: #1e293b; border: 1px solid #334155; color: var(--accent); padding: 12px; border-radius: 8px; font-family: monospace; margin-top: 8px; font-size: 0.9rem; word-break: break-all; cursor: pointer; }
 
     .table-container { overflow-x: auto; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; white-space: nowrap; }
@@ -74,6 +78,7 @@
     <div class="nav-tabs">
         <button class="nav-btn active" onclick="switchTab('dashboard')">📊 דשבורד חי</button>
         <button class="nav-btn" onclick="switchTab('reports')">📑 דוחות ונתונים</button>
+        <button class="nav-btn" onclick="switchTab('generator')">🔗 מחולל מותג</button>
     </div>
 
     <div id="tab-dashboard">
@@ -137,26 +142,71 @@
             </div>
         </div>
     </div>
+    
+    <div id="tab-generator" class="hidden">
+        <div class="card">
+            <h3>יצירת לינק ממותג ללקוח (SaaS)</h3>
+            <p style="color:var(--text-secondary); margin-bottom:20px; font-size:0.9rem;">
+                מלא את פרטי הלקוח כדי לייצר עבורו לינק ייעודי. הלינק יפתח משחק שמותאם לצבעי המותג וללוגו שלו.
+            </p>
+            
+            <div class="form-group" style="margin-bottom:15px;">
+                <label>לינק ללוגו (URL)</label>
+                <input type="text" id="genLogoUrl" placeholder="https://example.com/logo.png">
+            </div>
+            
+            <div class="form-row">
+                 <div class="form-group">
+                    <label>כותרת החדר (אופציונלי)</label>
+                    <input type="text" id="genBrandTitle" placeholder="למשל: ערב גיבוש צוות מכירות">
+                </div>
+                <div class="form-group">
+                    <label>סלוגן (אופציונלי)</label>
+                    <input type="text" id="genBrandSlogan" placeholder="למשל: האלופים של הרבעון!">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:20px;">
+                <label>צבע רקע (Hex Code)</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="color" id="genColor" value="#ffffff" style="width:50px; padding:0; border:none; height:40px; background:none;">
+                    <input type="text" id="genColorText" value="#ffffff" style="flex:1;">
+                </div>
+            </div>
+            
+            <button class="btn btn-submit" onclick="generateLink()">צור לינק למנהל</button>
+            
+            <div id="genResultArea" class="hidden" style="margin-top:30px; border-top:1px solid #334155; padding-top:20px;">
+                <label style="color:var(--accent); font-weight:bold;">הלינק המוכן לשליחה:</label>
+                <input type="text" class="link-output" id="finalLink" readonly>
+                <button class="btn btn-whatsapp" onclick="sendToWhatsapp()">שלח ללקוח בוואטסאפ 📲</button>
+            </div>
+        </div>
+    </div>
   </div>
 
   <script>
     const ADMIN_CODE = "ONEBTN"; 
     let chartInstance = null;
 
-    // אתחול תאריכים לדוח
     const today = new Date();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(today.getDate() - 30);
     document.getElementById('dateFrom').valueAsDate = thirtyDaysAgo;
     document.getElementById('dateTo').valueAsDate = today;
 
+    document.getElementById('genColor').addEventListener('input', (e) => { document.getElementById('genColorText').value = e.target.value; });
+    document.getElementById('genColorText').addEventListener('input', (e) => { document.getElementById('genColor').value = e.target.value; });
+    document.getElementById('finalLink').addEventListener('click', function() { this.select(); document.execCommand('copy'); alert('הלינק הועתק!'); });
+
     function switchTab(tabName) {
         document.getElementById('tab-dashboard').classList.add('hidden');
         document.getElementById('tab-reports').classList.add('hidden');
+        document.getElementById('tab-generator').classList.add('hidden');
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         
         document.getElementById('tab-'+tabName).classList.remove('hidden');
-        const tabs = ['dashboard', 'reports'];
+        const tabs = ['dashboard', 'reports', 'generator'];
         document.querySelectorAll('.nav-btn')[tabs.indexOf(tabName)].classList.add('active');
     }
 
@@ -225,7 +275,7 @@
     function formatDate(dateStr) {
         if (!dateStr) return '-';
         const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return '-'; // טיפול בתאריך לא תקין
+        if (isNaN(date.getTime())) return '-';
         return date.toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
     }
 
@@ -242,14 +292,12 @@
             if(data.length === 0) { container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-secondary);">לא נמצאו נתונים לטווח התאריכים שנבחר.</div>'; return; }
             
             let html = '<table><thead><tr>';
-            // תיקון: עמודות מתאימות לנתונים מהשרת
             if(type === 'ips') html += '<th>כתובת IP</th><th>שם השחקן</th><th>חדר אחרון</th><th>קוד חדר</th><th>נראה לאחרונה</th>';
             if(type === 'games') html += '<th>קוד משחק</th><th>שם החדר</th><th>שם המנהל</th><th>IP מנהל</th><th>תאריך יצירה</th>';
             html += '</tr></thead><tbody>';
             
             data.forEach(row => {
                 html += '<tr>';
-                // תיקון: שימוש בשדות הנכונים (row.name) ופרמוט תאריך
                 if(type === 'ips') html += `<td style="direction:ltr;">${row.ip_address}</td><td class="highlight">${row.name || '-'}</td><td>${row.game_title || '-'}</td><td>${row.code || '-'}</td><td>${formatDate(row.created_at)}</td>`;
                 if(type === 'games') html += `<td class="highlight">${row.code}</td><td>${row.game_title || 'ללא שם'}</td><td>${row.host_name}</td><td style="direction:ltr;">${row.host_ip || '-'}</td><td>${formatDate(row.created_at)}</td>`;
                 html += '</tr>';
@@ -257,6 +305,30 @@
             html += '</tbody></table>';
             container.innerHTML = html;
         } catch (e) { console.error(e); container.innerHTML = '<div style="color:#ef4444; padding:20px; text-align:center;">שגיאה בטעינת הדוח.</div>'; }
+    }
+
+    function generateLink() {
+        const logo = document.getElementById('genLogoUrl').value;
+        const title = document.getElementById('genBrandTitle').value;
+        const slogan = document.getElementById('genBrandSlogan').value;
+        let color = document.getElementById('genColorText').value.replace('#', '');
+        
+        const baseUrl = window.location.origin + '/host.html';
+        const params = new URLSearchParams();
+        if(logo) params.append('logo', logo);
+        if(title) params.append('title', title);
+        if(slogan) params.append('slogan', slogan);
+        if(color && color !== 'ffffff') params.append('color', color);
+        
+        const final = `${baseUrl}?${params.toString()}`;
+        document.getElementById('finalLink').value = final;
+        document.getElementById('genResultArea').classList.remove('hidden');
+    }
+    
+    function sendToWhatsapp() {
+        const link = document.getElementById('finalLink').value;
+        const text = `היי,\n\nהכנו עבורכם סביבת משחק ממותגת וחגיגית! 🎉\n\nאתם מוזמנים להיכנס לקישור הבא כדי לנהל את הפעילות:\n${link}\n\nתהנו!`;
+        window.location.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
     }
     
     setInterval(() => { if(!document.getElementById('tab-dashboard').classList.contains('hidden')) loadDashboard(); }, 10000);
