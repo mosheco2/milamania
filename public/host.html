@@ -277,11 +277,11 @@
         <button id="viewAllPlayersBtnHost" class="btn btn-ghost" style="width:100%; margin-top:10px;">👀 הצג את כל השחקנים</button>
         <hr style="border:none; border-top:1px solid #eee; margin:10px 0;">
         <div id="hostRoundStatusPlayer" class="status-text"></div>
+        <div id="hostPlayerRoundCurrentScore" style="font-size:1.2rem; color:#25D366; font-weight:bold; text-align:center; margin-bottom: 5px;">ניקוד בסיבוב: 0</div>
         <div id="hostPlayerBigTimer">--:--</div>
 
         <div id="hostPresenterSection" class="hidden" style="margin-top:12px; padding-top:8px; border-top:1px dashed #ccc;">
           <div style="text-align:center; margin-bottom:4px;">אתה המסביר! 🗣️</div>
-          <div id="hostPlayerRoundCurrentScore" style="font-size:1.1rem; color:#25D366; font-weight:bold; text-align:center; margin-bottom: 5px;">ניקוד בסיבוב: 0</div>
           <div id="hostPresenterWord">...</div>
           <div class="host-presenter-actions">
             <button id="hostBtnCorrect" class="btn btn-success">✅ נכון</button>
@@ -340,6 +340,7 @@
     const adminFloatingPanel = document.getElementById("adminFloatingPanel");
     const supportBtn = document.getElementById("support-wa-btn");
     const customModal = document.getElementById("customModal");
+    // תיקון: הפניה לאלמנט הפעולות במודאל
     const modalActions = document.getElementById("modalActions");
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -465,9 +466,7 @@
 
     // תיקון: וידוא שפונקציית האישור מוגדרת כראוי לפני פתיחת המודאל
     document.getElementById("endGameBtn").addEventListener("click", () => {
-        console.log("End game button clicked");
         showConfirmModal("סגירת משחק", "האם אתה בטוח שברצונך לסגור את המשחק לכולם?", () => {
-            console.log("Emitting endGame event");
             socket.emit("endGame", { gameCode: currentGameCode });
         });
     });
@@ -542,6 +541,7 @@
          if(data.gameCode === currentGameCode) {
              const scoreText = `ניקוד בסיבוב: ${data.roundScore}`;
              document.getElementById("hostRoundCurrentScore").textContent = scoreText;
+             // תיקון: עדכון גם של האלמנט החדש במצב שחקן
              document.getElementById("hostPlayerRoundCurrentScore").textContent = scoreText;
          }
     });
@@ -578,7 +578,6 @@
         }
     });
 
-    // האזנה לאירוע ריענון כפוי
     socket.on("forceRefreshPlayers", () => {
         if(currentGameCode) socket.emit("getGameState", { gameCode: currentGameCode });
     });
@@ -654,6 +653,7 @@
             
             const scoreText = `ניקוד בסיבוב: ${game.currentRound.roundScore || 0}`;
             document.getElementById("hostRoundCurrentScore").textContent = scoreText;
+            // תיקון: עדכון האלמנט החדש
             document.getElementById("hostPlayerRoundCurrentScore").textContent = scoreText;
 
             if(game.currentRound.explainerId === hostPlayerClientId) {
@@ -668,6 +668,7 @@
             document.getElementById("hostPresenterWord").textContent = "...";
             
             document.getElementById("hostRoundCurrentScore").textContent = "ניקוד בסיבוב: 0";
+            // תיקון: איפוס האלמנט החדש
             document.getElementById("hostPlayerRoundCurrentScore").textContent = "ניקוד בסיבוב: 0";
         }
     }
