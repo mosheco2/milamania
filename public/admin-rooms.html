@@ -210,11 +210,11 @@
     const ADMIN_CODE = "ONEBTN"; 
     let chartInstance = null;
 
-    // אתחול תאריכים לדוח (חודש אחורה)
+    // אתחול תאריכים
     document.getElementById('dateFrom').valueAsDate = new Date(Date.now() - 30*24*60*60*1000);
     document.getElementById('dateTo').valueAsDate = new Date();
 
-    // סנכרון צבע במחולל
+    // סנכרון צבע
     document.getElementById('genColor').addEventListener('input', (e) => {
         document.getElementById('genColorText').value = e.target.value;
     });
@@ -226,8 +226,6 @@
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         
         document.getElementById('tab-'+tabName).classList.remove('hidden');
-        
-        // סימון טאב פעיל
         const tabs = ['dashboard', 'reports', 'generator'];
         const idx = tabs.indexOf(tabName);
         if(idx >= 0) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
@@ -245,12 +243,7 @@
             try {
                 const res = await fetch(`/admin/reset?code=${ADMIN_CODE}`, { method: 'POST' });
                 const json = await res.json();
-                if(json.ok) {
-                    alert("הנתונים אופסו בהצלחה.");
-                    location.reload();
-                } else {
-                    alert("שגיאה באיפוס.");
-                }
+                if(json.ok) { alert("הנתונים אופסו בהצלחה."); location.reload(); } else { alert("שגיאה באיפוס."); }
             } catch(e) { alert("תקלה ברשת"); }
         }
     }
@@ -260,59 +253,24 @@
         try {
             const res = await fetch(`/admin/stats?code=${ADMIN_CODE}`);
             const data = await res.json();
-
-            // עדכון מספרים
             document.getElementById('uniqueIps').innerText = data.dbStats.totalUniqueIps || 0;
-            
-            const totalGames = data.dbStats.gamesByDay 
-                ? data.dbStats.gamesByDay.reduce((sum, d) => sum + parseInt(d.count), 0)
-                : 0;
+            const totalGames = data.dbStats.gamesByDay ? data.dbStats.gamesByDay.reduce((sum, d) => sum + parseInt(d.count), 0) : 0;
             document.getElementById('gamesMonth').innerText = totalGames;
             document.getElementById('openGamesNow').innerText = data.activeGames.length;
-
-            // עדכון גרף
             renderChart(data.dbStats.gamesByDay || []);
-
-            // עדכון רשימת חדרים פעילים
             renderActiveRooms(data.activeGames);
-
         } catch (e) { console.error("Dash Error", e); }
     }
 
     function renderChart(dataPoints) {
         const ctx = document.getElementById('gamesChart').getContext('2d');
-        
-        // המרת נתונים לפורמט של Chart.js
-        const labels = dataPoints.map(d => {
-            const date = new Date(d.date);
-            return `${date.getDate()}/${date.getMonth()+1}`;
-        });
+        const labels = dataPoints.map(d => { const date = new Date(d.date); return `${date.getDate()}/${date.getMonth()+1}`; });
         const counts = dataPoints.map(d => d.count);
-
         if (chartInstance) chartInstance.destroy();
-        
         chartInstance = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'משחקים שנפתחו',
-                    data: counts,
-                    borderColor: '#38bdf8',
-                    backgroundColor: 'rgba(56, 189, 248, 0.2)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true, 
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { 
-                    y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 } }, 
-                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
-                }
-            }
+            data: { labels: labels, datasets: [{ label: 'משחקים שנפתחו', data: counts, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.2)', tension: 0.4, fill: true }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } } }
         });
     }
 
@@ -326,24 +284,10 @@
 
     function renderActiveRooms(games) {
         const container = document.getElementById('activeRoomsList');
-        if(games.length === 0) {
-            container.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:20px;">אין חדרים פעילים כרגע</div>';
-            return;
-        }
-        
+        if(games.length === 0) { container.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:20px;">אין חדרים פעילים כרגע</div>'; return; }
         let html = '';
         games.forEach(g => {
-            html += `
-            <div class="room-item">
-                <div class="room-info">
-                    <div class="room-code">חדר ${g.code}</div>
-                    <div class="room-meta">מנהל: ${g.hostName} • שחקנים: ${g.playerCount}</div>
-                </div>
-                <div style="text-align:left; display:flex; align-items:center;">
-                    <span class="room-timer">⏱ ${formatDuration(g.createdAt)}</span>
-                    <button class="btn btn-close" style="margin-right:15px;" onclick="closeGame('${g.code}')">סגור חדר</button>
-                </div>
-            </div>`;
+            html += `<div class="room-item"><div class="room-info"><div class="room-code">חדר ${g.code}</div><div class="room-meta">מנהל: ${g.hostName} • שחקנים: ${g.playerCount}</div></div><div style="text-align:left; display:flex; align-items:center;"><span class="room-timer">⏱ ${formatDuration(g.createdAt)}</span><button class="btn btn-close" style="margin-right:15px;" onclick="closeGame('${g.code}')">סגור חדר</button></div></div>`;
         });
         container.innerHTML = html;
     }
@@ -359,44 +303,25 @@
         const type = document.getElementById('reportType').value;
         const from = document.getElementById('dateFrom').value;
         const to = document.getElementById('dateTo').value;
-        
         const container = document.getElementById('reportResults');
         container.innerHTML = '<div style="padding:20px; color:#94a3b8;">טוען נתונים...</div>';
-
         try {
             const res = await fetch(`/admin/reports?code=${ADMIN_CODE}&type=${type}&from=${from}&to=${to}`);
             const json = await res.json();
             const data = json.data || [];
-
-            if(data.length === 0) {
-                container.innerHTML = '<div style="padding:20px; color:#94a3b8;">לא נמצאו נתונים לטווח התאריכים שנבחר.</div>';
-                return;
-            }
-
+            if(data.length === 0) { container.innerHTML = '<div style="padding:20px; color:#94a3b8;">לא נמצאו נתונים לטווח התאריכים שנבחר.</div>'; return; }
             let html = '<table><thead><tr>';
             if(type === 'ips') html += '<th>כתובת IP</th><th>שם אחרון</th><th>כמות משחקים</th><th>נראה לאחרונה</th>';
             if(type === 'games') html += '<th>קוד משחק</th><th>שם המנהל</th><th>תאריך ושעה</th><th>משך פעילות</th>';
             html += '</tr></thead><tbody>';
-
             data.forEach(row => {
                 html += '<tr>';
-                if(type === 'ips') {
-                    html += `<td>${row.ip_address}</td>
-                             <td style="color:#38bdf8; font-weight:bold;">${row.last_name || '-'}</td>
-                             <td>${row.games_count}</td>
-                             <td>${new Date(row.last_seen).toLocaleString('he-IL')}</td>`;
-                }
-                if(type === 'games') {
-                    html += `<td style="color:#38bdf8; font-weight:bold;">${row.code}</td>
-                             <td>${row.host_name}</td>
-                             <td>${new Date(row.created_at).toLocaleString('he-IL')}</td>
-                             <td>${formatDuration(row.created_at)}</td>`;
-                }
+                if(type === 'ips') html += `<td>${row.ip_address}</td><td style="color:#38bdf8; font-weight:bold;">${row.last_name || '-'}</td><td>${row.games_count}</td><td>${new Date(row.last_seen).toLocaleString('he-IL')}</td>`;
+                if(type === 'games') html += `<td style="color:#38bdf8; font-weight:bold;">${row.code}</td><td>${row.host_name}</td><td>${new Date(row.created_at).toLocaleString('he-IL')}</td><td>${formatDuration(row.created_at)}</td>`;
                 html += '</tr>';
             });
             html += '</tbody></table>';
             container.innerHTML = html;
-
         } catch (e) { console.error(e); container.innerHTML = "שגיאה בטעינת דוח"; }
     }
     
@@ -405,7 +330,6 @@
         const logo = document.getElementById('genLogoUrl').value;
         const title = document.getElementById('genBrandTitle').value;
         const slogan = document.getElementById('genBrandSlogan').value;
-        // מסירים סולמית אם המשתמש הכניס
         let color = document.getElementById('genColorText').value.replace('#', '');
         
         const baseUrl = window.location.origin + '/host.html';
@@ -420,20 +344,15 @@
         document.getElementById('genResultArea').classList.remove('hidden');
     }
     
+    // תיקון תקלה 1: עדכון טקסט הווצאפ
     function sendToWhatsapp() {
         const link = document.getElementById('finalLink').value;
-        const text = `היי, הנה הלינק למשחק הממותג שלכם:\n${link}`;
+        // טקסט הסבר ידידותי
+        const text = `היי,\n\nהכנו עבורכם סביבת משחק ממותגת וחגיגית! 🎉\n\nאתם מוזמנים להיכנס לקישור הבא כדי לנהל את הפעילות:\n${link}\n\nתהנו!`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
 
-    // עדכון אוטומטי
-    setInterval(() => {
-        if(!document.getElementById('tab-dashboard').classList.contains('hidden')) {
-            loadDashboard();
-        }
-    }, 10000);
-    
-    // טעינה ראשונית
+    setInterval(() => { if(!document.getElementById('tab-dashboard').classList.contains('hidden')) loadDashboard(); }, 10000);
     loadDashboard();
   </script>
 </body>
