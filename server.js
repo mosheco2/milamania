@@ -50,7 +50,6 @@ async function initDb() {
       ssl: process.env.PGSSL === "false" ? false : { rejectUnauthorized: false },
     });
 
-    // וידוא טבלאות ועמודות
     await pool.query(`CREATE TABLE IF NOT EXISTS games (code TEXT PRIMARY KEY, host_name TEXT, target_score INTEGER, default_round_seconds INTEGER, categories TEXT[], created_at TIMESTAMPTZ DEFAULT NOW());`);
     try { await pool.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS host_ip TEXT;`); } catch (e) {}
     try { await pool.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS branding JSONB;`); } catch (e) {}
@@ -80,8 +79,10 @@ const safeCb = (cb, data) => { if (typeof cb === 'function') cb(data); };
 async function saveGameState(game) {
     if (!dbReady || !game) return;
     try {
-        // לא שומרים את המילים המותאמות אישית ב-DB כדי לחסוך מקום, הן זמניות בזיכרון
-        const gameToSave = { ...game, customWordsList: [] }; 
+        // תיקון קריטי: יצירת עותק מלא לשמירה כדי לא לפגוע באובייקט בזיכרון
+        const gameToSave = JSON.parse(JSON.stringify(game));
+        gameToSave.customWordsList = []; // לא שומרים מילים מותאמות אישית ל-DB
+
         const json = JSON.stringify(gameToSave);
         await pool.query(
             `INSERT INTO active_states (game_code, data, last_updated) VALUES ($1, $2, NOW()) 
@@ -136,15 +137,12 @@ const WORD_BANK = [
   { text: "משרד", category: "work" }
 ];
 
-// פונקציית הגרלת מילה (כולל תמיכה במילים מותאמות אישית)
 function getRandomWord(game) {
   let pool = [];
-  // עדיפות ראשונה: מילים מותאמות אישית
   if (game.customWordsList && game.customWordsList.length > 0) {
       pool = game.customWordsList.map(word => ({ text: word, category: 'מותאם אישית' }));
   }
 
-  // הוספת מילים מהבנק לפי קטגוריות
   const categories = game.categories || [];
   if (Array.isArray(categories) && categories.length > 0 && !categories.includes('all')) {
     const catSet = new Set(categories);
@@ -238,7 +236,6 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   const teamId = round.teamId;
   const roundScore = typeof round.roundScore === "number" && round.roundScore > 0 ? round.roundScore : 0;
 
-  // עדכון הניקוד הסופי של הקבוצה
   if (teamId && game.teams[teamId]) {
     game.teams[teamId].score = (game.teams[teamId].score || 0) + roundScore;
   }
@@ -256,7 +253,7 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   const totalScore = teamId && game.teams[teamId] ? game.teams[teamId].score : 0;
   
   saveGameState(game);
-  broadcastGame(game); // שידור עדכון אחרון עם הניקוד הסופי
+  broadcastGame(game);
 
   io.to("game-" + code).emit("roundFinished", { teamId, roundScore, totalScore, reason: options.reason || "manual" });
 
@@ -440,19 +437,16 @@ io.on("connection", (socket) => {
       safeCb(callback, {ok:true});
   });
 
-  // שינוי ניקוד - כולל שידור מהיר ללקוחות
   socket.on("changeRoundScore", (data, cb) => {
       const game = games[data.gameCode];
       if(game && game.currentRound && game.currentRound.active) {
           const d = parseInt(data.delta) || 0;
-          // עדכון הניקוד הזמני בזיכרון
           game.currentRound.roundScore = Math.max(0, (game.currentRound.roundScore || 0) + d);
           game.lastActivity = new Date();
           saveGameState(game);
           
           safeCb(cb, {ok:true});
           
-          // שידור אירוע מהיר ספציפי לשינוי ניקוד (Real-time update)
           io.to("game-" + game.code).emit("roundScoreUpdated", {
               gameCode: game.code,
               roundScore: game.currentRound.roundScore,
