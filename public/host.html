@@ -10,10 +10,13 @@
   <style>
     :root { font-size: 16px; --bg-color: #FFF8EA; }
     * { box-sizing: border-box; font-family: "Varela Round", system-ui, sans-serif; }
-    body { margin: 0; padding: 0; background: var(--bg-color); color: #2B1E4A; min-height: 100vh; font-size: 1rem; position: relative; }
-    body::before, body::after { content: ""; position: fixed; width: 280px; height: 280px; border-radius: 50%; z-index: -1; }
-    body::before { top: -130px; left: -70px; background: radial-gradient(circle at center, rgba(248, 71, 121, 0.30), transparent 60%); }
-    body::after { bottom: -150px; right: -50px; background: radial-gradient(circle at center, rgba(21, 196, 193, 0.28), transparent 60%); }
+    /* שינוי: הרקע נקבע ע"י המשתנה, והבועות יוסתרו אם יש מיתוג */
+    body { margin: 0; padding: 0; background-color: var(--bg-color); color: #2B1E4A; min-height: 100vh; font-size: 1rem; position: relative; overflow-x: hidden; }
+    /* הוספתי מחלקה להסתרת הבועות כשיש מיתוג */
+    body:not(.branded)::before, body:not(.branded)::after { content: ""; position: fixed; width: 280px; height: 280px; border-radius: 50%; z-index: -1; }
+    body:not(.branded)::before { top: -130px; left: -70px; background: radial-gradient(circle at center, rgba(248, 71, 121, 0.30), transparent 60%); }
+    body:not(.branded)::after { bottom: -150px; right: -50px; background: radial-gradient(circle at center, rgba(21, 196, 193, 0.28), transparent 60%); }
+
     .app { max-width: 1024px; width: 100%; padding: 20px 14px 40px; margin: 0 auto; }
     .card { background: #FFFFFF; border-radius: 26px; padding: 18px 16px 20px; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.06); border: 1px solid rgba(43, 30, 74, 0.06); margin-bottom: 16px; }
     h1, h2, h3 { margin-top: 0; }
@@ -37,11 +40,17 @@
     .chip { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(180, 169, 214, 0.7); font-size: 0.8rem; color: #58457F; gap: 6px; background: radial-gradient(circle at top left, rgba(248, 71, 121, 0.18), rgba(255, 255, 255, 0.96)); margin-bottom: 4px; cursor: pointer; }
     .chip input { margin: 0; width: auto; }
     .status-text { font-size: 0.9rem; color: #7C7598; }
-    .logo-small { height: 54px; width: auto; border-radius: 16px; object-fit: contain; background: #FFFFFF; padding: 4px 8px; border: 1px solid rgba(180, 169, 214, 0.65); box-shadow: 0 0 0 3px #FFF8EA, 0 10px 26px rgba(0,0,0,0.12); }
+    
+    /* תיקון לוגו: גדול יותר, ללא מסגרת */
+    .logo-small { height: 120px; width: auto; object-fit: contain; padding: 0; border: none; box-shadow: none; background: transparent; }
+
     .hidden { display: none !important; }
     #roundTimer { margin-top: 4px; font-size: 1.8rem; font-weight: 800; letter-spacing: 0.06em; color: #F84779; }
-    .page-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .page-header-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    
+    /* תיקון לייאוט Header: פלקס שורה, לוגו מימין טקסט משמאל */
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; flex-wrap: wrap; }
+    .page-header-main { display: flex; align-items: center; gap: 20px; flex: 1; min-width: 280px; }
+    
     .top-tabs { display: inline-flex; border-radius: 999px; background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(180, 169, 214, 0.5); overflow: hidden; }
     .top-tabs button { border: none; padding: 6px 12px; font-size: 0.84rem; cursor: pointer; background: transparent; color: #6B618F; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
     .top-tabs button.active { background: linear-gradient(135deg, #F84779, #F7C948); color: #2B1E4A; }
@@ -51,10 +60,15 @@
     #hostPresenterWord { font-size: 2rem; font-weight: 800; text-align: center; margin: 10px 0 4px; letter-spacing: 0.03em; color: #2B1E4A; }
     .host-presenter-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
     #hostPlayerBigTimer { margin-top: 6px; font-size: 1.7rem; font-weight: 800; letter-spacing: 0.06em; color: #F84779; text-align: center; }
-    .btn-whatsapp { background:#25D366; color:white !important; text-decoration:none; padding:4px 8px; border-radius:8px; font-size:0.8rem; margin-right:5px; }
-    .brand-header-info { display: flex; flex-direction: column; justify-content: center; }
-    .brand-title-host { font-size: 1.1rem; font-weight: 800; color: #2B1E4A; margin: 0; line-height: 1.2; }
-    .brand-slogan-host { font-size: 0.85rem; color: #6B618F; margin: 2px 0 0; }
+    
+    /* כפתור וואטסאפ - סגנון */
+    .btn-whatsapp { background:#25D366; color:white !important; border:none; padding:6px 12px; border-radius:8px; font-size:0.85rem; margin-right:5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: bold; }
+    .btn-whatsapp:hover { background: #1da851; }
+
+    /* תיקון טקסטים מותגים */
+    .brand-header-info { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; text-align: right; }
+    .brand-title-host { font-size: 1.6rem; font-weight: 900; color: #2B1E4A; margin: 0 0 4px 0; line-height: 1.1; }
+    .brand-slogan-host { font-size: 1rem; color: #5a507a; margin: 0; font-weight: 500; }
     
     /* תיבת עזרה מתקפלת */
     .help-box { border: 1px solid rgba(180, 169, 214, 0.4); border-radius: 16px; margin-bottom: 16px; overflow: hidden; background: rgba(255,255,255,0.6); }
@@ -73,7 +87,19 @@
     .modal-box { background: #fff; width: 85%; max-width: 400px; border-radius: 28px; padding: 30px; text-align: center; }
     #support-wa-btn { position: fixed; bottom: 24px; right: 24px; z-index: 2000; background: #25D366; color: white; border-radius: 50px; padding: 12px 20px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; }
 
-    @media (max-width: 640px) { body { font-size: 1.05rem; } .app { padding: 16px 10px 32px; } .card { padding: 18px 14px 20px; border-radius: 20px; } h1 { font-size: 1.6rem; } h3 { font-size: 1.05rem; } label { font-size: 0.9rem; } input, select, textarea { font-size: 1rem; } .btn { font-size: 1rem; padding: 10px 16px; } #roundTimer { font-size: 2rem; text-align: center; margin-top: 8px; } #hostPresenterWord { font-size: 2.1rem; } #hostPlayerBigTimer { font-size: 1.9rem; } }
+    @media (max-width: 640px) { 
+        body { font-size: 1.05rem; } 
+        .app { padding: 16px 10px 32px; } 
+        .card { padding: 18px 14px 20px; border-radius: 20px; } 
+        h1 { font-size: 1.6rem; } 
+        /* התאמה למובייל */
+        .page-header-main { flex-direction: column; text-align: center; gap: 10px; }
+        .logo-small { height: 100px; }
+        .brand-header-info { align-items: center; text-align: center; }
+        #roundTimer { font-size: 2rem; text-align: center; margin-top: 8px; } 
+        #hostPresenterWord { font-size: 2.1rem; } 
+        #hostPlayerBigTimer { font-size: 1.9rem; } 
+    }
   </style>
 </head>
 <body>
@@ -93,7 +119,7 @@
             </div>
           </div>
         </div>
-        <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end; flex-shrink: 0;">
           <div class="top-tabs">
             <button id="tabHost" class="active" type="button">👑 מצב מנהל</button>
             <button id="tabPlayer" type="button">🎮 מצב שחקן (אני)</button>
@@ -265,7 +291,7 @@
       </div>
   </div>
   
-  <div id="support-wa-btn" onclick="openSupport()">💬 תמיכה</div>
+  <div id="support-wa-btn" onclick="window.location.href='https://wa.me/972504000024'">💬 תמיכה</div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -292,7 +318,12 @@
         title: urlParams.get('title') ? decodeURIComponent(urlParams.get('title')) : null,
         slogan: urlParams.get('slogan') ? decodeURIComponent(urlParams.get('slogan')) : null
     };
-    if(branding.color && branding.color !== 'ffffff') document.body.style.setProperty('--bg-color', '#' + branding.color);
+    
+    // החלת מיתוג
+    if(branding.color && branding.color !== 'ffffff') {
+        document.body.style.setProperty('--bg-color', '#' + branding.color);
+        document.body.classList.add('branded'); // הוספת קלאס להסתרת הבועות
+    }
     if(branding.logo) { const img = document.getElementById('host-logo'); img.src = branding.logo; img.classList.remove('hidden'); }
     if(branding.title || branding.slogan) {
         document.getElementById('defaultHeader').classList.add('hidden');
@@ -400,7 +431,6 @@
     function getNextWordHost() { socket.emit("getNextWord", { gameCode: currentGameCode }, (res) => { if(res.ok) document.getElementById("hostPresenterWord").innerText = res.word; }); }
 
     socket.on("gameUpdated", renderGame);
-    // האזנה לאירוע עדכון ניקוד מהיר
     socket.on("roundScoreUpdated", (data) => {
          if(data.gameCode === currentGameCode) {
              const scoreText = `ניקוד בסיבוב: ${data.roundScore}`;
@@ -447,7 +477,8 @@
         Object.values(game.teams).forEach(t => {
             const link = `${window.location.origin}/player.html?code=${game.code}&teamId=${t.id}&teamName=${encodeURIComponent(t.name)}`;
             const waLink = `https://wa.me/?text=${encodeURIComponent("הצטרפו לקבוצת " + t.name + ": " + link)}`;
-            shareList.innerHTML += `<div style="margin-bottom:5px; display:flex; justify-content:space-between; align-items:center;"><span>${t.name}</span> <a href="${waLink}" target="_blank" class="btn-whatsapp">שלח לקבוצה</a></div>`;
+            // תיקון: שימוש בכפתור עם onclick למניעת דף לבן
+            shareList.innerHTML += `<div style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;"><span>${t.name}</span> <button onclick="window.location.href='${waLink}'" class="btn-whatsapp">שליחה לווצאפ 📲</button></div>`;
         });
 
         const selects = [document.getElementById("roundTeamSelect"), document.getElementById("hostPlayerTeamSelect"), document.getElementById("floatTeamSelect")];
@@ -484,7 +515,6 @@
             document.getElementById("roundStatus").textContent = `משחקים: ${game.currentRound.explainerName}`;
             document.getElementById("hostRoundStatusPlayer").textContent = `מסביר: ${game.currentRound.explainerName}`;
             
-            // עדכון ניקוד נוכחי ברינדור (למקרה של טעינה מחדש)
             const scoreText = `ניקוד בסיבוב: ${game.currentRound.roundScore || 0}`;
             document.getElementById("hostRoundCurrentScore").textContent = scoreText;
             document.getElementById("hostPlayerRoundCurrentScore").textContent = scoreText;
@@ -500,7 +530,6 @@
             document.getElementById("roundTimer").textContent = "00:00";
             document.getElementById("hostPresenterSection").classList.add("hidden");
             
-            // איפוס ניקוד נוכחי
             document.getElementById("hostRoundCurrentScore").textContent = "ניקוד בסיבוב: 0";
             document.getElementById("hostPlayerRoundCurrentScore").textContent = "ניקוד בסיבוב: 0";
         }
@@ -520,7 +549,7 @@
     if(savedCode) socket.emit("hostReconnect", { gameCode: savedCode }, (res) => { if(res.ok) try { renderGame(res.game); } catch(e) { console.error(e); } });
 
     function showModal(title, body) { document.getElementById("modalTitle").textContent = title; document.getElementById("modalContent").innerHTML = body; document.getElementById("customModal").classList.add("active"); }
-    function openSupport() { window.open(`https://wa.me/972504000024`, '_blank'); }
+    function openSupport() { window.location.href = 'https://wa.me/972504000024'; }
   </script>
 </body>
 </html>
