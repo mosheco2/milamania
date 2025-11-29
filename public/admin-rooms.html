@@ -190,19 +190,27 @@
         <div class="card">
             <h3>הגדרות פרסום גלובליות</h3>
             <p style="color:var(--text-secondary); margin-bottom:20px; font-size:0.9rem;">
-                הגדרות אלו ישפיעו על כל דפי האתר (דף הבית, מסך מנהל, מסך שחקן).
+                הגדרות אלו ישפיעו על כל דפי האתר. הבאנר העליון הוא ברוחב מלא ובגובה 80px. הבאנר התחתון הוא ברוחב מלא, צמוד לתחתית המסך, ובגובה 160px.
             </p>
             
             <div class="form-group" style="margin-bottom:15px;">
                 <label>באנר עליון - קישור לתמונה (URL)</label>
-                <input type="text" id="settingTopBannerImg" placeholder="https://example.com/banner.jpg">
-                <small style="color:var(--text-secondary);">מומלץ להשתמש בתמונה רחבה ונמוכה.</small>
+                <input type="text" id="settingTopBannerImg" placeholder="https://example.com/top-banner.jpg">
             </div>
-
             <div class="form-group" style="margin-bottom:20px;">
                  <label>באנר עליון - קישור ליעד (URL)</label>
                  <input type="text" id="settingTopBannerLink" placeholder="https://example.com/landing-page">
-                 <small style="color:var(--text-secondary);">לאן יועבר המשתמש בלחיצה על הבאנר.</small>
+            </div>
+
+            <hr style="border-color: #334155; margin: 20px 0;">
+
+            <div class="form-group" style="margin-bottom:15px;">
+                <label>באנר תחתון - קישור לתמונה (URL)</label>
+                <input type="text" id="settingBottomBannerImg" placeholder="https://example.com/bottom-banner.jpg">
+            </div>
+            <div class="form-group" style="margin-bottom:20px;">
+                 <label>באנר תחתון - קישור ליעד (URL)</label>
+                 <input type="text" id="settingBottomBannerLink" placeholder="https://example.com/landing-page">
             </div>
             
             <button class="btn btn-submit" onclick="saveSettings()">שמור הגדרות</button>
@@ -358,7 +366,7 @@
         window.location.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
     }
 
-    // --- פונקציות חדשות לניהול הגדרות ---
+    // --- פונקציות לניהול הגדרות ---
     async function loadSettings() {
         try {
             const res = await fetch('/api/banners');
@@ -367,18 +375,24 @@
                 document.getElementById('settingTopBannerImg').value = data.topBanner.img || '';
                 document.getElementById('settingTopBannerLink').value = data.topBanner.link || '';
             }
+            if (data.bottomBanner) {
+                document.getElementById('settingBottomBannerImg').value = data.bottomBanner.img || '';
+                document.getElementById('settingBottomBannerLink').value = data.bottomBanner.link || '';
+            }
         } catch (e) { console.error("Error loading settings:", e); }
     }
 
     async function saveSettings() {
         const topBannerImg = document.getElementById('settingTopBannerImg').value;
         const topBannerLink = document.getElementById('settingTopBannerLink').value;
+        const bottomBannerImg = document.getElementById('settingBottomBannerImg').value;
+        const bottomBannerLink = document.getElementById('settingBottomBannerLink').value;
         
         try {
             const res = await fetch(`/admin/settings?code=${ADMIN_CODE}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topBannerImg, topBannerLink })
+                body: JSON.stringify({ topBannerImg, topBannerLink, bottomBannerImg, bottomBannerLink })
             });
             const json = await res.json();
             if (json.ok) {
@@ -391,7 +405,7 @@
     
     setInterval(() => { if(!document.getElementById('tab-dashboard').classList.contains('hidden')) loadDashboard(); }, 10000);
     loadDashboard();
-    loadSettings(); // טעינת הגדרות בעת טעינת הדף
+    loadSettings(); 
   </script>
 </body>
 </html>
