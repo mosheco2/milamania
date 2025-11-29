@@ -67,7 +67,8 @@
     .btn-close { background: #ef444420; color: #ef4444; border: 1px solid #ef4444; }
     .btn-close:hover { background: #ef4444; color: white; }
     .btn-reset { background: #ef4444; color: white; padding: 8px 16px; }
-    .btn-whatsapp { background: #25D366; color: white; width: 100%; margin-top: 10px; }
+    .btn-whatsapp { background: #25D366; color: white; width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-whatsapp:hover { background: #1da851; }
 
     /* Generator Output */
     .link-output { 
@@ -210,11 +211,9 @@
     const ADMIN_CODE = "ONEBTN"; 
     let chartInstance = null;
 
-    // אתחול תאריכים
     document.getElementById('dateFrom').valueAsDate = new Date(Date.now() - 30*24*60*60*1000);
     document.getElementById('dateTo').valueAsDate = new Date();
 
-    // סנכרון צבע
     document.getElementById('genColor').addEventListener('input', (e) => {
         document.getElementById('genColorText').value = e.target.value;
     });
@@ -248,7 +247,6 @@
         }
     }
 
-    // --- Dashboard Logic ---
     async function loadDashboard() {
         try {
             const res = await fetch(`/admin/stats?code=${ADMIN_CODE}`);
@@ -298,7 +296,6 @@
         loadDashboard();
     }
 
-    // --- Reports Logic ---
     async function fetchReport() {
         const type = document.getElementById('reportType').value;
         const from = document.getElementById('dateFrom').value;
@@ -325,7 +322,6 @@
         } catch (e) { console.error(e); container.innerHTML = "שגיאה בטעינת דוח"; }
     }
     
-    // --- Link Generator Logic ---
     function generateLink() {
         const logo = document.getElementById('genLogoUrl').value;
         const title = document.getElementById('genBrandTitle').value;
@@ -344,10 +340,11 @@
         document.getElementById('genResultArea').classList.remove('hidden');
     }
     
+    // תיקון: שימוש ב-window.location למניעת דף לבן
     function sendToWhatsapp() {
         const link = document.getElementById('finalLink').value;
         const text = `היי,\n\nהכנו עבורכם סביבת משחק ממותגת וחגיגית! 🎉\n\nאתם מוזמנים להיכנס לקישור הבא כדי לנהל את הפעילות:\n${link}\n\nתהנו!`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        window.location.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
     }
 
     setInterval(() => { if(!document.getElementById('tab-dashboard').classList.contains('hidden')) loadDashboard(); }, 10000);
