@@ -72,11 +72,16 @@
 
     .categories-container { display: flex; flex-wrap: wrap; gap: 5px; max-height: 200px; overflow-y: auto; padding: 4px; border: 1px solid rgba(43, 30, 74, 0.1); border-radius: 14px; }
     
+    /* תיקון: סידור הכפתורים הצפים בטור אחד */
     .fab-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 100; align-items: center; transition: 0.3s; }
     .fab-btn { background: linear-gradient(135deg, #2B1E4A, #433362); color: #FFD76F; padding: 12px 24px; border-radius: 50px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 15px rgba(43, 30, 74, 0.3); transition: all 0.2s ease; font-size: 0.9rem; white-space: nowrap; }
     .fab-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(43, 30, 74, 0.4); }
     #switchRoleFab { background: linear-gradient(135deg, #F84779, #F7C948); color: #2B1E4A; }
     
+    /* תיקון: עיצוב לכפתור וואטסאפ צף */
+    .fab-btn.whatsapp { background: #25D366; color: white; display: flex; align-items: center; gap: 8px; }
+    .fab-btn.whatsapp:hover { background: #1da851; }
+
     #adminFloatingPanel { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 450px; background: rgba(255, 255, 255, 0.98); border-radius: 28px; padding: 24px; z-index: 99; box-shadow: 0 20px 50px rgba(0,0,0,0.2), 0 0 0 1px rgba(43,30,74,0.05); backdrop-filter: blur(10px); }
     
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: 0.3s; }
@@ -84,7 +89,8 @@
     .modal-box { background: #fff; width: 85%; max-width: 400px; border-radius: 28px; padding: 30px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
     .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
 
-    #support-wa-btn { position: fixed; bottom: 24px; right: 24px; z-index: 2000; background: #25D366; color: white; border-radius: 50px; padding: 12px 20px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; }
+    /* תיקון: הסרת העיצוב הישן של כפתור התמיכה */
+    /* #support-wa-btn { position: fixed; bottom: 24px; right: 24px; z-index: 2000; background: #25D366; color: white; border-radius: 50px; padding: 12px 20px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; } */
 
     @media (max-width: 640px) { 
         body { font-size: 1.05rem; } 
@@ -295,6 +301,7 @@
   <div class="fab-container hidden" id="fabs">
       <div class="fab-btn" id="switchRoleFab">🎮 מעבר למצב שחקן</div>
       <div class="fab-btn" id="adminFab">👑 ניהול מהיר</div>
+      <div class="fab-btn whatsapp" id="supportFab">💬 תמיכה</div>
   </div>
 
   <div id="adminFloatingPanel" class="hidden">
@@ -316,8 +323,6 @@
       </div>
   </div>
   
-  <div id="support-wa-btn">💬 תמיכה</div>
-
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -338,9 +343,9 @@
     const adminFab = document.getElementById("adminFab");
     const switchRoleFab = document.getElementById("switchRoleFab");
     const adminFloatingPanel = document.getElementById("adminFloatingPanel");
-    const supportBtn = document.getElementById("support-wa-btn");
+    // תיקון: הפניה לכפתור התמיכה החדש
+    const supportFab = document.getElementById("supportFab");
     const customModal = document.getElementById("customModal");
-    // תיקון: הפניה לאלמנט הפעולות במודאל
     const modalActions = document.getElementById("modalActions");
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -374,7 +379,8 @@
         if (isHostAlsoPlayer) {
              text = `היי, אני מנהל ושחקן במשחק ${currentGameCode} ואשמח לעזרה.`;
         }
-        supportBtn.onclick = () => window.location.href = `https://wa.me/972504000024?text=${encodeURIComponent(text)}`;
+        // תיקון: עדכון הלינק בכפתור החדש
+        supportFab.onclick = () => window.location.href = `https://wa.me/972504000024?text=${encodeURIComponent(text)}`;
     }
     updateSupportLink();
 
@@ -464,7 +470,6 @@
         });
     });
 
-    // תיקון: וידוא שפונקציית האישור מוגדרת כראוי לפני פתיחת המודאל
     document.getElementById("endGameBtn").addEventListener("click", () => {
         showConfirmModal("סגירת משחק", "האם אתה בטוח שברצונך לסגור את המשחק לכולם?", () => {
             socket.emit("endGame", { gameCode: currentGameCode });
@@ -541,7 +546,6 @@
          if(data.gameCode === currentGameCode) {
              const scoreText = `ניקוד בסיבוב: ${data.roundScore}`;
              document.getElementById("hostRoundCurrentScore").textContent = scoreText;
-             // תיקון: עדכון גם של האלמנט החדש במצב שחקן
              document.getElementById("hostPlayerRoundCurrentScore").textContent = scoreText;
          }
     });
@@ -622,6 +626,7 @@
             scoreHtml += `<div><strong>${t.name}:</strong> ${t.score}</div>`;
             let pPills = t.players.map(pid => {
                 const p = game.playersByClientId[pid];
+                // תיקון: וידוא שפרטי השחקן קיימים לפני הרינדור
                 if(!p) return "";
                 return `<span class="player-pill"><button class="remove-player-btn" onclick="removePlayer('${pid}', '${p.name.replace(/'/g, "\\'")}')">×</button>${p.name}</span>`;
             }).join("");
@@ -653,7 +658,6 @@
             
             const scoreText = `ניקוד בסיבוב: ${game.currentRound.roundScore || 0}`;
             document.getElementById("hostRoundCurrentScore").textContent = scoreText;
-            // תיקון: עדכון האלמנט החדש
             document.getElementById("hostPlayerRoundCurrentScore").textContent = scoreText;
 
             if(game.currentRound.explainerId === hostPlayerClientId) {
@@ -668,7 +672,6 @@
             document.getElementById("hostPresenterWord").textContent = "...";
             
             document.getElementById("hostRoundCurrentScore").textContent = "ניקוד בסיבוב: 0";
-            // תיקון: איפוס האלמנט החדש
             document.getElementById("hostPlayerRoundCurrentScore").textContent = "ניקוד בסיבוב: 0";
         }
     }
@@ -698,7 +701,7 @@
           showModal("רשימת שחקנים", html);
       });
 
-    // פונקציות עזר לפופאפים מעוצבים - תיקון קריטי למנגנון האישור
+    // תיקון: מנגנון הפופאפ המותאם
     function showModal(title, body) { 
         document.getElementById("modalTitle").textContent = title; 
         document.getElementById("modalContent").innerHTML = body; 
@@ -710,7 +713,7 @@
         document.getElementById("modalTitle").textContent = title;
         document.getElementById("modalContent").textContent = body;
         pendingAction = onConfirm;
-        // שימוש ב-onclick ישיר כדי למנוע בעיות scope
+        // שימוש ב-onclick ישיר כדי לוודא שהפעולה הנכונה מתבצעת
         modalActions.innerHTML = `
             <button class="btn btn-ghost" onclick="closeModal()">ביטול</button>
             <button class="btn btn-danger" id="confirmActionBtn">אישור</button>
