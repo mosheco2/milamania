@@ -10,9 +10,7 @@
   <style>
     :root { font-size: 16px; --bg-color: #FFF8EA; }
     * { box-sizing: border-box; font-family: "Varela Round", system-ui, sans-serif; }
-    /* שינוי: הרקע נקבע ע"י המשתנה, והבועות יוסתרו אם יש מיתוג */
     body { margin: 0; padding: 0; background-color: var(--bg-color); color: #2B1E4A; min-height: 100vh; font-size: 1rem; position: relative; overflow-x: hidden; }
-    /* הוספתי מחלקה להסתרת הבועות כשיש מיתוג */
     body:not(.branded)::before, body:not(.branded)::after { content: ""; position: fixed; width: 280px; height: 280px; border-radius: 50%; z-index: -1; }
     body:not(.branded)::before { top: -130px; left: -70px; background: radial-gradient(circle at center, rgba(248, 71, 121, 0.30), transparent 60%); }
     body:not(.branded)::after { bottom: -150px; right: -50px; background: radial-gradient(circle at center, rgba(21, 196, 193, 0.28), transparent 60%); }
@@ -41,13 +39,11 @@
     .chip input { margin: 0; width: auto; }
     .status-text { font-size: 0.9rem; color: #7C7598; }
     
-    /* תיקון לוגו: גדול יותר, ללא מסגרת */
     .logo-small { height: 120px; width: auto; object-fit: contain; padding: 0; border: none; box-shadow: none; background: transparent; }
 
     .hidden { display: none !important; }
     #roundTimer { margin-top: 4px; font-size: 1.8rem; font-weight: 800; letter-spacing: 0.06em; color: #F84779; }
     
-    /* תיקון לייאוט Header: פלקס שורה, לוגו מימין טקסט משמאל */
     .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; flex-wrap: wrap; }
     .page-header-main { display: flex; align-items: center; gap: 20px; flex: 1; min-width: 280px; }
     
@@ -61,23 +57,19 @@
     .host-presenter-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
     #hostPlayerBigTimer { margin-top: 6px; font-size: 1.7rem; font-weight: 800; letter-spacing: 0.06em; color: #F84779; text-align: center; }
     
-    /* כפתור וואטסאפ - סגנון */
     .btn-whatsapp { background:#25D366; color:white !important; border:none; padding:6px 12px; border-radius:8px; font-size:0.85rem; margin-right:5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: bold; }
     .btn-whatsapp:hover { background: #1da851; }
 
-    /* תיקון טקסטים מותגים */
     .brand-header-info { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; text-align: right; }
     .brand-title-host { font-size: 1.6rem; font-weight: 900; color: #2B1E4A; margin: 0 0 4px 0; line-height: 1.1; }
     .brand-slogan-host { font-size: 1rem; color: #5a507a; margin: 0; font-weight: 500; }
     
-    /* תיבת עזרה מתקפלת */
     .help-box { border: 1px solid rgba(180, 169, 214, 0.4); border-radius: 16px; margin-bottom: 16px; overflow: hidden; background: rgba(255,255,255,0.6); }
     .help-box summary { padding: 12px 16px; cursor: pointer; font-weight: 600; color: #6B618F; user-select: none; outline: none; transition: background 0.2s; }
     .help-box summary:hover { background: rgba(180, 169, 214, 0.1); }
     .help-box ul { margin: 0; padding: 12px 16px 16px 30px; list-style-type: disc; color: #433362; font-size: 0.95rem; }
     .help-box li { margin-bottom: 6px; }
 
-    /* פאנל צף משופר */
     #adminFab { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #2B1E4A, #433362); color: #FFD76F; padding: 14px 28px; border-radius: 50px; font-weight: 700; z-index: 100; cursor: pointer; box-shadow: 0 10px 25px rgba(43, 30, 74, 0.3); transition: all 0.2s ease; }
     #adminFab:hover { transform: translateX(-50%) translateY(-3px); box-shadow: 0 14px 30px rgba(43, 30, 74, 0.4); }
     #adminFloatingPanel { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 450px; background: rgba(255, 255, 255, 0.98); border-radius: 28px; padding: 24px; z-index: 99; box-shadow: 0 20px 50px rgba(0,0,0,0.2), 0 0 0 1px rgba(43,30,74,0.05); backdrop-filter: blur(10px); }
@@ -92,7 +84,6 @@
         .app { padding: 16px 10px 32px; } 
         .card { padding: 18px 14px 20px; border-radius: 20px; } 
         h1 { font-size: 1.6rem; } 
-        /* התאמה למובייל */
         .page-header-main { flex-direction: column; text-align: center; gap: 10px; }
         .logo-small { height: 100px; }
         .brand-header-info { align-items: center; text-align: center; }
@@ -177,11 +168,11 @@
         <div style="margin-bottom: 10px;">
             <label style="margin-bottom: 5px;">קטגוריות מילים:</label>
             <div style="display:flex; flex-wrap:wrap; gap:5px;">
-                <label class="chip"><input type="checkbox" value="all" checked> הכל</label>
-                <label class="chip"><input type="checkbox" value="food"> אוכל</label>
-                <label class="chip"><input type="checkbox" value="animals"> חיות</label>
-                <label class="chip"><input type="checkbox" value="objects"> חפצים</label>
-                <label class="chip"><input type="checkbox" value="sports"> ספורט</label>
+                <label class="chip"><input type="checkbox" id="catAll" value="all" checked> הכל</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="food" checked> אוכל</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="animals" checked> חיות</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="objects" checked> חפצים</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="sports" checked> ספורט</label>
             </div>
         </div>
 
@@ -319,10 +310,9 @@
         slogan: urlParams.get('slogan') ? decodeURIComponent(urlParams.get('slogan')) : null
     };
     
-    // החלת מיתוג
     if(branding.color && branding.color !== 'ffffff') {
         document.body.style.setProperty('--bg-color', '#' + branding.color);
-        document.body.classList.add('branded'); // הוספת קלאס להסתרת הבועות
+        document.body.classList.add('branded');
     }
     if(branding.logo) { const img = document.getElementById('host-logo'); img.src = branding.logo; img.classList.remove('hidden'); }
     if(branding.title || branding.slogan) {
@@ -347,13 +337,25 @@
         if (adminFloatingPanel.classList.contains('hidden')) {
             adminFloatingPanel.classList.remove('hidden');
             adminFab.classList.add('hidden');
-            refreshFloatOptions();
+            refreshExplainers(document.getElementById("floatTeamSelect").value, "floatExplainerSelect");
         } else {
             adminFloatingPanel.classList.add('hidden');
             adminFab.classList.remove('hidden');
         }
     }
     adminFab.addEventListener("click", toggleFloatingPanel);
+
+    // תיקון: לוגיקת "בחר הכל" בקטגוריות
+    document.getElementById('catAll').addEventListener('change', function() {
+        document.querySelectorAll('.cat-cb').forEach(cb => cb.checked = this.checked);
+    });
+    document.querySelectorAll('.cat-cb').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const all = document.querySelectorAll('.cat-cb');
+            const checked = document.querySelectorAll('.cat-cb:checked');
+            document.getElementById('catAll').checked = (all.length === checked.length);
+        });
+    });
 
     document.getElementById('numTeams').addEventListener('change', function() {
         const num = parseInt(this.value);
@@ -376,7 +378,10 @@
         if(num >= 4) teamNames.D = document.getElementById("teamNameD").value;
         if(num >= 5) teamNames.E = document.getElementById("teamNameE").value;
 
-        const categories = Array.from(document.querySelectorAll('.chip input:checked')).map(cb => cb.value);
+        const categories = [];
+        if(document.getElementById('catAll').checked) categories.push('all');
+        else document.querySelectorAll('.cat-cb:checked').forEach(cb => categories.push(cb.value));
+
         const customWords = document.getElementById('customWords').value;
 
         socket.emit("createGame", { hostName, gameTitle, teamNames, branding, categories, customWords }, (res) => {
@@ -412,6 +417,25 @@
             }
         });
     });
+
+    // תיקון: עדכון רשימת מסבירים בבחירת קבוצה
+    document.getElementById("roundTeamSelect").addEventListener("change", function() {
+        refreshExplainers(this.value, "explainerSelect");
+    });
+    document.getElementById("floatTeamSelect").addEventListener("change", function() {
+        refreshExplainers(this.value, "floatExplainerSelect");
+    });
+
+    function refreshExplainers(teamId, selectId) {
+        const expSel = document.getElementById(selectId);
+        expSel.innerHTML = '<option value="">אוטומטי</option>';
+        if(teamId && lastGameState && lastGameState.teams[teamId]) {
+            lastGameState.teams[teamId].players.forEach(pid => {
+                const p = lastGameState.playersByClientId[pid];
+                if(p) expSel.innerHTML += `<option value="${pid}">${p.name}</option>`;
+            });
+        }
+    }
 
     function startRound(isFloat = false) {
         const teamId = isFloat ? document.getElementById("floatTeamSelect").value : document.getElementById("roundTeamSelect").value;
@@ -477,16 +501,21 @@
         Object.values(game.teams).forEach(t => {
             const link = `${window.location.origin}/player.html?code=${game.code}&teamId=${t.id}&teamName=${encodeURIComponent(t.name)}`;
             const waLink = `https://wa.me/?text=${encodeURIComponent("הצטרפו לקבוצת " + t.name + ": " + link)}`;
-            // תיקון: שימוש בכפתור עם onclick למניעת דף לבן
             shareList.innerHTML += `<div style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;"><span>${t.name}</span> <button onclick="window.location.href='${waLink}'" class="btn-whatsapp">שליחה לווצאפ 📲</button></div>`;
         });
 
-        const selects = [document.getElementById("roundTeamSelect"), document.getElementById("hostPlayerTeamSelect"), document.getElementById("floatTeamSelect")];
-        selects.forEach(sel => {
-            const val = sel.value; sel.innerHTML = '<option value="">בחר קבוצה</option>';
+        // תיקון: עדכון כל הדרופדאונים ושמירת הבחירה הנוכחית
+        const teamSelects = [document.getElementById("roundTeamSelect"), document.getElementById("hostPlayerTeamSelect"), document.getElementById("floatTeamSelect")];
+        teamSelects.forEach(sel => {
+            const val = sel.value; 
+            sel.innerHTML = '<option value="">בחר קבוצה</option>';
             Object.entries(game.teams).forEach(([tid, t]) => sel.innerHTML += `<option value="${tid}">${t.name}</option>`);
             if(val && game.teams[val]) sel.value = val;
         });
+        
+        // עדכון אוטומטי של רשימות המסבירים אם נבחרה קבוצה
+        refreshExplainers(document.getElementById("roundTeamSelect").value, "explainerSelect");
+        refreshExplainers(document.getElementById("floatTeamSelect").value, "floatExplainerSelect");
 
         let scoreHtml = ""; let playersHtml = "";
         Object.values(game.teams).forEach(t => {
@@ -500,6 +529,8 @@
         });
         document.getElementById("scoreboard").innerHTML = scoreHtml;
         document.getElementById("playersByTeam").innerHTML = playersHtml;
+        
+        // תיקון: עדכון לוח תוצאות גם במצב שחקן-מנהל
         document.getElementById("hostPlayerScoreboard").innerHTML = scoreHtml;
 
         if(isHostAlsoPlayer) {
@@ -526,30 +557,3 @@
         } else {
             document.getElementById("startRoundBtn").disabled = false;
             document.getElementById("stopRoundBtn").disabled = true;
-            document.getElementById("roundStatus").textContent = "המתנה";
-            document.getElementById("roundTimer").textContent = "00:00";
-            document.getElementById("hostPresenterSection").classList.add("hidden");
-            
-            document.getElementById("hostRoundCurrentScore").textContent = "ניקוד בסיבוב: 0";
-            document.getElementById("hostPlayerRoundCurrentScore").textContent = "ניקוד בסיבוב: 0";
-        }
-    }
-
-    function refreshFloatOptions() {
-        const teamId = document.getElementById("floatTeamSelect").value;
-        const expSel = document.getElementById("floatExplainerSelect");
-        expSel.innerHTML = '<option value="">אוטומטי</option>';
-        if(teamId && lastGameState.teams[teamId]) {
-            lastGameState.teams[teamId].players.forEach(pid => expSel.innerHTML += `<option value="${pid}">${lastGameState.playersByClientId[pid].name}</option>`);
-        }
-    }
-    document.getElementById("floatTeamSelect").addEventListener("change", refreshFloatOptions);
-
-    const savedCode = localStorage.getItem("mil_hostGameCode");
-    if(savedCode) socket.emit("hostReconnect", { gameCode: savedCode }, (res) => { if(res.ok) try { renderGame(res.game); } catch(e) { console.error(e); } });
-
-    function showModal(title, body) { document.getElementById("modalTitle").textContent = title; document.getElementById("modalContent").innerHTML = body; document.getElementById("customModal").classList.add("active"); }
-    function openSupport() { window.location.href = 'https://wa.me/972504000024'; }
-  </script>
-</body>
-</html>
