@@ -557,3 +557,20 @@
         } else {
             document.getElementById("startRoundBtn").disabled = false;
             document.getElementById("stopRoundBtn").disabled = true;
+            document.getElementById("roundStatus").textContent = "המתנה";
+            document.getElementById("roundTimer").textContent = "00:00";
+            document.getElementById("hostPresenterSection").classList.add("hidden");
+            
+            document.getElementById("hostRoundCurrentScore").textContent = "ניקוד בסיבוב: 0";
+            document.getElementById("hostPlayerRoundCurrentScore").textContent = "ניקוד בסיבוב: 0";
+        }
+    }
+
+    const savedCode = localStorage.getItem("mil_hostGameCode");
+    if(savedCode) socket.emit("hostReconnect", { gameCode: savedCode }, (res) => { if(res.ok) try { renderGame(res.game); } catch(e) { console.error(e); } });
+
+    function showModal(title, body) { document.getElementById("modalTitle").textContent = title; document.getElementById("modalContent").innerHTML = body; document.getElementById("customModal").classList.add("active"); }
+    function openSupport() { window.location.href = 'https://wa.me/972504000024'; }
+  </script>
+</body>
+</html>
