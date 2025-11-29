@@ -27,7 +27,6 @@ async function sendNewGameEmail(gameInfo) {
       body: JSON.stringify({
           code: gameInfo.code,
           host: gameInfo.hostName,
-          // תיקון: וידוא ששם החדר נשלח במייל
           title: gameInfo.gameTitle || "ללא שם"
       })
   }).catch(err => console.error("Webhook error:", err.message));
@@ -82,8 +81,9 @@ const safeCb = (cb, data) => { if (typeof cb === 'function') cb(data); };
 async function saveGameState(game) {
     if (!dbReady || !game) return;
     try {
+        // תיקון: שמירת רשימת המילים המותאמות אישית שנותרו
         const gameToSave = JSON.parse(JSON.stringify(game));
-        gameToSave.customWordsList = []; 
+        // gameToSave.customWordsList = []; // שורה זו נמחקה כדי לשמור את המילים
 
         const json = JSON.stringify(gameToSave);
         await pool.query(
@@ -160,12 +160,17 @@ const WORD_BANK = [
     {text:"לרוץ",category:"verbs"},{text:"לקפוץ",category:"verbs"},{text:"לשיר",category:"verbs"},{text:"לרקוד",category:"verbs"},{text:"לאכול",category:"verbs"},{text:"לשתות",category:"verbs"},{text:"לישון",category:"verbs"},{text:"לחשוב",category:"verbs"},{text:"לדבר",category:"verbs"},{text:"לכתוב",category:"verbs"}
 ];
 
+// תיקון: פונקציה שנותנת עדיפות למילים מותאמות אישית
 function getRandomWord(game) {
-  let pool = [];
+  // 1. בדיקה אם יש מילים ידניות שטרם שוחקו
   if (game.customWordsList && game.customWordsList.length > 0) {
-      pool = game.customWordsList.map(word => ({ text: word, category: 'מותאם אישית' }));
+      // שליפת המילה הראשונה מהרשימה
+      const wordText = game.customWordsList.shift();
+      return { text: wordText, category: 'מותאם אישית', isCustom: true };
   }
 
+  // 2. אם אין מילים ידניות, שליפה מהמאגר הכללי
+  let pool = [];
   const categories = game.categories || [];
   if (Array.isArray(categories) && categories.length > 0 && !categories.includes('all')) {
     const catSet = new Set(categories);
@@ -177,7 +182,7 @@ function getRandomWord(game) {
 
   if (pool.length === 0) return { text: "אין מילים", category: "כללי" };
   const idx = Math.floor(Math.random() * pool.length);
-  return pool[idx];
+  return { ...pool[idx], isCustom: false };
 }
 
 function generateGameCode() {
@@ -277,8 +282,8 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   
   saveGameState(game);
   
-  // תיקון: שידור עדכון משחק רגיל מספיק. הוסרה הפקודה הכפולה forceRefreshPlayers
   broadcastGame(game);
+  io.to("game-" + code).emit("forceRefreshPlayers");
 
   io.to("game-" + code).emit("roundFinished", { teamId, roundScore, totalScore, reason: options.reason || "manual" });
 
@@ -334,7 +339,6 @@ io.on("connection", (socket) => {
 
       if (dbReady && pool) {
         try {
-          // תיקון: וידוא רישום מלא של המשחק כולל כותרת ו-IP
           await pool.query(`INSERT INTO games (code, host_name, target_score, default_round_seconds, categories, host_ip, game_title) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [code, hostName, targetScore, defaultRoundSeconds, categories, clientIp, game.gameTitle]);
           
@@ -393,7 +397,6 @@ io.on("connection", (socket) => {
 
       if (dbReady && pool) {
         try {
-          // תיקון: וידוא רישום מלא של השחקן כולל IP וזמן
           await pool.query(`INSERT INTO game_players (game_code, client_id, name, team_id, ip_address, created_at) VALUES ($1, $2, $3, $4, $5, $6)`,
             [code, clientId, playerName, chosenTeamId, clientIp, now]);
         } catch (e) {}
@@ -489,7 +492,12 @@ io.on("connection", (socket) => {
   socket.on("getNextWord", (data, cb) => {
       const game = games[data.gameCode];
       if(game && game.currentRound) {
+          // תיקון: שימוש בפונקציה החדשה ששומרת את המצב
           const w = getRandomWord(game);
+          if (w.isCustom) {
+              // אם נשלפה מילה ידנית, נשמור את המצב המעודכן (רשימה פחות מילה)
+              saveGameState(game);
+          }
           safeCb(cb, {ok:true, word: w.text, category: w.category});
       }
   });
@@ -535,11 +543,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-      // תיקון קריטי: ביטול מחיקת שחקנים אוטומטית בעת ניתוק socket.
-      // זה מונע משחקנים להיעלם לרגע למנהל אם יש להם בעיית רשת רגעית במובייל.
-      // השחקנים יישארו ברשימה עד שהמנהל יסיר אותם ידנית או שהמשחק יסתיים.
-      
-      /* הקוד הישן שנמחק:
       const pid = socket.id;
       Object.values(games).forEach(g => {
           if(g.hostSocketId === pid) return; 
@@ -549,7 +552,9 @@ io.on("connection", (socket) => {
               if(g.teams[p.teamId]) {
                   g.teams[p.teamId].players = g.teams[p.teamId].players.filter(id=>id!==pid);
               }
+              
               saveGameState(g);
+
               if(g.currentRound && g.currentRound.explainerId === pid) {
                   finishRound(g.code, {reason:"player_disconnected"});
               } else {
@@ -557,7 +562,6 @@ io.on("connection", (socket) => {
               }
           }
       });
-      */
   });
 });
 
