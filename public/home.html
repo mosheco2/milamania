@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-TP7Z9DX6');</script>
   <meta charset="UTF-8" />
   <title>מילמניה - דף הבית</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
@@ -35,26 +40,27 @@
 
      .icon { font-size: 1.6rem; }
 
-     /* --- CSS מתוקן סופית לבאנרים --- */
-     .banner-container {
-         width: 100%; /* רוחב מלא */
+     /* --- CSS סופי לבאנרים: רוחב מלא, גובה אוטומטי --- */
+     .banner-container-full { 
+         width: 100vw; /* רוחב מסך מלא */
          margin: 0;
          padding: 0;
-         line-height: 0; /* ביטול רווחים מיותרים */
+         line-height: 0;
          background: transparent;
      }
-     .banner-container img {
-         width: 100%; /* תמיד 100% רוחב */
-         height: auto; /* הגובה יסתדר אוטומטית לשמירה על פרופורציה */
-         display: block; /* מניעת רווחים */
-         /* אין גובה קבוע, אין מילוי כפוי, אין מגבלת רוחב */
+     .banner-container-full img { 
+         width: 100%;
+         height: auto; /* גובה אוטומטי לשמירה על פרופורציות */
+         display: block; 
      }
      
      .hidden { display: none !important; }
   </style>
 </head>
 <body>
-    <div id="globalTopBanner" class="banner-container hidden">
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TP7Z9DX6"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <div id="globalTopBanner" class="banner-container-full hidden">
         <a id="globalTopBannerLink" href="#" target="_blank">
             <img id="globalTopBannerImg" src="" alt="פרסומת עליונה">
         </a>
@@ -80,7 +86,7 @@
       </div>
   </div>
 
-  <div id="globalBottomBanner" class="banner-container hidden">
+  <div id="globalBottomBanner" class="banner-container-full hidden">
       <a id="globalBottomBannerLink" href="#" target="_blank">
           <img id="globalBottomBannerImg" src="" alt="פרסומת תחתונה">
       </a>
