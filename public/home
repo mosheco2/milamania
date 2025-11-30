@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>מילמניה</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+  <style>
+     :root { font-size: 16px; --bg-color: #FFF8EA; }
+     * { box-sizing: border-box; font-family: "Varela Round", sans-serif; -webkit-tap-highlight-color: transparent; }
+     body { margin: 0; padding: 20px; background-color: var(--bg-color); color: #2B1E4A; font-family: "Varela Round", sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+     body::before, body::after { content: ""; position: fixed; width: 300px; height: 300px; border-radius: 50%; z-index: -1; }
+     body::before { top: -100px; left: -100px; background: radial-gradient(circle at center, rgba(248, 71, 121, 0.25), transparent 65%); }
+     body::after { bottom: -100px; right: -100px; background: radial-gradient(circle at center, rgba(21, 196, 193, 0.25), transparent 65%); }
+
+     .main-card { background: #fff; border-radius: 30px; padding: 40px 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); max-width: 450px; width: 100%; text-align: center; }
+     h1 { font-size: 3rem; margin: 0 0 10px; color: #2B1E4A; font-weight: 900; line-height: 1; background: linear-gradient(135deg, #F84779, #2B1E4A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+     p.subtitle { font-size: 1.2rem; color: #6B618F; margin-bottom: 35px; font-weight: 600; }
+     
+     .btn { display: flex; align-items: center; justify-content: center; width: 100%; padding: 16px; border-radius: 18px; border: none; font-weight: 800; font-size: 1.3rem; margin-bottom: 15px; cursor: pointer; transition: all 0.3s; text-decoration: none; gap: 10px; }
+     .btn:active { transform: scale(0.96); }
+     .btn-host { background: linear-gradient(135deg, #F84779, #FF8566); color: white; box-shadow: 0 8px 20px rgba(248, 71, 121, 0.3); }
+     .btn-player { background: linear-gradient(135deg, #15C4C1, #42E695); color: white; box-shadow: 0 8px 20px rgba(21, 196, 193, 0.3); }
+     
+     /* סגנון לבאנר */
+     .banner-container { margin-top: 25px; width: 100%; }
+     .banner-image { width: 100%; height: auto; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: block; }
+  </style>
+</head>
+<body>
+  <div class="main-card">
+      <h1>מילמניה</h1>
+      <p class="subtitle">המשחק שישבור לכם את השיניים... מצחוק! 😂</p>
+      
+      <a href="host.html" class="btn btn-host">👑 יצירת משחק חדש</a>
+      <a href="player.html" class="btn btn-player">🎮 הצטרפות למשחק</a>
+
+      <div id="page-banner-container" class="banner-container" style="display: none;">
+        <a id="page-banner-link" href="#" target="_blank">
+            <img id="page-banner-img" src="" alt="פרסומת" class="banner-image">
+        </a>
+      </div>
+  </div>
+
+  <script>
+      // טעינת באנר לדף הבית
+      fetch('/api/banners')
+        .then(response => response.json())
+        .then(data => {
+            // שימוש בנתונים תחת המפתח 'home'
+            const bannerData = data.home;
+            if (bannerData && bannerData.imageUrl) {
+                const bannerContainer = document.getElementById('page-banner-container');
+                const bannerLink = document.getElementById('page-banner-link');
+                const bannerImg = document.getElementById('page-banner-img');
+
+                bannerImg.src = bannerData.imageUrl;
+                bannerLink.href = bannerData.linkUrl || '#';
+                bannerContainer.style.display = 'block';
+            }
+        })
+        .catch(error => console.error('שגיאה בטעינת הבאנר:', error));
+  </script>
+</body>
+</html>
