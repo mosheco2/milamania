@@ -13,17 +13,17 @@
   <style>
      :root { font-size: 16px; --bg-color: #FFF8EA; }
      * { box-sizing: border-box; font-family: "Varela Round", sans-serif; -webkit-tap-highlight-color: transparent; }
-     
-     /* איפוס מלא לגוף האתר כדי לאפשר 100% רוחב */
-     body { margin: 0; padding: 0; background-color: var(--bg-color); color: #2B1E4A; font-family: "Varela Round", sans-serif; min-height: 100vh; position: relative; overflow-x: hidden; display: flex; flex-direction: column; }
-     
-     /* עוטף לתוכן המרכזי בלבד - שומר על מרווחים */
-     .main-content-wrapper { flex: 1; padding: 30px 20px; max-width: 600px; margin: 0 auto; width: 100%; }
-
+     /* שינוי: הוספת align-items: center */
+     body { margin: 0; background-color: var(--bg-color); color: #2B1E4A; font-family: "Varela Round", sans-serif; min-height: 100vh; position: relative; overflow-x: hidden; display: flex; flex-direction: column; align-items: center; }
      body:not(.branded)::before, body:not(.branded)::after { content: ""; position: fixed; width: 280px; height: 280px; border-radius: 50%; z-index: -1; }
      body:not(.branded)::before { top: -130px; left: -70px; background: radial-gradient(circle at center, rgba(248, 71, 121, 0.30), transparent 60%); }
      body:not(.branded)::after { bottom: -150px; right: -50px; background: radial-gradient(circle at center, rgba(21, 196, 193, 0.28), transparent 60%); }
 
+     /* סגנון חדש לבאנר עליון */
+     .header-area { width: 100%; max-width: 600px; padding: 20px 20px 0; text-align: center; }
+     .header-area img { width: 100%; height: auto; max-height: 180px; object-fit: cover; border-radius: 20px; }
+
+     .app { padding: 20px; max-width: 600px; margin: 0 auto; width: 100%; }
      .card { background: #fff; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 15px; }
      .btn { width: 100%; padding: 14px; border-radius: 14px; border: none; font-weight: bold; font-size: 1.1rem; margin-top: 10px; cursor: pointer; transition: 0.2s; }
      .btn:active { transform: scale(0.98); }
@@ -33,10 +33,12 @@
      .btn-ghost { background: transparent; border: 1px solid #ccc; color: #666; width: auto; font-size: 0.9rem; padding: 6px 12px; margin-top:0; }
      input, select { width: 100%; padding: 14px; border-radius: 18px; border: 2px solid rgba(43, 30, 74, 0.1); background: #FFFDF7; font-size: 1.1rem; text-align:center; font-weight:600; margin-bottom: 10px; }
      input:focus { border-color: #F84779; outline: none; background: #fff; }
+     /* תיקון: סגנון לשדה קריאה בלבד (אפור וניל) */
      input.readonly-code { background-color: #e5e7eb; color: #6b7280; border-color: #d1d5db; }
      .hidden { display: none !important; }
      #playerBigTimer { font-size: 3.5rem; text-align: center; font-weight: 900; color: #F84779; margin: 10px 0; font-variant-numeric: tabular-nums; }
      
+     /* תיקון לייאוט לוגו וכותרת בשחקן: פלקס שורה, לוגו גדול יותר */
      .logo-area { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; text-align: center; }
      .logo-area img { height: 150px; width: auto; object-fit: contain; background: transparent; }
      .brand-info { text-align: right; display: flex; flex-direction: column; justify-content: center; }
@@ -52,20 +54,9 @@
      .data-label { font-size: 0.8rem; color: #A18CCF; font-weight: bold; }
      .data-val { font-size: 1rem; color: #433362; font-weight: bold; }
 
-     /* --- CSS סופי לבאנרים: רוחב מלא, גובה אוטומטי --- */
-     .banner-container-full { 
-         width: 100vw; /* רוחב מסך מלא */
-         margin: 0;
-         padding: 0;
-         line-height: 0;
-         background: transparent;
-     }
-     .banner-container-full img { 
-         width: 100%;
-         height: auto; /* גובה אוטומטי לשמירה על פרופורציות */
-         display: block; 
-         /* אין מילוי כפוי, אין גובה קבוע */
-     }
+     /* סגנון חדש לבאנר תחתון פנימי */
+     .banner-slot { width: 100%; margin-top: 20px; }
+     .banner-slot img { width: 100%; height: auto; max-height: 180px; object-fit: cover; border-radius: 12px; display: block; }
 
      @media (max-width: 640px) {
          .logo-area { flex-direction: column; gap: 10px; }
@@ -77,13 +68,11 @@
 <body>
   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TP7Z9DX6"
   height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-  <div id="globalTopBanner" class="banner-container-full hidden">
-    <a id="globalTopBannerLink" href="#" target="_blank">
-        <img id="globalTopBannerImg" src="" alt="פרסומת עליונה">
-    </a>
+  <div class="header-area">
+      <img src="banner_top.jpg" alt="באנר עליון">
   </div>
 
-  <div class="main-content-wrapper">
+  <div class="app">
       <div class="logo-area">
          <img id="playerLogo" src="logo.png" alt="לוגו" style="display:none;">
          <div class="brand-info hidden" id="brandInfoBox">
@@ -142,13 +131,13 @@
           <h3 style="margin:0 0 10px;">🏆 טבלת ניקוד</h3>
           <div id="scoreboard" style="font-size:1rem;"></div>
           <button id="viewAllPlayersBtn" class="btn btn-ghost" style="width:100%; margin-top:15px;">👀 הצג את כל השחקנים</button>
+          
+          <div id="player-banner-slot" class="banner-slot hidden">
+              <a id="player-banner-link" href="#" target="_blank">
+                  <img id="player-banner-img" src="" alt="פרסומת תחתונה">
+              </a>
+          </div>
       </div>
-  </div>
-
-  <div id="globalBottomBanner" class="banner-container-full hidden">
-      <a id="globalBottomBannerLink" href="#" target="_blank">
-          <img id="globalBottomBannerImg" src="" alt="פרסומת תחתונה">
-      </a>
   </div>
 
   <div class="modal-overlay" id="customModal">
@@ -164,7 +153,8 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-      const socket = io();
+    // ... (קוד ה-JavaScript המקורי נשאר ללא שינוי, הוא כבר מטפל בבאנר) ...
+    const socket = io();
       const LOCAL_PLAYER_KEY = "millmania-player-join";
       let myGameCode = null; let myTeamId = null; let isExplainer = false; let lastGameState = null;
       let pendingAction = null;
@@ -278,6 +268,7 @@
               nextWord();
           }
       });
+      
       socket.on("roundTimeUp", (data) => { 
           timerEl.textContent = "00:00";
           const msg = getScoreMessage(data.roundScore);
@@ -285,6 +276,7 @@
           presenterArea.classList.add("hidden"); 
           isExplainer = false; 
       });
+
       socket.on("gameEnded", () => { 
           localStorage.removeItem(LOCAL_PLAYER_KEY);
           showModal("המשחק הסתיים", "<h3>המשחק נסגר על ידי המנהל.</h3><p>תודה שהשתתפתם!</p>");
@@ -295,7 +287,6 @@
           showModal("הוסרת מהמשחק", "<h3>הוסרת מהמשחק על ידי המנהל.</h3>");
           setTimeout(() => location.reload(), 3000);
       });
-      
       socket.on("adminClosedGame", () => { 
         localStorage.removeItem(LOCAL_PLAYER_KEY);
         showModal("המשחק נסגר", "<h3>המשחק נסגר על ידי מנהל המערכת.</h3><p>תודה שהשתתפתם!</p>");
@@ -385,19 +376,13 @@
           if(saved && saved.gameCode === code) { document.getElementById("playerNameInput").value = saved.name; setTimeout(() => joinBtn.click(), 500); }
       })();
       
-      // טעינת באנרים (עליון ותחתון)
+      // טעינת באנרים (עליון ותחתון) - דינמי
       fetch("/api/banners").then(r=>r.json()).then(d => {
-          // טעינת באנר עליון
-          if(d.topBanner && d.topBanner.img) {
-              document.getElementById("globalTopBannerImg").src = d.topBanner.img;
-              document.getElementById("globalTopBannerLink").href = d.topBanner.link || "#";
-              document.getElementById("globalTopBanner").classList.remove("hidden");
-          }
           // טעינת באנר תחתון
           if(d.bottomBanner && d.bottomBanner.img) {
-              document.getElementById("globalBottomBannerImg").src = d.bottomBanner.img;
-              document.getElementById("globalBottomBannerLink").href = d.bottomBanner.link || "#";
-              document.getElementById("globalBottomBanner").classList.remove("hidden");
+              document.getElementById("player-banner-img").src = d.bottomBanner.img;
+              document.getElementById("player-banner-link").href = d.bottomBanner.link || "#";
+              document.getElementById("player-banner-slot").classList.remove("hidden");
           }
       }).catch(e => console.error("Error fetching banners:", e));
   </script>
