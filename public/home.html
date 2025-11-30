@@ -31,28 +31,23 @@
 
      .icon { font-size: 1.6rem; }
 
-     /* --- CSS מתוקן לבאנרים: שימוש ב-CONTAIN ומירכוז --- */
+     /* --- CSS מתוקן סופית לבאנרים --- */
      .banner-container {
          width: 100%;
          text-align: center;
-         display: flex;
-         justify-content: center;
-         background: transparent; /* או צבע רקע אם רוצים שוליים בצבע מסוים */
+         /* מרווח קל מעל ומתחת לבאנר */
+         padding: 10px 0;
      }
      .banner-container img {
-         width: auto; /* הרוחב ייקבע לפי הגובה */
-         max-width: 100%; /* שלא יחרוג מהמסך */
-         object-fit: contain; /* קריטי: דוחס את התמונה למסגרת בלי לחתוך */
+         width: 100%; /* תמיד רוחב מלא */
+         height: auto; /* הגובה יסתדר אוטומטית לפי הפרופורציה - מונע חיתוך */
+         max-width: 800px; /* מגבלת רוחב למסכים ענקיים, אפשר לשנות */
          display: block;
-         margin: 0 auto; /* מירכוז אופקי */
+         margin: 0 auto; /* מירכוז */
+         border-radius: 12px; /* פינות עגולות */
+         box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* צל עדין */
      }
-     /* באנר עליון - גובה 80 */
-     #globalTopBanner img { height: 80px; }
-     #globalTopBanner { margin-bottom: 20px; }
-
-     /* באנר תחתון - גובה כפול 160 */
-     #globalBottomBanner img { height: 160px; }
-     #globalBottomBanner { margin-top: 20px; }
+     /* הסרנו את הגדרות הגובה הקבועות (height: 80px וכו') */
      
      .hidden { display: none !important; }
   </style>
