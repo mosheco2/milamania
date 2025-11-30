@@ -15,17 +15,12 @@
   <style>
     :root { font-size: 16px; --bg-color: #FFF8EA; }
     * { box-sizing: border-box; font-family: "Varela Round", system-ui, sans-serif; }
-    
-    /* איפוס שוליים בגוף */
-    body { margin: 0; padding: 0; background-color: var(--bg-color); color: #2B1E4A; min-height: 100vh; font-size: 1rem; position: relative; overflow-x: hidden; display: flex; flex-direction: column; }
-    
+    body { margin: 0; padding: 0; background-color: var(--bg-color); color: #2B1E4A; min-height: 100vh; font-size: 1rem; position: relative; overflow-x: hidden; }
     body:not(.branded)::before, body:not(.branded)::after { content: ""; position: fixed; width: 280px; height: 280px; border-radius: 50%; z-index: -1; }
     body:not(.branded)::before { top: -130px; left: -70px; background: radial-gradient(circle at center, rgba(248, 71, 121, 0.30), transparent 60%); }
     body:not(.branded)::after { bottom: -150px; right: -50px; background: radial-gradient(circle at center, rgba(21, 196, 193, 0.28), transparent 60%); }
 
-    .app-wrapper { flex: 1; width: 100%; display: flex; justify-content: center; }
-    .app { max-width: 1024px; width: 100%; padding: 20px 14px 40px; margin: 0 auto; }
-    
+    .app { max-width: 1024px; width: 100%; padding: 20px 14px 100px; margin: 0 auto; }
     .card { background: #FFFFFF; border-radius: 26px; padding: 18px 16px 20px; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.06); border: 1px solid rgba(43, 30, 74, 0.06); margin-bottom: 16px; }
     h1, h2, h3 { margin-top: 0; }
     label { display: block; margin-bottom: 3px; font-size: 0.87rem; color: #6B618F; }
@@ -82,13 +77,11 @@
 
     .categories-container { display: flex; flex-wrap: wrap; gap: 5px; max-height: 200px; overflow-y: auto; padding: 4px; border: 1px solid rgba(43, 30, 74, 0.1); border-radius: 14px; }
     
-    .fab-container { position: fixed; bottom: 20px; left: 15px; transform: none; display: flex; flex-direction: column-reverse; gap: 12px; z-index: 900; align-items: flex-start; transition: 0.3s; }
-    .fab-btn { background: linear-gradient(135deg, #2B1E4A, #433362); color: #FFD76F; padding: 10px 18px; border-radius: 50px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(43, 30, 74, 0.2); transition: all 0.2s ease; font-size: 0.85rem; white-space: nowrap; }
-    .fab-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(43, 30, 74, 0.3); }
+    .fab-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 100; align-items: center; transition: 0.3s; }
+    .fab-btn { background: linear-gradient(135deg, #2B1E4A, #433362); color: #FFD76F; padding: 12px 24px; border-radius: 50px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 15px rgba(43, 30, 74, 0.3); transition: all 0.2s ease; font-size: 0.9rem; white-space: nowrap; }
+    .fab-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(43, 30, 74, 0.4); }
     #switchRoleFab { background: linear-gradient(135deg, #F84779, #F7C948); color: #2B1E4A; }
-    .fab-btn.whatsapp { background: #25D366; color: white; display: flex; align-items: center; gap: 8px; }
-    .fab-btn.whatsapp:hover { background: #1da851; }
-
+    
     #adminFloatingPanel { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 450px; background: rgba(255, 255, 255, 0.98); border-radius: 28px; padding: 24px; z-index: 99; box-shadow: 0 20px 50px rgba(0,0,0,0.2), 0 0 0 1px rgba(43,30,74,0.05); backdrop-filter: blur(10px); }
     
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: 0.3s; }
@@ -96,24 +89,11 @@
     .modal-box { background: #fff; width: 85%; max-width: 400px; border-radius: 28px; padding: 30px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
     .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
 
-    /* --- CSS סופי לבאנרים: רוחב מלא, גובה אוטומטי --- */
-    .banner-container-full { 
-        width: 100vw; /* רוחב מסך מלא */
-        margin: 0;
-        padding: 0;
-        line-height: 0;
-        background: transparent;
-    }
-    .banner-container-full img { 
-        width: 100%;
-        height: auto; /* גובה אוטומטי לשמירה על פרופורציות */
-        display: block; 
-        /* אין מילוי כפוי, אין גובה קבוע */
-    }
+    #support-wa-btn { position: fixed; bottom: 24px; right: 24px; z-index: 2000; background: #25D366; color: white; border-radius: 50px; padding: 12px 20px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; }
 
     @media (max-width: 640px) { 
         body { font-size: 1.05rem; } 
-        .app { padding: 16px 10px 40px; }
+        .app { padding: 16px 10px 100px; } 
         .card { padding: 18px 14px 20px; border-radius: 20px; } 
         h1 { font-size: 1.6rem; } 
         .page-header-main { flex-direction: column; text-align: center; gap: 10px; }
@@ -128,214 +108,200 @@
 <body>
   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TP7Z9DX6"
   height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-  <div id="globalTopBanner" class="banner-container-full hidden">
-      <a id="globalTopBannerLink" href="#" target="_blank">
-          <img id="globalTopBannerImg" src="" alt="פרסומת">
-      </a>
-  </div>
-
-  <div class="app-wrapper">
-      <div class="app">
-        <div class="card" id="hostTop">
-          <div class="page-header">
-            <div class="page-header-main">
-              <img id="host-logo" class="logo-small hidden" alt="לוגו" onerror="this.style.display='none'" />
-              <div class="brand-header-info">
-                <div id="defaultHeader">
-                    <div class="chip">מילמניה · ניהול משחק 👑</div>
-                    <h1 style="margin:4px 0 0; font-size:1.7rem;">מנהל המשחק</h1>
-                </div>
-                <div id="brandedHeader" class="hidden">
-                    <h1 id="hostBrandTitle" class="brand-title-host"></h1>
-                    <p id="hostBrandSlogan" class="brand-slogan-host"></p>
-                </div>
-              </div>
+  <div class="app">
+    <div class="card" id="hostTop">
+      <div class="page-header">
+        <div class="page-header-main">
+          <img id="host-logo" class="logo-small hidden" alt="לוגו" onerror="this.style.display='none'" />
+          <div class="brand-header-info">
+            <div id="defaultHeader">
+                <div class="chip">מילמניה · ניהול משחק 👑</div>
+                <h1 style="margin:4px 0 0; font-size:1.7rem;">מנהל המשחק</h1>
             </div>
-            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end; flex-shrink: 0;">
-              <div class="top-tabs">
-                <button id="tabHost" class="active" type="button">👑 מצב מנהל</button>
-                <button id="tabPlayer" type="button">🎮 מצב שחקן (אני)</button>
-              </div>
-              <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
-                <button class="btn btn-ghost btn-small" onclick="location.href='instructions.html'">❔ הוראות</button>
-                <button class="btn btn-ghost btn-small" onclick="location.href='home.html'">⬅ מסך הבית</button>
-              </div>
+            <div id="brandedHeader" class="hidden">
+                <h1 id="hostBrandTitle" class="brand-title-host"></h1>
+                <p id="hostBrandSlogan" class="brand-slogan-host"></p>
             </div>
           </div>
         </div>
-        
-        <details class="help-box">
-            <summary>🤔 איך מתחילים? לחץ כאן להסבר קצר</summary>
-            <ul>
-                <li><strong>הקמה:</strong> מלאו את פרטי המשחק בטופס למטה.</li>
-                <li><strong>הזמנה:</strong> שתפו את הקישורים עם השחקנים.</li>
-                <li><strong>הצטרפות עצמית:</strong> <b>חשוב!</b> כדי להשתתף, עברו ל"מצב שחקן" והצטרפו לאחת הקבוצות.</li>
-                <li><strong>התחלה:</strong> בחרו קבוצה ומסביר, ולחצו "התחל סיבוב".</li>
-            </ul>
-        </details>
-
-        <div id="hostMode">
-          <div class="card" id="createGameCard">
-            <div class="row">
-              <div>
-                <label for="hostName">שם המנהל</label>
-                <input id="hostName" type="text" placeholder="לדוגמה: משה" />
-              </div>
-              <div>
-                 <label for="gameTitle">תנו שם למשחק שלכם <span style="color:red;">*</span></label>
-                 <input id="gameTitle" type="text" placeholder="למשל: יום הולדת לדני" required />
-              </div>
-            </div>
-            <div class="row">
-              <div>
-                <label for="numTeams">מספר קבוצות</label>
-                <select id="numTeams">
-                  <option value="2">2 קבוצות</option>
-                  <option value="3">3 קבוצות</option>
-                  <option value="4">4 קבוצות</option>
-                  <option value="5">5 קבוצות</option>
-                </select>
-              </div>
-              <div>
-                <label for="targetScore">יעד נקודות</label>
-                <input id="targetScore" type="number" min="5" max="200" value="30" />
-              </div>
-              <div>
-                <label for="roundSeconds">משך סיבוב</label>
-                <input id="roundSeconds" type="number" min="10" max="300" value="60" />
-              </div>
-            </div>
-
-            <div style="margin-bottom: 10px;">
-                <label style="margin-bottom: 5px;">קטגוריות מילים:</label>
-                <div class="categories-container">
-                    <label class="chip"><input type="checkbox" id="catAll" value="all" checked> הכל</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="food" checked> אוכל</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="animals" checked> חיות</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="objects" checked> חפצים</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="sports" checked> ספורט</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="professions" checked> מקצועות</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="technology" checked> טכנולוגיה</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="nature" checked> טבע</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="home" checked> בית</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="clothing" checked> בגדים</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="emotions" checked> רגשות</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="transport" checked> כלי תחבורה</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="instruments" checked> כלי נגינה</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="countries" checked> מדינות</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="colors" checked> צבעים</label>
-                    <label class="chip"><input type="checkbox" class="cat-cb" value="verbs" checked> פעלים</label>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 10px;">
-                <label for="customWords">מילים מותאמות אישית (מופרדות בפסיק):</label>
-                <textarea id="customWords" placeholder="למשל: מנכ״ל, יעד רבעוני, חופשת צוות"></textarea>
-                <div class="status-text" style="font-size: 0.8rem;">טיפ: מילים אלו יוגרלו בעדיפות ראשונה.</div>
-            </div>
-
-            <div class="row">
-              <div><label>קבוצה A</label><input id="teamNameA" type="text" placeholder="הכחולים"></div>
-              <div><label>קבוצה B</label><input id="teamNameB" type="text" placeholder="האדומים"></div>
-            </div>
-            <div class="row" id="extraTeamsRow" style="display:none;">
-              <div><label>קבוצה C</label><input id="teamNameC" type="text"></div>
-              <div><label>קבוצה D</label><input id="teamNameD" type="text"></div>
-              <div><label>קבוצה E</label><input id="teamNameE" type="text"></div>
-            </div>
-
-            <button id="createGameBtn" class="btn btn-primary" style="margin-top:8px;">יצירת משחק חדש</button>
-            <div id="hostStatus" class="status-text" style="margin-top:8px;"></div>
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end; flex-shrink: 0;">
+          <div class="top-tabs">
+            <button id="tabHost" class="active" type="button">👑 מצב מנהל</button>
+            <button id="tabPlayer" type="button">🎮 מצב שחקן (אני)</button>
           </div>
-
-          <div class="card" id="gameCodeRow" style="display:none;">
-            <h3 style="margin:0 0 6px;">קוד משחק: <span id="gameCodeDisplay" style="color:#F84779;"></span></h3>
-            <div id="teamsShareList" style="margin-top:10px;"></div>
-            <div style="margin-top:10px; display:flex; gap:10px;">
-                <button id="endGameBtn" class="btn btn-danger">🛑 סגירת משחק</button>
-            </div>
-            <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 0;" />
-            <h3 style="margin:0 0 6px;">שליטה בסיבוב</h3>
-            
-            <div id="hostRoundCurrentScore" style="font-size:1.2rem; color:#25D366; font-weight:bold; text-align:center; margin-bottom: 5px;">ניקוד בסיבוב: 0</div>
-
-            <div id="roundStatus" class="status-text" style="margin-bottom:6px;"></div>
-            <div id="roundTimer">טיימר: --:--</div>
-            <div class="row">
-              <div><label>קבוצה לסיבוב</label><select id="roundTeamSelect"><option value="">בחר קבוצה...</option></select></div>
-              <div><label>מסביר</label><select id="explainerSelect"><option value="">אוטומטי</option></select></div>
-            </div>
-            <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
-              <button id="startRoundBtn" class="btn btn-success">התחל סיבוב</button>
-              <button id="stopRoundBtn" class="btn btn-ghost" disabled>סיום סיבוב</button>
-            </div>
-          </div>
-
-          <div class="card" id="scoreboardCard" style="display:none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <h3 style="margin:0;">ניקוד וקבוצות</h3>
-                <button id="refreshPlayersBtn" class="btn btn-ghost btn-small">🔄 רענן שחקנים</button>
-            </div>
-            <div id="scoreboard"></div>
-            <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 8px;" />
-            <div id="playersByTeam" class="status-text"></div>
-          </div>
-        </div>
-
-        <div id="playerMode" class="hidden">
-          <div class="card" id="hostPlayerJoinCard">
-            <h3>אני כשחקן</h3>
-            <div class="row">
-              <div><label>השם שלי</label><input id="hostPlayerName" type="text"></div>
-              <div><label>הקבוצה שלי</label><select id="hostPlayerTeamSelect"></select></div>
-            </div>
-            <button id="openPlayerViewBtn" class="btn btn-primary" style="margin-top:6px;">הצטרף כשחקן</button>
-          </div>
-
-          <div class="card hidden" id="hostPlayerGameCard">
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <div style="flex:1; background:#F8F7FF; padding:10px; border-radius:12px;">
-                    <div style="font-size:0.8rem; color:#A18CCF; font-weight:bold;">הקבוצה שלי</div>
-                    <div id="hostPlayerMyTeamName" style="font-size:1rem; color:#433362; font-weight:bold;"></div>
-                </div>
-                <div style="flex:1.5; background:#F8F7FF; padding:10px; border-radius:12px;">
-                     <div style="font-size:0.8rem; color:#A18CCF; font-weight:bold;">חברים לקבוצה</div>
-                     <div id="hostPlayerMyTeamPlayers" style="font-weight:normal; font-size:0.9rem; color:#433362;"></div>
-                </div>
-            </div>
-            
-            <h3 style="margin:0 0 6px;">מצב המשחק</h3>
-            <hr style="border:none; border-top:1px solid #eee; margin:10px 0;">
-            <div id="hostPlayerScoreboard" class="status-text"></div>
-            <button id="viewAllPlayersBtnHost" class="btn btn-ghost" style="width:100%; margin-top:10px;">👀 הצג את כל השחקנים</button>
-            <hr style="border:none; border-top:1px solid #eee; margin:10px 0;">
-            <div id="hostRoundStatusPlayer" class="status-text"></div>
-            <div id="hostPlayerRoundCurrentScore" style="font-size:1.2rem; color:#25D366; font-weight:bold; text-align:center; margin-bottom: 5px;">ניקוד בסיבוב: 0</div>
-            <div id="hostPlayerBigTimer">--:--</div>
-
-            <div id="hostPresenterSection" class="hidden" style="margin-top:12px; padding-top:8px; border-top:1px dashed #ccc;">
-              <div style="text-align:center; margin-bottom:4px;">אתה המסביר! 🗣️</div>
-              <div id="hostPresenterWord">...</div>
-              <div class="host-presenter-actions">
-                <button id="hostBtnCorrect" class="btn btn-success">✅ נכון</button>
-                <button id="hostBtnSkip" class="btn btn-primary">⏭ דלג</button>
-              </div>
-            </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+            <button class="btn btn-ghost btn-small" onclick="location.href='instructions.html'">❔ הוראות</button>
+            <button class="btn btn-ghost btn-small" onclick="location.href='home.html'">⬅ מסך הבית</button>
           </div>
         </div>
       </div>
-  </div>
+    </div>
+    
+    <details class="help-box">
+        <summary>🤔 איך מתחילים? לחץ כאן להסבר קצר</summary>
+        <ul>
+            <li><strong>הקמה:</strong> מלאו את פרטי המשחק בטופס למטה.</li>
+            <li><strong>הזמנה:</strong> שתפו את הקישורים עם השחקנים.</li>
+            <li><strong>הצטרפות עצמית:</strong> <b>חשוב!</b> כדי להשתתף, עברו ל"מצב שחקן" והצטרפו לאחת הקבוצות.</li>
+            <li><strong>התחלה:</strong> בחרו קבוצה ומסביר, ולחצו "התחל סיבוב".</li>
+        </ul>
+    </details>
 
-  <div id="globalBottomBanner" class="banner-container-full hidden">
-      <a id="globalBottomBannerLink" href="#" target="_blank">
-          <img id="globalBottomBannerImg" src="" alt="פרסומת תחתונה">
-      </a>
+    <div id="hostMode">
+      <div class="card" id="createGameCard">
+        <div class="row">
+          <div>
+            <label for="hostName">שם המנהל</label>
+            <input id="hostName" type="text" placeholder="לדוגמה: משה" />
+          </div>
+          <div>
+             <label for="gameTitle">כותרת המשחק (אופציונלי)</label>
+             <input id="gameTitle" type="text" placeholder="למשל: יום הולדת לדני" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="numTeams">מספר קבוצות</label>
+            <select id="numTeams">
+              <option value="2">2 קבוצות</option>
+              <option value="3">3 קבוצות</option>
+              <option value="4">4 קבוצות</option>
+              <option value="5">5 קבוצות</option>
+            </select>
+          </div>
+          <div>
+            <label for="targetScore">יעד נקודות</label>
+            <input id="targetScore" type="number" min="5" max="200" value="30" />
+          </div>
+          <div>
+            <label for="roundSeconds">משך סיבוב</label>
+            <input id="roundSeconds" type="number" min="10" max="300" value="60" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label style="margin-bottom: 5px;">קטגוריות מילים:</label>
+            <div class="categories-container">
+                <label class="chip"><input type="checkbox" id="catAll" value="all" checked> הכל</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="food" checked> אוכל</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="animals" checked> חיות</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="objects" checked> חפצים</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="sports" checked> ספורט</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="professions" checked> מקצועות</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="technology" checked> טכנולוגיה</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="nature" checked> טבע</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="home" checked> בית</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="clothing" checked> בגדים</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="emotions" checked> רגשות</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="transport" checked> כלי תחבורה</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="instruments" checked> כלי נגינה</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="countries" checked> מדינות</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="colors" checked> צבעים</label>
+                <label class="chip"><input type="checkbox" class="cat-cb" value="verbs" checked> פעלים</label>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="customWords">מילים מותאמות אישית (מופרדות בפסיק):</label>
+            <textarea id="customWords" placeholder="למשל: מנכ״ל, יעד רבעוני, חופשת צוות"></textarea>
+            <div class="status-text" style="font-size: 0.8rem;">טיפ: מילים אלו יוגרלו בעדיפות ראשונה.</div>
+        </div>
+
+        <div class="row">
+          <div><label>קבוצה A</label><input id="teamNameA" type="text" placeholder="הכחולים"></div>
+          <div><label>קבוצה B</label><input id="teamNameB" type="text" placeholder="האדומים"></div>
+        </div>
+        <div class="row" id="extraTeamsRow" style="display:none;">
+          <div><label>קבוצה C</label><input id="teamNameC" type="text"></div>
+          <div><label>קבוצה D</label><input id="teamNameD" type="text"></div>
+          <div><label>קבוצה E</label><input id="teamNameE" type="text"></div>
+        </div>
+
+        <button id="createGameBtn" class="btn btn-primary" style="margin-top:8px;">יצירת משחק חדש</button>
+        <div id="hostStatus" class="status-text" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card" id="gameCodeRow" style="display:none;">
+        <h3 style="margin:0 0 6px;">קוד משחק: <span id="gameCodeDisplay" style="color:#F84779;"></span></h3>
+        <div id="teamsShareList" style="margin-top:10px;"></div>
+        <div style="margin-top:10px; display:flex; gap:10px;">
+            <button id="endGameBtn" class="btn btn-danger">🛑 סגירת משחק</button>
+        </div>
+        <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 0;" />
+        <h3 style="margin:0 0 6px;">שליטה בסיבוב</h3>
+        
+        <div id="hostRoundCurrentScore" style="font-size:1.2rem; color:#25D366; font-weight:bold; text-align:center; margin-bottom: 5px;">ניקוד בסיבוב: 0</div>
+
+        <div id="roundStatus" class="status-text" style="margin-bottom:6px;"></div>
+        <div id="roundTimer">טיימר: --:--</div>
+        <div class="row">
+          <div><label>קבוצה לסיבוב</label><select id="roundTeamSelect"><option value="">בחר קבוצה...</option></select></div>
+          <div><label>מסביר</label><select id="explainerSelect"><option value="">אוטומטי</option></select></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+          <button id="startRoundBtn" class="btn btn-success">התחל סיבוב</button>
+          <button id="stopRoundBtn" class="btn btn-ghost" disabled>סיום סיבוב</button>
+        </div>
+      </div>
+
+      <div class="card" id="scoreboardCard" style="display:none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h3 style="margin:0;">ניקוד וקבוצות</h3>
+            <button id="refreshPlayersBtn" class="btn btn-ghost btn-small">🔄 רענן שחקנים</button>
+        </div>
+        <div id="scoreboard"></div>
+        <hr style="border:none; border-top:1px solid rgba(180, 169, 214, 0.5); margin:10px 8px;" />
+        <div id="playersByTeam" class="status-text"></div>
+        <div id="host-banner-slot" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div id="playerMode" class="hidden">
+      <div class="card" id="hostPlayerJoinCard">
+        <h3>אני כשחקן</h3>
+        <div class="row">
+          <div><label>השם שלי</label><input id="hostPlayerName" type="text"></div>
+          <div><label>הקבוצה שלי</label><select id="hostPlayerTeamSelect"></select></div>
+        </div>
+        <button id="openPlayerViewBtn" class="btn btn-primary" style="margin-top:6px;">הצטרף כשחקן</button>
+      </div>
+
+      <div class="card hidden" id="hostPlayerGameCard">
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <div style="flex:1; background:#F8F7FF; padding:10px; border-radius:12px;">
+                <div style="font-size:0.8rem; color:#A18CCF; font-weight:bold;">הקבוצה שלי</div>
+                <div id="hostPlayerMyTeamName" style="font-size:1rem; color:#433362; font-weight:bold;"></div>
+            </div>
+            <div style="flex:1.5; background:#F8F7FF; padding:10px; border-radius:12px;">
+                 <div style="font-size:0.8rem; color:#A18CCF; font-weight:bold;">חברים לקבוצה</div>
+                 <div id="hostPlayerMyTeamPlayers" style="font-weight:normal; font-size:0.9rem; color:#433362;"></div>
+            </div>
+        </div>
+        
+        <h3 style="margin:0 0 6px;">מצב המשחק</h3>
+        <hr style="border:none; border-top:1px solid #eee; margin:10px 0;">
+        <div id="hostPlayerScoreboard" class="status-text"></div>
+        <button id="viewAllPlayersBtnHost" class="btn btn-ghost" style="width:100%; margin-top:10px;">👀 הצג את כל השחקנים</button>
+        <hr style="border:none; border-top:1px solid #eee; margin:10px 0;">
+        <div id="hostRoundStatusPlayer" class="status-text"></div>
+        <div id="hostPlayerBigTimer">--:--</div>
+
+        <div id="hostPresenterSection" class="hidden" style="margin-top:12px; padding-top:8px; border-top:1px dashed #ccc;">
+          <div style="text-align:center; margin-bottom:4px;">אתה המסביר! 🗣️</div>
+          <div id="hostPlayerRoundCurrentScore" style="font-size:1.1rem; color:#25D366; font-weight:bold; text-align:center; margin-bottom: 5px;">ניקוד בסיבוב: 0</div>
+          <div id="hostPresenterWord">...</div>
+          <div class="host-presenter-actions">
+            <button id="hostBtnCorrect" class="btn btn-success">✅ נכון</button>
+            <button id="hostBtnSkip" class="btn btn-primary">⏭ דלג</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="fab-container hidden" id="fabs">
       <div class="fab-btn" id="switchRoleFab">🎮 מעבר למצב שחקן</div>
       <div class="fab-btn" id="adminFab">👑 ניהול מהיר</div>
-      <div class="fab-btn whatsapp" id="supportFab">💬 תמיכה</div>
   </div>
 
   <div id="adminFloatingPanel" class="hidden">
@@ -357,6 +323,8 @@
       </div>
   </div>
   
+  <div id="support-wa-btn">💬 תמיכה</div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -377,9 +345,8 @@
     const adminFab = document.getElementById("adminFab");
     const switchRoleFab = document.getElementById("switchRoleFab");
     const adminFloatingPanel = document.getElementById("adminFloatingPanel");
-    const supportFab = document.getElementById("supportFab");
+    const supportBtn = document.getElementById("support-wa-btn");
     const customModal = document.getElementById("customModal");
-    const modalActions = document.getElementById("modalActions");
 
     const urlParams = new URLSearchParams(window.location.search);
     const branding = {
@@ -412,7 +379,7 @@
         if (isHostAlsoPlayer) {
              text = `היי, אני מנהל ושחקן במשחק ${currentGameCode} ואשמח לעזרה.`;
         }
-        supportFab.onclick = () => window.location.href = `https://wa.me/972504000024?text=${encodeURIComponent(text)}`;
+        supportBtn.onclick = () => window.location.href = `https://wa.me/972504000024?text=${encodeURIComponent(text)}`;
     }
     updateSupportLink();
 
@@ -477,7 +444,6 @@
         const hostName = document.getElementById("hostName").value;
         const gameTitle = document.getElementById("gameTitle").value; 
         if(!hostName) return showModal("שגיאה", "נא להזין שם מנהל");
-        if(!gameTitle) return showModal("שגיאה", "חובה לתת שם למשחק");
         
         const num = parseInt(document.getElementById('numTeams').value);
         const teamNames = { A: document.getElementById("teamNameA").value, B: document.getElementById("teamNameB").value };
@@ -574,10 +540,7 @@
         return "וואו! פשוט אלופים! 🏆🔥";
     }
 
-    socket.on("gameUpdated", (game) => {
-        console.log("Host received game update:", game); 
-        renderGame(game);
-    });
+    socket.on("gameUpdated", renderGame);
     socket.on("roundScoreUpdated", (data) => {
          if(data.gameCode === currentGameCode) {
              const scoreText = `ניקוד בסיבוב: ${data.roundScore}`;
@@ -662,10 +625,7 @@
             scoreHtml += `<div><strong>${t.name}:</strong> ${t.score}</div>`;
             let pPills = t.players.map(pid => {
                 const p = game.playersByClientId[pid];
-                if(!p) {
-                    console.warn(`Missing player data for ID: ${pid} in team ${t.name}`);
-                    return "";
-                }
+                if(!p) return "";
                 return `<span class="player-pill"><button class="remove-player-btn" onclick="removePlayer('${pid}', '${p.name.replace(/'/g, "\\'")}')">×</button>${p.name}</span>`;
             }).join("");
             playersHtml += `<div style="margin-bottom:8px;"><b>${t.name}:</b> <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">${pPills || "אין שחקנים"}</div></div>`;
@@ -728,21 +688,10 @@
         });
     }
 
-    document.getElementById("viewAllPlayersBtnHost").addEventListener("click", () => {
-          if(!lastGameState) return;
-          let html = `<div style="text-align:right; max-height:300px; overflow-y:auto;">`;
-          Object.values(lastGameState.teams).forEach(t => {
-              const pNames = t.players.map(cid => lastGameState.playersByClientId[cid]?.name).join(", ");
-              html += `<div style="margin-bottom:15px;"><div style="font-weight:bold; color:#2B1E4A;">${t.name}</div><div style="background:#f5f5f5; padding:8px; border-radius:8px; font-size:0.9rem;">${pNames || "אין שחקנים"}</div></div>`;
-          });
-          html += `</div>`;
-          showModal("רשימת שחקנים", html);
-      });
-
     function showModal(title, body) { 
         document.getElementById("modalTitle").textContent = title; 
         document.getElementById("modalContent").innerHTML = body; 
-        modalActions.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">סגור</button>';
+        document.getElementById("modalActions").innerHTML = '<button class="btn btn-primary" onclick="closeModal()">סגור</button>';
         customModal.classList.add("active"); 
     }
 
@@ -750,11 +699,10 @@
         document.getElementById("modalTitle").textContent = title;
         document.getElementById("modalContent").textContent = body;
         pendingAction = onConfirm;
-        modalActions.innerHTML = `
+        document.getElementById("modalActions").innerHTML = `
             <button class="btn btn-ghost" onclick="closeModal()">ביטול</button>
-            <button class="btn btn-danger" id="confirmActionBtn">אישור</button>
+            <button class="btn btn-danger" onclick="confirmAction()">אישור</button>
         `;
-        document.getElementById("confirmActionBtn").onclick = confirmAction;
         customModal.classList.add("active");
     }
 
@@ -767,22 +715,6 @@
         if (pendingAction) pendingAction();
         closeModal();
     }
-
-    // --- טעינת באנרים (עליון ותחתון) ---
-    fetch("/api/banners").then(r=>r.json()).then(d => {
-        // טעינת באנר עליון
-        if(d.topBanner && d.topBanner.img) {
-            document.getElementById("globalTopBannerImg").src = d.topBanner.img;
-            document.getElementById("globalTopBannerLink").href = d.topBanner.link || "#";
-            document.getElementById("globalTopBanner").classList.remove("hidden");
-        }
-        // טעינת באנר תחתון
-        if(d.bottomBanner && d.bottomBanner.img) {
-            document.getElementById("globalBottomBannerImg").src = d.bottomBanner.img;
-            document.getElementById("globalBottomBannerLink").href = d.bottomBanner.link || "#";
-            document.getElementById("globalBottomBanner").classList.remove("hidden");
-        }
-    }).catch(e => console.error("Error fetching banners:", e));
   </script>
 </body>
 </html>
