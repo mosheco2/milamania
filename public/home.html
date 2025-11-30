@@ -35,23 +35,20 @@
 
      .icon { font-size: 1.6rem; }
 
-     /* --- CSS סופי לבאנרים: 100% רוחב, גובה קבוע, COVER --- */
+     /* --- CSS מתוקן סופית לבאנרים --- */
      .banner-container {
-         width: 100vw; /* רוחב מסך מלא */
+         width: 100%; /* רוחב מלא */
          margin: 0;
          padding: 0;
          line-height: 0; /* ביטול רווחים מיותרים */
-         background: #eee; /* צבע רקע זמני עד לטעינה */
+         background: transparent;
      }
      .banner-container img {
-         width: 100%;
-         display: block;
-         object-fit: cover; /* מילוי המסגרת, עלול לחתוך קצוות */
-         object-position: center center; /* מירכוז התמונה */
+         width: 100%; /* תמיד 100% רוחב */
+         height: auto; /* הגובה יסתדר אוטומטית לשמירה על פרופורציה */
+         display: block; /* מניעת רווחים */
+         /* אין גובה קבוע, אין מילוי כפוי, אין מגבלת רוחב */
      }
-     /* גבהים קבועים */
-     #globalTopBanner img { height: 80px; }
-     #globalBottomBanner img { height: 160px; }
      
      .hidden { display: none !important; }
   </style>
