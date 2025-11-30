@@ -11,14 +11,13 @@
     :root { font-size: 16px; --bg-color: #FFF8EA; }
     * { box-sizing: border-box; font-family: "Varela Round", system-ui, sans-serif; }
     
-    /* איפוס שוליים בגוף כדי לאפשר 100% רוחב לבאנרים */
+    /* איפוס שוליים בגוף */
     body { margin: 0; padding: 0; background-color: var(--bg-color); color: #2B1E4A; min-height: 100vh; font-size: 1rem; position: relative; overflow-x: hidden; display: flex; flex-direction: column; }
     
     body:not(.branded)::before, body:not(.branded)::after { content: ""; position: fixed; width: 280px; height: 280px; border-radius: 50%; z-index: -1; }
     body:not(.branded)::before { top: -130px; left: -70px; background: radial-gradient(circle at center, rgba(248, 71, 121, 0.30), transparent 60%); }
     body:not(.branded)::after { bottom: -150px; right: -50px; background: radial-gradient(circle at center, rgba(21, 196, 193, 0.28), transparent 60%); }
 
-    /* הוספתי flex:1 כדי שיתפוס את המקום בין הבאנרים */
     .app-wrapper { flex: 1; width: 100%; display: flex; justify-content: center; }
     .app { max-width: 1024px; width: 100%; padding: 20px 14px 40px; margin: 0 auto; }
     
@@ -92,23 +91,20 @@
     .modal-box { background: #fff; width: 85%; max-width: 400px; border-radius: 28px; padding: 30px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
     .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
 
-    /* --- CSS סופי לבאנרים --- */
+    /* --- CSS סופי לבאנרים: רוחב מלא, גובה אוטומטי --- */
     .banner-container-full { 
-        width: 100vw; 
-        margin: 0; padding: 0;
+        width: 100vw; /* רוחב מסך מלא */
+        margin: 0;
+        padding: 0;
         line-height: 0;
-        background: #eee;
+        background: transparent;
     }
     .banner-container-full img { 
         width: 100%;
+        height: auto; /* גובה אוטומטי לשמירה על פרופורציות */
         display: block; 
-        object-fit: cover;
-        object-position: center center;
+        /* אין מילוי כפוי, אין גובה קבוע */
     }
-    /* גבהים קבועים */
-    #globalTopBanner img { height: 80px; }
-    #globalBottomBanner img { height: 160px; }
-
 
     @media (max-width: 640px) { 
         body { font-size: 1.05rem; } 
@@ -659,10 +655,7 @@
             scoreHtml += `<div><strong>${t.name}:</strong> ${t.score}</div>`;
             let pPills = t.players.map(pid => {
                 const p = game.playersByClientId[pid];
-                if(!p) {
-                    console.warn(`Missing player data for ID: ${pid} in team ${t.name}`);
-                    return "";
-                }
+                if(!p) return "";
                 return `<span class="player-pill"><button class="remove-player-btn" onclick="removePlayer('${pid}', '${p.name.replace(/'/g, "\\'")}')">×</button>${p.name}</span>`;
             }).join("");
             playersHtml += `<div style="margin-bottom:8px;"><b>${t.name}:</b> <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">${pPills || "אין שחקנים"}</div></div>`;
@@ -739,7 +732,7 @@
     function showModal(title, body) { 
         document.getElementById("modalTitle").textContent = title; 
         document.getElementById("modalContent").innerHTML = body; 
-        modalActions.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">סגור</button>';
+        document.getElementById("modalActions").innerHTML = '<button class="btn btn-primary" onclick="closeModal()">סגור</button>';
         customModal.classList.add("active"); 
     }
 
@@ -747,11 +740,10 @@
         document.getElementById("modalTitle").textContent = title;
         document.getElementById("modalContent").textContent = body;
         pendingAction = onConfirm;
-        modalActions.innerHTML = `
+        document.getElementById("modalActions").innerHTML = `
             <button class="btn btn-ghost" onclick="closeModal()">ביטול</button>
-            <button class="btn btn-danger" id="confirmActionBtn">אישור</button>
+            <button class="btn btn-danger" onclick="confirmAction()">אישור</button>
         `;
-        document.getElementById("confirmActionBtn").onclick = confirmAction;
         customModal.classList.add("active");
     }
 
@@ -767,13 +759,11 @@
 
     // --- טעינת באנרים (עליון ותחתון) ---
     fetch("/api/banners").then(r=>r.json()).then(d => {
-        // טעינת באנר עליון
         if(d.topBanner && d.topBanner.img) {
             document.getElementById("globalTopBannerImg").src = d.topBanner.img;
             document.getElementById("globalTopBannerLink").href = d.topBanner.link || "#";
             document.getElementById("globalTopBanner").classList.remove("hidden");
         }
-        // טעינת באנר תחתון - הוסף כעת
         if(d.bottomBanner && d.bottomBanner.img) {
             document.getElementById("globalBottomBannerImg").src = d.bottomBanner.img;
             document.getElementById("globalBottomBannerLink").href = d.bottomBanner.link || "#";
