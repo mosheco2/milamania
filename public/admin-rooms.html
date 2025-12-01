@@ -34,17 +34,21 @@
         input[type="text"], input[type="date"], input[type="color"], select { width: 100%; padding: 14px; border: 2px solid #eee; border-radius: 14px; font-family: inherit; font-size: 1rem; background: #fff; transition: 0.3s; }
         input:focus, select:focus { border-color: var(--primary); outline: none; }
 
-        /* --- כרטיסי חדרים --- */
+        /* --- סיכום תוצאות (חדש) --- */
+        .results-summary { background: #e3f2fd; color: #1565c0; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-weight: bold; display: none; }
+
+        /* --- כרטיסי חדרים/שחקנים --- */
         .rooms-container { display: flex; flex-direction: column; gap: 15px; min-height: 100px; }
-        .room-card { background: #fff; border: 1px solid #eee; border-radius: 18px; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; position: relative; overflow: hidden; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
-        .room-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.05); }
+        .room-card, .player-card { background: #fff; border: 1px solid #eee; border-radius: 18px; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; position: relative; overflow: hidden; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        .room-card:hover, .player-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.05); }
         .room-card.active { border-left: 6px solid #25D366; }
         .room-card.ended { border-left: 6px solid #ccc; background: #fcfcfc; }
-        .room-info h4 { margin: 0 0 10px; font-size: 1.4rem; display: flex; align-items: center; gap: 10px; }
+        
+        .info-block h4 { margin: 0 0 10px; font-size: 1.4rem; display: flex; align-items: center; gap: 10px; }
         .status-badge { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; }
         .active .status-badge { background: #e8f5e9; color: #25D366; }
         .ended .status-badge { background: #eee; color: #777; }
-        .room-details { display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.95rem; color: #666; }
+        .details-row { display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.95rem; color: #666; }
         .detail-item { display: flex; align-items: center; gap: 6px; }
         
         /* --- כפתורים --- */
@@ -56,7 +60,7 @@
         .btn-ghost { background: #f3f4f6; color: #4b5563; }
         .btn-wa { background: #25D366; color: white; text-decoration: none; }
 
-        /* --- רשימת שחקנים --- */
+        /* --- רשימת שחקנים (בתוך כרטיס חדר) --- */
         .players-panel { width: 100%; margin-top: 20px; background: #f8f9fa; padding: 20px; border-radius: 16px; display: none; border: 1px solid #eee; }
         .team-block { margin-bottom: 15px; }
         .team-title { font-weight: bold; margin-bottom: 8px; color: var(--dark); }
@@ -69,9 +73,9 @@
 
         @media (max-width: 768px) {
             .tabs-nav { flex-direction: column; }
-            .room-card { flex-direction: column; align-items: flex-start; }
-            .room-actions { width: 100%; display: flex; gap: 10px; flex-wrap: wrap; }
-            .room-actions .btn { flex: 1; justify-content: center; }
+            .room-card, .player-card { flex-direction: column; align-items: flex-start; }
+            .actions-block { width: 100%; display: flex; gap: 10px; flex-wrap: wrap; }
+            .actions-block .btn { flex: 1; justify-content: center; }
             .filters-flex { flex-direction: column; }
             .filter-group { width: 100%; }
         }
@@ -123,24 +127,26 @@
                 </div>
                 
                 <div class="filter-group">
-                    <label>תחום חיפוש</label>
+                    <label>הצג לפי</label>
                     <select id="filterScope">
-                        <option value="all">הכל (ברירת מחדל)</option>
-                        <option value="rooms">🏠 חדרים (קוד/כותרת)</option>
-                        <option value="users">👤 משתמשים ו-IP</option>
+                        <option value="rooms">🏠 רשימת חדרים</option>
+                        <option value="users">👤 רשימת שחקנים</option>
                     </select>
                 </div>
 
                 <div class="filter-group" style="flex: 2;">
-                    <label>ערך לחיפוש</label>
-                    <input type="text" id="filterSearchTerm" placeholder="הזן קוד, שם, או IP...">
+                    <label>סינון (אופציונלי)</label>
+                    <input type="text" id="filterSearchTerm" placeholder="שם, קוד, או IP...">
                 </div>
                 <div class="filter-group" style="flex: 0 0 auto;">
-                    <button class="btn btn-primary" style="height: 52px;" onclick="fetchHistory()">🔍 צפה בהיסטוריה</button>
+                    <button class="btn btn-primary" style="height: 52px;" onclick="fetchHistory()">🔍 צפה בנתונים</button>
                 </div>
             </div>
-            <div id="history-rooms-list" class="rooms-container">
-                <p style="color:#666;">בחר תאריכים, תחום חיפוש וערך, ולחץ על הכפתור לצפייה.</p>
+            
+            <div id="resultsSummary" class="results-summary"></div>
+
+            <div id="history-list" class="rooms-container">
+                <p style="color:#666;">בחר תאריכים וסוג תצוגה, ולחץ על הכפתור.</p>
             </div>
         </div>
 
@@ -304,28 +310,43 @@
             }
         }
 
-        // --- היסטוריה (עם סינון ממוקד) ---
+        // --- היסטוריה (לוגיקה חדשה) ---
         async function fetchHistory() {
             const start = document.getElementById('filterStartDate').value;
             const end = document.getElementById('filterEndDate').value;
             const searchTerm = document.getElementById('filterSearchTerm').value.trim();
-            const scope = document.getElementById('filterScope').value; // קבלת תחום החיפוש
-            const container = document.getElementById('history-rooms-list');
+            const scope = document.getElementById('filterScope').value;
+            const container = document.getElementById('history-list');
+            const summaryEl = document.getElementById('resultsSummary');
             
             if(!start || !end) return alert("נא לבחור תאריכי התחלה וסיום");
 
-            container.innerHTML = '<p>🔍 מבצע חיפוש בהיסטוריה...</p>';
+            container.innerHTML = '<p>🔍 טוען נתונים...</p>';
+            summaryEl.style.display = 'none';
+
             try {
-                // הוספת פרמטר חיפוש ותחום ל-URL
-                let url = `${API_ADMIN_HISTORY}&startDate=${start}&endDate=${end}`;
-                if(searchTerm) url += `&search=${encodeURIComponent(searchTerm)}&scope=${scope}`;
+                // שליחת בקשה לשרת עם סוג התצוגה (scope)
+                let url = `${API_ADMIN_HISTORY}&startDate=${start}&endDate=${end}&scope=${scope}`;
+                if(searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
 
                 const res = await fetch(url);
                 const data = await res.json();
-                renderRooms(container, data.games, false);
+
+                // (חדש) הצגת סיכום
+                summaryEl.innerText = `נמצאו ${data.summary.count} ${scope === 'rooms' ? 'חדרים' : 'שחקנים'} בטווח הנבחר.`;
+                summaryEl.style.display = 'block';
+
+                // רינדור בהתאם לסוג
+                if(scope === 'rooms') {
+                    renderRooms(container, data.results, false);
+                } else {
+                    renderPlayers(container, data.results);
+                }
+
             } catch(e) {
                 console.error(e);
-                container.innerHTML = '<p style="color:red;">❌ שגיאה בטעינת היסטוריה.</p>';
+                container.innerHTML = '<p style="color:red;">❌ שגיאה בטעינת נתונים.</p>';
+                summaryEl.style.display = 'none';
             }
         }
 
@@ -336,20 +357,46 @@
             return Math.round((endTime - new Date(start))/60000) + " דק'";
         }
 
-        function renderRooms(container, games, isLive) {
-            if(!games || games.length === 0) {
-                container.innerHTML = '<p>לא נמצאו תוצאות התואמות לחיפוש.</p>';
+        // --- (חדש) רינדור רשימת שחקנים ---
+        function renderPlayers(container, players) {
+             if(!players || players.length === 0) {
+                container.innerHTML = '<p>לא נמצאו שחקנים.</p>';
                 return;
             }
             
-            // מיון: חדשים קודם
-            games.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            let html = '';
+            players.forEach(p => {
+                html += `
+                <div class="player-card">
+                    <div class="info-block">
+                        <h4>👤 ${p.name} <span style="font-size:0.9rem; color:#888;">(בחדר #${p.game_code})</span></h4>
+                        <div class="details-row">
+                            <span class="detail-item">🌐 IP: ${formatIP(p.ip_address)}</span>
+                            <span class="detail-item">📅 הצטרף: ${formatTime(p.created_at)}</span>
+                            <span class="detail-item">🏷️ קבוצה: ${p.team_id}</span>
+                        </div>
+                    </div>
+                    <div class="actions-block">
+                        <a href="/host.html?code=${p.game_code}" target="_blank" class="btn btn-ghost">🔗 עבור לחדר</a>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
 
+        // --- רינדור רשימת חדרים (מעודכן) ---
+        function renderRooms(container, games, isLive) {
+            if(!games || games.length === 0) {
+                container.innerHTML = '<p>לא נמצאו חדרים.</p>';
+                return;
+            }
+            
             let html = '';
             games.forEach(g => {
                 const statusClass = g.isActive ? 'active' : 'ended';
                 const statusText = g.isActive ? 'פעיל' : 'הסתיים';
                 
+                // בניית רשימת שחקנים להצגה בפאנל
                 let playersHtml = '';
                 if(g.teams) {
                     Object.values(g.teams).forEach(t => {
@@ -363,26 +410,27 @@
 
                 html += `
                 <div class="room-card ${statusClass}">
-                    <div class="room-info">
+                    <div class="info-block">
                         <h4>${g.gameTitle || 'חדר ללא כותרת'} <span class="status-badge">${statusText}</span> <span style="font-size:0.9rem; color:#888;">#${g.code}</span></h4>
-                        <div class="room-details">
+                        <div class="details-row">
                             <span class="detail-item">👤 מנהל: <strong>${g.hostName}</strong></span>
                             <span class="detail-item">🌐 IP: ${formatIP(g.hostIp)}</span>
                             <span class="detail-item">📅 נוצר: ${formatTime(g.createdAt)}</span>
                             <span class="detail-item">⏱️ משך: ${getDuration(g.createdAt, g.endedAt)}</span>
                         </div>
-                        <div class="room-details" style="margin-top:8px;">
-                             <span class="detail-item" style="font-weight:bold;">👥 סה"כ שחקנים: ${g.totalPlayers || 0}</span>
+                        <div class="details-row" style="margin-top:8px;">
+                             <span class="detail-item" style="font-weight:bold;">👥 שחקנים: ${g.totalPlayers || 0}</span>
+                             <span class="detail-item">🏳️ קבוצות: ${g.totalTeams || 0}</span>
                         </div>
                     </div>
-                    <div class="room-actions">
-                        <button class="btn btn-ghost" onclick="this.closest('.room-card').querySelector('.players-panel').style.display = 'block'">👥 צפה בשחקנים</button>
-                        ${g.isActive ? `<button class="btn btn-danger" onclick="closeRoom('${g.code}')">🛑 סגור חדר</button>` : ''}
+                    <div class="actions-block">
+                        <button class="btn btn-ghost" onclick="this.closest('.room-card').querySelector('.players-panel').style.display = 'block'">👥 שחקנים</button>
                         <a href="/host.html?code=${g.code}" target="_blank" class="btn btn-ghost">🔗 כניסה</a>
+                        ${isLive ? `<button class="btn btn-danger" onclick="closeRoom('${g.code}')">🛑 סגור</button>` : ''}
                     </div>
                     <div class="players-panel">
                         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                            <strong>רשימת שחקנים וקבוצות:</strong>
+                            <strong>רשימת שחקנים:</strong>
                             <button class="btn btn-ghost" style="padding: 4px 10px; font-size:0.8rem;" onclick="this.closest('.players-panel').style.display = 'none'">סגור</button>
                         </div>
                         ${playersHtml || 'אין נתונים'}
@@ -394,9 +442,20 @@
 
         async function closeRoom(code) {
             if(!confirm(`לסגור את חדר ${code}? השחקנים ינותקו.`)) return;
-            alert(`פקודה לסגירת חדר ${code} נשלחה.`);
-            // כאן תהיה קריאה לשרת: await fetch('/admin/close-room', ...)
-            setTimeout(fetchLiveStats, 1000);
+            try {
+                // שליחת בקשת סגירה לשרת
+                await fetch(`/admin/game/${code}/close?code=ONEBTN`, { method: 'POST' });
+                alert(`חדר ${code} נסגר בהצלחה.`);
+                // רענון תצוגה בהתאם לטאב הפעיל
+                if(document.getElementById('tab-dashboard').classList.contains('active')) {
+                     fetchLiveStats(); // אם בטאב הראשי, רענן לייב
+                } else {
+                     fetchHistory(); // אם בהיסטוריה, רענן היסטוריה
+                }
+            } catch(e) {
+                alert('שגיאה בסגירת החדר.');
+                console.error(e);
+            }
         }
 
         // --- מחולל מותג ---
