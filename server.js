@@ -64,26 +64,21 @@ async function initDb() {
 
     await pool.query(`CREATE TABLE IF NOT EXISTS active_states (game_code TEXT PRIMARY KEY, data TEXT, last_updated TIMESTAMPTZ DEFAULT NOW());`);
     
-    // --- טבלה להגדרות אתר גלובליות (באנרים) - מעודכנת ---
+    // --- טבלה להגדרות אתר גלובליות (באנרים) ---
     await pool.query(`CREATE TABLE IF NOT EXISTS site_settings (
         id SERIAL PRIMARY KEY,
         top_banner_img TEXT,
         top_banner_link TEXT,
         bottom_banner_img TEXT,
-        bottom_banner_link TEXT
+        bottom_banner_link TEXT,
+        top_banner_img_mobile TEXT,
+        bottom_banner_img_mobile TEXT
     );`);
-    // הוספת עמודות לבאנר תחתון אם לא קיימות
-    try { await pool.query(`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS bottom_banner_img TEXT;`); } catch (e) {}
-    try { await pool.query(`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS bottom_banner_link TEXT;`); } catch (e) {}
-    // --- הוספת עמודות חדשות לבאנרים למובייל ---
-    try { await pool.query(`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS top_banner_img_mobile TEXT;`); } catch (e) {}
-    try { await pool.query(`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS bottom_banner_img_mobile TEXT;`); } catch (e) {}
-
     
-    // וידוא שקיימת שורה אחת לפחות (עם ערכים דיפולטיביים לכל העמודות)
+    // וידוא שקיימת שורה אחת לפחות
     await pool.query(`
-        INSERT INTO site_settings (id, top_banner_img, top_banner_link, bottom_banner_img, bottom_banner_link, top_banner_img_mobile, bottom_banner_img_mobile) 
-        VALUES (1, NULL, NULL, NULL, NULL, NULL, NULL) 
+        INSERT INTO site_settings (id) 
+        VALUES (1) 
         ON CONFLICT (id) DO NOTHING;
     `);
 
@@ -559,21 +554,17 @@ io.on("connection", (socket) => {
 });
 
 // =========================================
-//  Admin API Routes (מעודכנים לגרסה המקורית + החדשה)
+//  Admin API Routes (מעודכנים)
 // =========================================
 
-// סטטיסטיקות זמן אמת (נשאר מבוסס זיכרון כי זה Live)
+// סטטיסטיקות זמן אמת
 app.get("/admin/stats", async (req, res) => {
   const code = req.query.code || "";
   if (code !== ADMIN_CODE) return res.status(403).json({ error: "Forbidden" });
 
-  let dbStats = { gamesByDay: [], totalUniqueIps: 0 };
-
+  let dbStats = { totalUniqueIps: 0 };
   if (dbReady && pool) {
     try {
-      const gamesRes = await pool.query(`SELECT TO_CHAR(created_at, 'DD/MM') as date, COUNT(*) as count FROM games WHERE created_at > NOW() - INTERVAL '30 days' GROUP BY date, TO_CHAR(created_at, 'YYYY-MM-DD') ORDER BY TO_CHAR(created_at, 'YYYY-MM-DD') ASC`);
-      dbStats.gamesByDay = gamesRes.rows;
-
       const ipRes = await pool.query(`SELECT COUNT(DISTINCT ip_address) as count FROM game_players`);
       dbStats.totalUniqueIps = ipRes.rows[0].count;
     } catch (e) { console.error("Stats DB Error", e); }
@@ -586,123 +577,99 @@ app.get("/admin/stats", async (req, res) => {
     playerCount: Object.keys(g.playersByClientId).length,
     teamCount: Object.keys(g.teams).length,
     createdAt: g.createdAt,
-    hostIp: g.hostIp, // הוספתי את זה שיהיה זמין בלקוח
-    teams: g.teams,   // הוספתי את זה שיהיה זמין בלקוח
-    players: Object.values(g.playersByClientId).map(p => ({ name: p.name, ip: p.ip, joinedAt: p.joinedAt }))
+    hostIp: g.hostIp,
+    teams: g.teams,
+    players: Object.values(g.playersByClientId).map(p => ({ name: p.name, ip: p.ip, joinedAt: p.joinedAt })),
+    isActive: true
   }));
 
   res.json({ 
       stats: { 
           activeGamesCount: activeGames.length,
           connectedSockets: io.engine.clientsCount,
-          uniqueIps: dbStats.totalUniqueIps // שימוש בנתון מה-DB
+          uniqueIps: dbStats.totalUniqueIps
       },
-      activeGames: activeGames,
-      dbStats 
+      activeGames: activeGames
   });
 });
 
-// *** ה-ENDPOINT החדש להיסטוריה עם סינון חכם (מבוסס על הטבלאות המקוריות) ***
+
+// --- ה-ENDPOINT החדש להיסטוריה (תומך בפיצול חדרים/שחקנים וסיכומים) ---
 app.get("/admin/history", async (req, res) => {
     const { code, startDate, endDate, search, scope } = req.query;
 
     if (code !== ADMIN_CODE) return res.status(403).json({ error: "Unauthorized" });
     if (!dbReady || !pool) return res.status(503).json({ error: "DB not ready" });
     
-    // אם אין תאריכים, נחזיר את ה-100 האחרונים כברירת מחדל
-    let useDates = (startDate && endDate);
-    
-    // בניית שאילתה ראשית על טבלת games
-    let queryText = `
-        SELECT g.code, g.host_name, g.host_ip, g.game_title, g.created_at,
-               (SELECT COUNT(*) FROM game_players WHERE game_code = g.code) as total_players,
-               (SELECT COUNT(*) FROM game_teams WHERE game_code = g.code) as total_teams
-        FROM games g
-    `;
-    
-    const queryParams = [];
-    let whereClauses = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    const queryParams = [start.toISOString(), end.toISOString()];
+    let searchClause = "";
 
-    // סינון תאריכים
-    if (useDates) {
-        const endDateTime = new Date(endDate);
-        endDateTime.setHours(23, 59, 59, 999);
-        queryParams.push(startDate, endDateTime.toISOString());
-        whereClauses.push(`g.created_at >= $${queryParams.length - 1} AND g.created_at <= $${queryParams.length}`);
-    }
-
-    // סינון חיפוש ותחום
     if (search && search.trim() !== '') {
-        const searchTerm = `%${search.trim().toLowerCase()}%`;
-        queryParams.push(searchTerm);
-        const paramIdx = queryParams.length;
-
-        let searchClause = "";
-        // חיפוש בחדרים
-        if (scope === 'rooms' || scope === 'all') {
-            searchClause += ` (LOWER(g.code) LIKE $${paramIdx} OR LOWER(g.game_title) LIKE $${paramIdx})`;
-        }
-        // חיפוש במשתמשים ו-IP (דורש תת-שאילתה ל-players)
-        if (scope === 'users' || scope === 'all') {
-            const userClause = ` (
-                LOWER(g.host_name) LIKE $${paramIdx} 
-                OR g.host_ip LIKE $${paramIdx}
-                OR EXISTS (
-                    SELECT 1 FROM game_players gp 
-                    WHERE gp.game_code = g.code AND (LOWER(gp.name) LIKE $${paramIdx} OR gp.ip_address LIKE $${paramIdx})
-                )
-            )`;
-            searchClause = searchClause ? `(${searchClause} OR ${userClause})` : userClause;
-        }
-        
-        if (searchClause) {
-            whereClauses.push(searchClause);
-        }
-    }
-
-    if (whereClauses.length > 0) {
-        queryText += " WHERE " + whereClauses.join(" AND ");
-    }
-
-    queryText += ` ORDER BY g.created_at DESC`;
-    
-    if (!useDates && !search) {
-         queryText += " LIMIT 100";
+        queryParams.push(`%${search.trim().toLowerCase()}%`);
+        searchClause = `AND (LOWER(name_field) LIKE $3 OR ip_field LIKE $3 ${scope === 'rooms' ? 'OR LOWER(code_field) LIKE $3' : ''})`;
     }
 
     try {
-        const result = await pool.query(queryText, queryParams);
-        
-        // שליפת נתוני קבוצות ושחקנים עבור כל משחק שנמצא
-        const gamesWithDetails = await Promise.all(result.rows.map(async (gameRow) => {
-            // שליפת קבוצות
-            const teamsRes = await pool.query(`SELECT * FROM game_teams WHERE game_code = $1`, [gameRow.code]);
-            const teamsMap = {};
-            teamsRes.rows.forEach(t => teamsMap[t.team_id] = { ...t, players: [] });
+        let results = [];
+        let count = 0;
 
-            // שליפת שחקנים ושיוך לקבוצות
-            const playersRes = await pool.query(`SELECT * FROM game_players WHERE game_code = $1`, [gameRow.code]);
-            playersRes.rows.forEach(p => {
-                if (teamsMap[p.team_id]) {
-                    teamsMap[p.team_id].players.push({ name: p.name, ip: p.ip_address });
-                }
-            });
+        if (scope === 'rooms') {
+            // שליפת חדרים
+            let query = `
+                SELECT g.code, g.host_name, g.host_ip, g.game_title, g.created_at,
+                       (SELECT COUNT(*) FROM game_players WHERE game_code = g.code) as total_players,
+                       (SELECT COUNT(*) FROM game_teams WHERE game_code = g.code) as total_teams
+                FROM games g
+                WHERE g.created_at >= $1 AND g.created_at <= $2
+            `;
+            if (searchClause) {
+                query = query.replace('name_field', 'g.host_name').replace('ip_field', 'g.host_ip').replace('code_field', 'g.code') + searchClause;
+            }
+            query += ` ORDER BY g.created_at DESC`;
+            
+            const result = await pool.query(query, queryParams);
+            count = result.rowCount;
 
-            return {
-                code: gameRow.code,
-                hostName: gameRow.host_name,
-                hostIp: gameRow.host_ip,
-                gameTitle: gameRow.game_title,
-                createdAt: gameRow.created_at,
-                endedAt: null, // בטבלאות המקוריות אין ended_at, אפשר להשתמש ב-last_activity אם רוצים
-                totalPlayers: parseInt(gameRow.total_players),
-                totalTeams: parseInt(gameRow.total_teams),
-                teams: teamsMap, // מבנה נתונים תואם לפרונט
-                isActive: false
-            };
-        }));
+            // העשרת הנתונים (קבוצות ושחקנים)
+            results = await Promise.all(result.rows.map(async (gameRow) => {
+                const teamsRes = await pool.query(`SELECT * FROM game_teams WHERE game_code = $1`, [gameRow.code]);
+                const teamsMap = {};
+                teamsRes.rows.forEach(t => teamsMap[t.team_id] = { ...t, players: [] });
+                const playersRes = await pool.query(`SELECT * FROM game_players WHERE game_code = $1`, [gameRow.code]);
+                playersRes.rows.forEach(p => {
+                    if (teamsMap[p.team_id]) teamsMap[p.team_id].players.push({ name: p.name, ip: p.ip_address });
+                });
+                return {
+                    ...gameRow,
+                    hostName: gameRow.host_name, hostIp: gameRow.host_ip, gameTitle: gameRow.game_title, createdAt: gameRow.created_at,
+                    totalPlayers: parseInt(gameRow.total_players), totalTeams: parseInt(gameRow.total_teams),
+                    teams: teamsMap, isActive: false
+                };
+            }));
 
-        res.json({ games: gamesWithDetails });
+        } else {
+            // שליפת שחקנים
+            let query = `
+                SELECT gp.*, g.game_title 
+                FROM game_players gp
+                LEFT JOIN games g ON gp.game_code = g.code
+                WHERE gp.created_at >= $1 AND gp.created_at <= $2
+            `;
+            if (searchClause) {
+                query = query.replace('name_field', 'gp.name').replace('ip_field', 'gp.ip_address') + searchClause;
+            }
+            query += ` ORDER BY gp.created_at DESC`;
+
+            const result = await pool.query(query, queryParams);
+            count = result.rowCount;
+            results = result.rows;
+        }
+
+        res.json({ summary: { count, scope }, results });
+
     } catch (e) {
         console.error("Error fetching history from DB:", e);
         res.status(500).json({ error: "DB search error" });
@@ -715,16 +682,11 @@ app.get("/api/banners", async (req, res) => {
     let banners = {};
     if (dbReady && pool) {
         try {
-            // שליפת העמודות החדשות למובייל
             const result = await pool.query("SELECT top_banner_img, top_banner_link, bottom_banner_img, bottom_banner_link, top_banner_img_mobile, bottom_banner_img_mobile FROM site_settings WHERE id = 1");
             if (result.rows.length > 0) {
                 const row = result.rows[0];
-                if (row.top_banner_img) {
-                    banners.topBanner = { img: row.top_banner_img, imgMobile: row.top_banner_img_mobile, link: row.top_banner_link };
-                }
-                if (row.bottom_banner_img) {
-                    banners.bottomBanner = { img: row.bottom_banner_img, imgMobile: row.bottom_banner_img_mobile, link: row.bottom_banner_link };
-                }
+                banners.topBanner = { img: row.top_banner_img, imgMobile: row.top_banner_img_mobile, link: row.top_banner_link };
+                banners.bottomBanner = { img: row.bottom_banner_img, imgMobile: row.bottom_banner_img_mobile, link: row.bottom_banner_link };
             }
         } catch (e) { console.error("Error fetching banners:", e); }
     }
@@ -755,6 +717,23 @@ app.post("/api/banners", async (req, res) => {
         }
     } else {
         res.status(503).json({ ok: false, error: "No DB" });
+    }
+});
+
+// --- API לסגירת חדר (פנימי) ---
+app.post("/admin/game/:gameCode/close", (req, res) => {
+    if (req.query.code !== ADMIN_CODE) return res.status(403).send();
+    const code = req.params.gameCode;
+    if(games[code]) {
+        clearRoundTimer(code);
+        delete games[code];
+        deleteGameState(code);
+        io.to("game-" + code).emit("adminClosedGame", { code });
+        res.json({ok:true});
+    } else {
+        // גם אם לא בזיכרון, ננסה למחוק מה-DB של המצבים הפעילים
+        deleteGameState(code);
+        res.json({ok:true, message: "Room force closed from DB state"});
     }
 });
 
