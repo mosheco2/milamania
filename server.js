@@ -2,28 +2,83 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const fs = require('fs');
 const cors = require('cors');
+// --- שינוי 1: ייבוא ספריית פוסטגרס ---
+const { Pool } = require('pg');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
 const PORT = process.env.PORT || 3000;
-const ADMIN_CODE = "ONEBTN"; // קוד לכניסה לממשק הניהול
-const BANNERS_FILE = path.join(__dirname, 'banners.json');
+const ADMIN_CODE = "ONEBTN";
+
+// --- שינוי 2: הגדרת חיבור לבסיס הנתונים ---
+// מומלץ ב-Render להשתמש במשתנה סביבה DATABASE_URL, אך שמתי את ה-Internal URL שסיפקת כברירת מחדל.
+const connectionString = process.env.DATABASE_URL || 'postgresql://cohens_db_user:8L7xFSkbfYyh3y6NfyMkiND1CqNE7FRN@dpg-d4fb40v5r7bs73cjo860-a/cohens_db';
+
+// יצירת מאגר חיבורים (Pool)
+const pool = new Pool({
+    connectionString: connectionString,
+    // ב-Render חובה להשתמש ב-SSL בחיבור חיצוני, ולעיתים גם בפנימי.
+    // ההגדרה הזו מאפשרת חיבור גם אם תעודת ה-SSL לא מאומתת (סטנדרטי ב-Render).
+    ssl: { rejectUnauthorized: false }
+});
+
+// בדיקת חיבור ראשונית
+pool.connect((err, client, release) => {
+    if (err) {
+        console.error('❌ Error acquiring client', err.stack);
+    } else {
+        console.log('✅ Connected to PostgreSQL database successfully!');
+        release();
+    }
+});
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- ניהול מצב (State) ---
-// משחקים פעילים בזמן אמת
-const games = {}; 
-// היסטוריית משחקים (נשמרת בזיכרון כל עוד השרת רץ)
-const allGamesHistory = [];
+// --- ניהול מצב (State) בזיכרון (רק למשחקים פעילים) ---
+const games = {};
 
-// --- קטגוריות מילים (ניתן להרחיב) ---
+// --- שינוי 3: יצירת טבלאות בסיס נתונים אם לא קיימות ---
+async function initDB() {
+    try {
+        // טבלת באנרים - שורה אחת שתחזיק את כל ה-JSON
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS banners (
+                id SERIAL PRIMARY KEY,
+                data JSONB NOT NULL
+            );
+        `);
+        // וידוא שיש שורה ראשונית (ID=1)
+        await pool.query(`INSERT INTO banners (id, data) VALUES (1, '{}') ON CONFLICT (id) DO NOTHING;`);
+
+        // טבלת היסטוריית משחקים
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS game_history (
+                code VARCHAR(10) PRIMARY KEY,
+                host_name VARCHAR(255),
+                host_ip VARCHAR(50),
+                game_title VARCHAR(255),
+                created_at TIMESTAMP WITH TIME ZONE,
+                ended_at TIMESTAMP WITH TIME ZONE,
+                total_players INT,
+                total_teams INT,
+                teams_data JSONB -- שמירת מבנה הקבוצות והשחקנים כ-JSON
+            );
+        `);
+        console.log("✅ Database tables initialized.");
+    } catch (e) {
+        console.error("❌ Error initializing database tables:", e);
+    }
+}
+// הפעלת אתחול ה-DB בעליית השרת
+initDB();
+
+
+// --- קטגוריות מילים (ללא שינוי) ---
 const wordCategories = {
     food: ["פיצה", "פלאפל", "סושי", "המבורגר", "גלידה", "שוקולד", "פסטה", "סלט", "תפוח", "בננה"],
     animals: ["כלב", "חתול", "אריה", "פיל", "ג'ירפה", "קוף", "זברה", "דוב", "ציפור", "דג"],
@@ -42,7 +97,7 @@ const wordCategories = {
     verbs: ["לרוץ", "לקפוץ", "לשיר", "לרקוד", "לצחוק", "לבכות", "לאכול", "לשתות", "לישון", "לחשוב"]
 };
 
-// --- פונקציות עזר ---
+// --- פונקציות עזר (ללא שינוי) ---
 function generateGameCode() {
     return Math.random().toString(36).substring(2, 6).toUpperCase();
 }
@@ -59,7 +114,6 @@ function getWords(categories, customWords) {
             if (wordCategories[cat]) words = words.concat(wordCategories[cat]);
         });
     }
-    // ערבוב המילים
     return words.sort(() => Math.random() - 0.5);
 }
 
@@ -67,40 +121,45 @@ function getClientIp(req) {
     return req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 }
 
-// --- API Routes ---
+// =========================================
+//  API Routes (מעודכנים לעבודה מול DB)
+// =========================================
 
-// קבלת באנרים
-app.get("/api/banners", (req, res) => {
-    if (fs.existsSync(BANNERS_FILE)) {
-        res.json(JSON.parse(fs.readFileSync(BANNERS_FILE)));
-    } else {
-        res.json({});
+// קבלת באנרים (שליפה מה-DB)
+app.get("/api/banners", async (req, res) => {
+    try {
+        const result = await pool.query('SELECT data FROM banners WHERE id = 1');
+        if (result.rows.length > 0) {
+            res.json(result.rows[0].data);
+        } else {
+            res.json({});
+        }
+    } catch (e) {
+        console.error("Error fetching banners from DB:", e);
+        res.status(500).json({ error: "DB error" });
     }
 });
 
-// שמירת באנרים (כולל תמיכה במובייל בצורה גנרית)
-app.post("/api/banners", (req, res) => {
+// שמירת באנרים (עדכון ב-DB)
+app.post("/api/banners", async (req, res) => {
     try {
-        fs.writeFileSync(BANNERS_FILE, JSON.stringify(req.body, null, 2));
+        const bannersJson = JSON.stringify(req.body);
+        await pool.query('UPDATE banners SET data = $1 WHERE id = 1', [bannersJson]);
         res.json({ ok: true });
     } catch (e) {
-        console.error("Error saving banners:", e);
-        res.status(500).json({ error: "Failed to save banners" });
+        console.error("Error saving banners to DB:", e);
+        res.status(500).json({ error: "Failed to save banners to DB" });
     }
 });
 
-// יצירת משחק (דרך טופס POST רגיל)
-app.post('/create-game', (req, res) => {
-    // דף זה מיועד רק אם המשתמש מגיע מדפדפן ללא JS, בפועל היצירה נעשית דרך Socket
-    res.redirect('/');
-});
+app.post('/create-game', (req, res) => { res.redirect('/'); });
 
 
 // =========================================
-//  Admin API Routes (החלק המעודכן)
+//  Admin API Routes (מעודכנים)
 // =========================================
 
-// סטטיסטיקות זמן אמת
+// סטטיסטיקות זמן אמת (נשאר מבוסס זיכרון כי זה Live)
 app.get("/admin/stats", (req, res) => {
     if (req.query.code !== ADMIN_CODE) return res.status(403).json({ error: "Unauthorized" });
 
@@ -113,7 +172,7 @@ app.get("/admin/stats", (req, res) => {
         teamCount: Object.keys(g.teams).length,
         isActive: true,
         gameTitle: g.gameTitle,
-        teams: g.teams // שליחת פירוט קבוצות ושחקנים לזמן אמת
+        teams: g.teams
     }));
 
     const uniqueIps = new Set();
@@ -128,83 +187,73 @@ app.get("/admin/stats", (req, res) => {
         stats: {
             activeGamesCount: activeGamesList.length,
             connectedSockets: io.engine.clientsCount,
-            uniqueIps: uniqueIps.size
+            uniqueIps: uniqueIps.size // הערה: זה מציג יוניק IP רק של מחוברים כרגע. ליומי צריך DB.
         },
         activeGames: activeGamesList
     });
 });
 
 
-// *** ה-ENDPOINT המעודכן להיסטוריה עם סינון חכם ***
-app.get("/admin/history", (req, res) => {
+// *** ה-ENDPOINT המעודכן להיסטוריה מול ה-DB ***
+app.get("/admin/history", async (req, res) => {
     const { code, startDate, endDate, search, scope } = req.query;
 
-    if (code !== ADMIN_CODE) {
-        return res.status(403).json({ error: "Unauthorized" });
-    }
+    if (code !== ADMIN_CODE) return res.status(403).json({ error: "Unauthorized" });
+    if (!startDate || !endDate) return res.status(400).json({ error: "Missing dates" });
 
-    let filteredGames = [...allGamesHistory];
+    // בניית שאילתת SQL דינמית
+    let queryText = `
+        SELECT code, host_name, host_ip, game_title, created_at, ended_at, total_players, total_teams, teams_data 
+        FROM game_history 
+        WHERE created_at >= $1 AND created_at <= $2
+    `;
+    
+    // הגדרת טווח תאריכים (סוף יום)
+    const endDateTime = new Date(endDate);
+    endDateTime.setHours(23, 59, 59, 999);
+    const queryParams = [startDate, endDateTime.toISOString()];
 
-    // 1. סינון לפי תאריכים (חובה)
-    if (startDate && endDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
+    // הוספת תנאי חיפוש אם יש ערך
+    if (search && search.trim() !== '') {
+        const searchTerm = `%${search.trim().toLowerCase()}%`;
+        queryParams.push(searchTerm);
+        const paramIdx = queryParams.length;
 
-        filteredGames = filteredGames.filter(g => {
-            const gameDate = new Date(g.createdAt);
-            return gameDate >= start && gameDate <= end;
-        });
-    }
-
-    // 2. סינון לפי חיפוש ותחום (אופציונלי, רק אם נשלח search)
-    if (search) {
-        const searchTerm = search.toLowerCase().trim();
+        let searchClause = "";
+        // חיפוש בחדרים
+        if (scope === 'rooms' || scope === 'all') {
+            searchClause += ` (LOWER(code) LIKE $${paramIdx} OR LOWER(game_title) LIKE $${paramIdx})`;
+        }
+        // חיפוש במשתמשים ו-IP (כולל חיפוש בתוך ה-JSONB של הקבוצות)
+        if (scope === 'users' || scope === 'all') {
+            const userClause = ` (LOWER(host_name) LIKE $${paramIdx} OR host_ip LIKE $${paramIdx} OR teams_data::text ILIKE $${paramIdx})`;
+            searchClause = searchClause ? `(${searchClause} OR ${userClause})` : userClause;
+        }
         
-        filteredGames = filteredGames.filter(g => {
-            let matches = false;
-
-            // --- בדיקה: תחום חדרים ---
-            if (scope === 'rooms' || scope === 'all') {
-                if (g.code.toLowerCase().includes(searchTerm)) matches = true;
-                if (g.gameTitle && g.gameTitle.toLowerCase().includes(searchTerm)) matches = true;
-            }
-
-            // --- בדיקה: תחום משתמשים ו-IP ---
-            if (!matches && (scope === 'users' || scope === 'all')) {
-                // בדיקת מנהל
-                if (g.hostName.toLowerCase().includes(searchTerm)) matches = true;
-                if (g.hostIp && g.hostIp.includes(searchTerm)) matches = true;
-
-                // בדיקת שחקנים עמוקה (בתוך כל הקבוצות)
-                if (!matches && g.teams) {
-                    // עוברים על כל הקבוצות
-                    Object.values(g.teams).some(team => {
-                        // עוברים על כל השחקנים בקבוצה
-                        return team.players.some(playerData => {
-                            // playerData כאן הוא האובייקט המלא שנשמר בהיסטוריה
-                            if (playerData.name && playerData.name.toLowerCase().includes(searchTerm)) {
-                                matches = true; return true;
-                            }
-                            if (playerData.ip && playerData.ip.includes(searchTerm)) {
-                                matches = true; return true;
-                            }
-                            return false;
-                        });
-                    });
-                }
-            }
-            
-            return matches;
-        });
+        if (searchClause) {
+            queryText += ` AND ${searchClause}`;
+        }
     }
 
-    res.json({ games: filteredGames });
+    queryText += ` ORDER BY created_at DESC`;
+
+    try {
+        const result = await pool.query(queryText, queryParams);
+        // המרת שמות שדות כדי שיתאימו למה שהפרונט מצפה (teams_data -> teams)
+        const formattedGames = result.rows.map(row => ({
+            ...row,
+            teams: row.teams_data, // הפרונט מצפה ל-teams
+            isActive: false // היסטוריה תמיד לא פעילה
+        }));
+        res.json({ games: formattedGames });
+    } catch (e) {
+        console.error("Error fetching history from DB:", e);
+        res.status(500).json({ error: "DB search error" });
+    }
 });
 
 // =========================================
-//  Socket.IO Logic
+//  Socket.IO Logic (ללא שינוי)
 // =========================================
 
 io.on('connection', (socket) => {
@@ -228,7 +277,7 @@ io.on('connection', (socket) => {
             gameTitle: data.gameTitle,
             createdAt: new Date().toISOString(),
             teams: teams,
-            playersByClientId: {}, // מיפוי מהיר של socketId לנתוני שחקן
+            playersByClientId: {}, 
             words: words,
             wordsPointer: 0,
             branding: data.branding,
@@ -250,14 +299,12 @@ io.on('connection', (socket) => {
         if (!game) return callback({ ok: false, error: "משחק לא נמצא" });
         if (!game.teams[teamId]) return callback({ ok: false, error: "קבוצה לא קיימת" });
 
-        // שמירת נתוני השחקן
         game.playersByClientId[socket.id] = { 
             id: socket.id, 
             name: name, 
             teamId: teamId, 
             ip: clientIp 
         };
-        // הוספת ה-ID לרשימת השחקנים בקבוצה
         game.teams[teamId].players.push(socket.id);
         
         socket.join(gameCode);
@@ -277,16 +324,14 @@ io.on('connection', (socket) => {
         if(game && game.hostId === socket.id) {
             const player = game.playersByClientId[clientId];
             if(player) {
-                // הסרה מהקבוצה
                 const team = game.teams[player.teamId];
                 if(team) {
                     team.players = team.players.filter(pid => pid !== clientId);
                 }
-                // הסרה מהמיפוי הכללי
                 delete game.playersByClientId[clientId];
                 
                 io.to(clientId).emit('playerRemoved');
-                io.in(gameCode).socketsLeave(clientId); // ניתוק כפוי מהחדר
+                io.in(gameCode).socketsLeave(clientId);
                 io.to(gameCode).emit('gameUpdated', game);
             }
         }
@@ -299,7 +344,6 @@ io.on('connection', (socket) => {
         if (game.currentRound.isActive) return callback({ ok: false, error: "סיבוב כבר פעיל" });
 
         let actualExplainerId = explainerClientId;
-        // בחירה אוטומטית של מסביר אם לא נבחר
         if(!actualExplainerId) {
             const teamPlayers = game.teams[teamId].players;
             if(teamPlayers.length === 0) return callback({ok:false, error: "אין שחקנים בקבוצה זו"});
@@ -318,7 +362,6 @@ io.on('connection', (socket) => {
 
         let secondsLeft = game.settings.roundSeconds;
         
-        // טיימר בצד שרת
         game.currentRound.timer = setInterval(() => {
             secondsLeft--;
             io.to(gameCode).emit('roundTick', { gameCode, secondsLeft });
@@ -336,7 +379,7 @@ io.on('connection', (socket) => {
         if(!game || !game.currentRound.isActive || game.currentRound.explainerId !== socket.id) {
             return callback({ ok: false, error: "לא מורשה" });
         }
-        if(game.wordsPointer >= game.words.length) game.wordsPointer = 0; // מחזור מילים
+        if(game.wordsPointer >= game.words.length) game.wordsPointer = 0;
         const word = game.words[game.wordsPointer++];
         callback({ ok: true, word: word });
     });
@@ -391,7 +434,6 @@ io.on('connection', (socket) => {
     socket.on('hostReconnect', (data, callback) => {
         const game = games[data.gameCode];
         if(game) {
-             // עדכון Socket ID של המנהל אם השתנה
              if(game.hostId !== socket.id) {
                  console.log(`Host reconnected to ${data.gameCode}, updating socket ID.`);
                  game.hostId = socket.id;
@@ -405,39 +447,42 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log(`Client disconnected: ${socket.id}`);
-        // אופציונלי: טיפול בהתנתקות שחקן באמצע משחק
     });
 });
 
-// פונקציה פנימית לסגירת משחק (גם ע"י מנהל וגם ע"י אדמין)
-function closeGameInternal(gameCode, isAdminAction) {
+// --- שינוי 4: פונקציית סגירת משחק אסינכרונית ששומרת ל-DB ---
+async function closeGameInternal(gameCode, isAdminAction) {
     const game = games[gameCode];
     if (!game) return;
 
     if (game.currentRound.timer) clearInterval(game.currentRound.timer);
     
-    // שמירה להיסטוריה
-    const historyEntry = {
-        ...game,
-        endedAt: new Date().toISOString(),
-        totalPlayers: Object.keys(game.playersByClientId).length,
-        totalTeams: Object.keys(game.teams).length,
-        // המרת מבנה השחקנים לשמירה שטוחה יותר בהיסטוריה (לצורך חיפוש קל)
-        teams: Object.values(game.teams).map(t => ({
-            ...t,
-            players: t.players.map(pid => game.playersByClientId[pid])
-        }))
-    };
-    delete historyEntry.playersByClientId; // לא נחוץ בהיסטוריה
-    delete historyEntry.currentRound;
-    delete historyEntry.words;
+    const endedAt = new Date().toISOString();
+    const totalPlayers = Object.keys(game.playersByClientId).length;
+    const totalTeams = Object.keys(game.teams).length;
     
-    allGamesHistory.push(historyEntry);
+    // הכנת מבנה הנתונים של הקבוצות לשמירה ב-JSONB
+    const teamsData = Object.values(game.teams).map(t => ({
+        ...t,
+        players: t.players.map(pid => game.playersByClientId[pid])
+    }));
+
+    try {
+        // שמירה בבסיס הנתונים
+        await pool.query(
+            `INSERT INTO game_history (code, host_name, host_ip, game_title, created_at, ended_at, total_players, total_teams, teams_data)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [game.code, game.hostName, game.hostIp, game.gameTitle, game.createdAt, endedAt, totalPlayers, totalTeams, JSON.stringify(teamsData)]
+        );
+        console.log(`✅ Game ${gameCode} saved to DB history.`);
+    } catch (e) {
+        console.error(`❌ Error saving game ${gameCode} to DB:`, e);
+    }
 
     io.to(gameCode).emit(isAdminAction ? 'adminClosedGame' : 'gameEnded');
     io.in(gameCode).socketsLeave(gameCode);
     delete games[gameCode];
-    console.log(`Game ${gameCode} ended and moved to history.`);
+    console.log(`Game ${gameCode} removed from active memory.`);
 }
 
 
