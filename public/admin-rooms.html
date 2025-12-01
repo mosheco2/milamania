@@ -29,13 +29,13 @@
         /* --- מדורים (פילטרים, באנרים) --- */
         .section-box { background: #f9fafb; padding: 25px; border-radius: 20px; border: 1px solid #eee; margin-bottom: 25px; }
         .filters-flex { display: flex; gap: 20px; align-items: end; flex-wrap: wrap; }
-        .filter-group { flex: 1; min-width: 180px; }
+        .filter-group { flex: 1; min-width: 150px; }
         label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
-        input[type="text"], input[type="date"], input[type="color"] { width: 100%; padding: 14px; border: 2px solid #eee; border-radius: 14px; font-family: inherit; font-size: 1rem; background: #fff; transition: 0.3s; }
-        input:focus { border-color: var(--primary); outline: none; }
+        input[type="text"], input[type="date"], input[type="color"], select { width: 100%; padding: 14px; border: 2px solid #eee; border-radius: 14px; font-family: inherit; font-size: 1rem; background: #fff; transition: 0.3s; }
+        input:focus, select:focus { border-color: var(--primary); outline: none; }
 
         /* --- כרטיסי חדרים --- */
-        .rooms-container { display: flex; flex-direction: column; gap: 15px; }
+        .rooms-container { display: flex; flex-direction: column; gap: 15px; min-height: 100px; }
         .room-card { background: #fff; border: 1px solid #eee; border-radius: 18px; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; position: relative; overflow: hidden; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
         .room-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.05); }
         .room-card.active { border-left: 6px solid #25D366; }
@@ -121,12 +121,26 @@
                     <label>עד תאריך</label>
                     <input type="date" id="filterEndDate">
                 </div>
+                
+                <div class="filter-group">
+                    <label>תחום חיפוש</label>
+                    <select id="filterScope">
+                        <option value="all">הכל (ברירת מחדל)</option>
+                        <option value="rooms">🏠 חדרים (קוד/כותרת)</option>
+                        <option value="users">👤 משתמשים ו-IP</option>
+                    </select>
+                </div>
+
+                <div class="filter-group" style="flex: 2;">
+                    <label>ערך לחיפוש</label>
+                    <input type="text" id="filterSearchTerm" placeholder="הזן קוד, שם, או IP...">
+                </div>
                 <div class="filter-group" style="flex: 0 0 auto;">
-                    <button class="btn btn-primary" style="height: 52px;" onclick="fetchHistory()">📅 צפה בהיסטוריה</button>
+                    <button class="btn btn-primary" style="height: 52px;" onclick="fetchHistory()">🔍 צפה בהיסטוריה</button>
                 </div>
             </div>
             <div id="history-rooms-list" class="rooms-container">
-                <p>בחר תאריכים וצפה בהיסטוריה.</p>
+                <p style="color:#666;">בחר תאריכים, תחום חיפוש וערך, ולחץ על הכפתור לצפייה.</p>
             </div>
         </div>
 
@@ -274,7 +288,7 @@
         // --- נתונים בזמן אמת ---
         async function fetchLiveStats() {
             const container = document.getElementById('live-rooms-list');
-            container.innerHTML = '<p>טוען נתונים בזמן אמת...</p>';
+            container.innerHTML = '<p>⏱️ טוען נתונים בזמן אמת...</p>';
             try {
                 const res = await fetch(API_ADMIN_STATS);
                 const data = await res.json();
@@ -283,7 +297,6 @@
                 document.getElementById('statConnectedUsers').innerText = data.stats.connectedSockets;
                 document.getElementById('statUniqueIps').innerText = data.stats.uniqueIps;
                 
-                // תיקון התקלה: שימוש ב-data.activeGames לנתונים חיים
                 renderRooms(container, data.activeGames, true);
             } catch(e) {
                 console.error(e);
@@ -291,19 +304,24 @@
             }
         }
 
-        // --- היסטוריה ---
+        // --- היסטוריה (עם סינון ממוקד) ---
         async function fetchHistory() {
             const start = document.getElementById('filterStartDate').value;
             const end = document.getElementById('filterEndDate').value;
+            const searchTerm = document.getElementById('filterSearchTerm').value.trim();
+            const scope = document.getElementById('filterScope').value; // קבלת תחום החיפוש
             const container = document.getElementById('history-rooms-list');
             
             if(!start || !end) return alert("נא לבחור תאריכי התחלה וסיום");
 
-            container.innerHTML = '<p>טוען היסטוריה...</p>';
+            container.innerHTML = '<p>🔍 מבצע חיפוש בהיסטוריה...</p>';
             try {
-                const res = await fetch(`${API_ADMIN_HISTORY}&startDate=${start}&endDate=${end}`);
+                // הוספת פרמטר חיפוש ותחום ל-URL
+                let url = `${API_ADMIN_HISTORY}&startDate=${start}&endDate=${end}`;
+                if(searchTerm) url += `&search=${encodeURIComponent(searchTerm)}&scope=${scope}`;
+
+                const res = await fetch(url);
                 const data = await res.json();
-                // תיקון התקלה: שימוש ב-data.games להיסטוריה
                 renderRooms(container, data.games, false);
             } catch(e) {
                 console.error(e);
@@ -320,10 +338,11 @@
 
         function renderRooms(container, games, isLive) {
             if(!games || games.length === 0) {
-                container.innerHTML = '<p>לא נמצאו משחקים בתצוגה זו.</p>';
+                container.innerHTML = '<p>לא נמצאו תוצאות התואמות לחיפוש.</p>';
                 return;
             }
             
+            // מיון: חדשים קודם
             games.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
             let html = '';
@@ -377,7 +396,7 @@
             if(!confirm(`לסגור את חדר ${code}? השחקנים ינותקו.`)) return;
             alert(`פקודה לסגירת חדר ${code} נשלחה.`);
             // כאן תהיה קריאה לשרת: await fetch('/admin/close-room', ...)
-            fetchLiveStats();
+            setTimeout(fetchLiveStats, 1000);
         }
 
         // --- מחולל מותג ---
