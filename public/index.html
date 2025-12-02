@@ -140,6 +140,15 @@
     </div>
 
     <script>
+        // ניהול באנרים גלובלי (אם קיים)
+        fetch("/api/banners").then(r=>r.json()).then(d => {
+            if(d.bottomBanner && d.bottomBanner.img) {
+                document.getElementById("globalBottomBannerImg").src = d.bottomBanner.img;
+                document.getElementById("globalBottomBannerLink").href = d.bottomBanner.link || "#";
+                document.getElementById("globalBottomBanner").style.display = "block";
+            }
+        }).catch(e => console.log("Banners info: Dev mode"));
+
         function showHostPanel() { document.getElementById('mainMenu').style.display = 'none'; document.getElementById('gamesGrid').style.display = 'grid'; }
         function backToMain() { document.getElementById('gamesGrid').style.display = 'none'; document.getElementById('mainMenu').style.display = 'flex'; }
         function showJoinPanel() { document.getElementById('overlay').style.display = 'block'; document.getElementById('joinPanel').style.display = 'block'; }
