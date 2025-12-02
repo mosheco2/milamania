@@ -1,6 +1,6 @@
 const speedGames = {};
 
-// מאגר אותיות משופר (תדירות עברית)
+// מאגר אותיות משופר (תדירות עברית גבוהה)
 const LETTERS_POOL = [
     ...'אאאאאאאבבבגגגדההההההויוווווזחחטייייייכללללממממננננסעעפפצקררררשתתת'.split('')
 ];
@@ -17,11 +17,11 @@ function generateLetters(count = 7) {
 function initSpeedGame(io) {
     io.on('connection', (socket) => {
         
-        // --- יצירת משחק (Host) ---
+        // --- יצירת משחק ---
         socket.on('speed:createGame', ({ hostName, teamCount, duration }) => {
             const gameCode = Math.random().toString(36).substring(2, 6).toUpperCase();
             
-            // יצירת קבוצות לפי הלוגיקה של מילמניה (אותם שמות וצבעים)
+            // יצירת קבוצות
             const teams = {};
             const teamConfigs = [
                 {name: 'הכחולים 🔵', color: '#3498db'},
@@ -38,7 +38,7 @@ function initSpeedGame(io) {
                     ...teamConfigs[i],
                     score: 0, 
                     players: [],
-                    currentBoard: [null, null, null, null, null, null, null], // סנכרון לוח
+                    currentBoard: [null, null, null, null, null, null, null], 
                     foundWords: [] 
                 };
             }
@@ -67,7 +67,7 @@ function initSpeedGame(io) {
 
             game.players[socket.id] = { id: socket.id, name: name, teamId: teamId };
             
-            // מניעת כפילויות ברשימת השחקנים
+            // הוספה לרשימת הקבוצה למעקב
             if(!game.teams[teamId].players.find(p => p.id === socket.id)) {
                 game.teams[teamId].players.push({ id: socket.id, name: name });
             }
@@ -150,6 +150,12 @@ function initSpeedGame(io) {
 
                 sendHostUpdate(io, game);
             }
+        });
+        
+        // --- בקשת סטטוס למנהל (למקרה של ריענון) ---
+        socket.on('speed:getHostState', ({ code }) => {
+            const game = speedGames[code];
+            if(game) sendHostUpdate(io, game);
         });
     });
 }
