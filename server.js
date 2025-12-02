@@ -4,8 +4,8 @@ const path = require("path");
 const { Server } = require("socket.io");
 const { Pool } = require("pg");
 
-// --- תוספת חדשה: ייבוא לוגיקת ספיד מניה ---
-const { initSpeedGame } = require('./backend/speedGameManager'); 
+// --- תוספת: חיבור למודול ספיד מניה ---
+const { initSpeedGame } = require('./backend/speedGameManager');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,7 +13,7 @@ const io = new Server(server, {
   cors: { origin: "*" },
 });
 
-// --- תוספת חדשה: הפעלת הלוגיקה החדשה ---
+// --- תוספת: הפעלת ספיד מניה ---
 initSpeedGame(io);
 
 const PORT = process.env.PORT || 3000;
