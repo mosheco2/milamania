@@ -35,8 +35,10 @@
         /* מסך משחק */
         .timer-huge { font-size: 6rem; font-weight: 900; color: white; text-align: center; text-shadow: 0 0 20px rgba(0,0,0,0.5); }
         .game-stats { text-align: center; color: #FFD700; font-size: 1.5rem; margin-top: 20px; }
+        .live-feed { margin-top: 20px; color: white; text-align: center; font-size: 1.2rem; min-height: 30px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         
         .hidden { display: none; }
+        .btn-join-as-player { background: #2ecc71; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -83,6 +85,7 @@
         </div>
 
         <button onclick="startGame()">התחל סיבוב! 🚀</button>
+        <button class="btn-join-as-player" onclick="joinAsPlayer()">הצטרף כשחקן 🎮</button>
     </div>
 
     <!-- 3. מסך משחק -->
@@ -91,6 +94,7 @@
         <div class="game-stats">
             סה"כ מילים שנמצאו: <span id="liveCount">0</span>
         </div>
+        <div class="live-feed" id="liveFeed"></div>
         <div style="text-align:center; color:white; margin-top:20px;">
             השחקנים משחקים כעת...
         </div>
@@ -165,6 +169,13 @@
             socket.emit('speed:startGame', { code: myGameCode });
         }
 
+        function joinAsPlayer() {
+            if(!myGameCode) return;
+            const name = document.getElementById('hostName').value;
+            // פתיחת חלון חדש למסך השחקן עם הפרטים כבר בפנים
+            window.open(`/speed/player.html?code=${myGameCode}&name=${encodeURIComponent(name)}`, '_blank');
+        }
+
         socket.on('speed:roundStart', ({ duration }) => {
             document.getElementById('lobbyScreen').classList.add('hidden');
             document.getElementById('gameScreen').classList.remove('hidden');
@@ -177,8 +188,13 @@
             }, 1000);
         });
 
-        socket.on('speed:hostUpdate', ({ totalWords }) => {
+        socket.on('speed:hostUpdate', ({ totalWords, recentWord, recentTeam }) => {
             document.getElementById('liveCount').textContent = totalWords;
+            if(recentWord && recentTeam) {
+                const feed = document.getElementById('liveFeed');
+                feed.textContent = `${recentTeam} מצאו את המילה: ${recentWord}!`;
+                setTimeout(() => feed.textContent = '', 3000);
+            }
         });
 
         socket.on('speed:roundEnd', ({ leaderboard }) => {
