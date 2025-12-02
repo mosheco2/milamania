@@ -6,121 +6,201 @@
     <title>ספיד מניה - ניהול</title>
     <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
     <style>
-        :root { --bg-color: #2B1E4A; --accent: #FFD700; }
-        body { margin: 0; padding: 20px; background: radial-gradient(circle at center, #3a2a61, var(--bg-color)); color: white; font-family: "Varela Round", sans-serif; display: flex; flex-direction: column; align-items: center; text-align: center; height: 100vh; }
-        .card { background: rgba(255,255,255,0.1); border-radius: 20px; padding: 30px; margin-bottom: 20px; backdrop-filter: blur(10px); width: 100%; max-width: 600px; }
-        input, button { padding: 15px; border-radius: 50px; border: none; font-size: 1.2rem; margin: 10px 0; width: 100%; }
-        button { background: var(--accent); color: var(--bg-color); font-weight: bold; cursor: pointer; }
-        .room-code { font-size: 4rem; letter-spacing: 5px; font-weight: 900; color: #15C4C1; }
-        .player-chip { background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; display: inline-block; margin: 5px; }
-        .timer-huge { font-size: 8rem; font-weight: 900; }
-        .letter-box { width: 60px; height: 60px; background: white; color: var(--bg-color); border-radius: 12px; font-size: 2rem; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; margin: 5px; }
+        :root { --bg-color: #2B1E4A; --accent: #FFD700; --panel-bg: #fff; }
+        body { margin: 0; padding: 20px; background: radial-gradient(circle at center, #3a2a61, var(--bg-color)); color: #333; font-family: "Varela Round", sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        .header { text-align: center; color: white; margin-bottom: 20px; }
+        .header img { height: 60px; }
+        
+        .card { background: var(--panel-bg); border-radius: 20px; padding: 30px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 100%; max-width: 700px; }
+        
+        h2 { margin-top: 0; color: var(--bg-color); }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ccc; font-size: 1.1rem; margin-top: 5px; box-sizing: border-box; }
+        
+        button { width: 100%; padding: 15px; border-radius: 50px; border: none; font-size: 1.2rem; margin-top: 20px; background: linear-gradient(135deg, #F84779, #F7C948); color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { transform: scale(1.02); }
+        
+        /* אזור לובי */
+        .room-code-display { text-align: center; background: #f0f0f0; padding: 10px; border-radius: 10px; margin: 15px 0; }
+        .code-big { font-size: 3rem; font-weight: 900; letter-spacing: 5px; color: #F84779; }
+        
+        .teams-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .team-box { background: #f9f9f9; padding: 15px; border-radius: 12px; border: 1px solid #eee; }
+        .team-title { font-weight: bold; margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .player-list { font-size: 0.9rem; color: #666; min-height: 20px; }
+        
+        .wa-btn { background: #25D366; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; font-size: 0.8rem; display: inline-block; margin-top: 5px; }
+
+        /* מסך משחק */
+        .timer-huge { font-size: 6rem; font-weight: 900; color: white; text-align: center; text-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .game-stats { text-align: center; color: #FFD700; font-size: 1.5rem; margin-top: 20px; }
+        
         .hidden { display: none; }
     </style>
 </head>
 <body>
-    <div style="margin-bottom:20px; display:flex; align-items:center; gap:10px;">
-        <img src="../m2.png" height="50" onerror="this.style.display='none'"> <h1>ספיד מניה ⚡</h1>
+
+    <div class="header">
+        <img src="../m2.png" alt="לוגו">
+        <h1 style="margin:0;">ספיד מניה ⚡</h1>
     </div>
 
+    <!-- 1. הגדרות -->
     <div id="setupScreen" class="card">
-        <h2>יצירת משחק</h2>
-        <input type="text" id="hostName" placeholder="שם המנהל">
+        <h2>הגדרות משחק</h2>
+        <label>שם המנהל</label>
+        <input type="text" id="hostName" placeholder="למשל: דני">
+        
+        <div style="display:flex; gap:15px;">
+            <div style="flex:1">
+                <label>מספר קבוצות</label>
+                <select id="teamCount">
+                    <option value="2">2 קבוצות</option>
+                    <option value="3">3 קבוצות</option>
+                    <option value="4">4 קבוצות</option>
+                </select>
+            </div>
+            <div style="flex:1">
+                <label>זמן לסיבוב (שניות)</label>
+                <input type="number" id="roundTime" value="60">
+            </div>
+        </div>
+
         <button onclick="createGame()">פתח חדר</button>
     </div>
 
+    <!-- 2. לובי -->
     <div id="lobbyScreen" class="card hidden">
-        <p>קוד החדר:</p>
-        <div id="displayCode" class="room-code">...</div>
-        <div id="playersList" style="margin:20px 0;"></div>
-        <button onclick="startGame()">התחל משחק 🚀</button>
+        <div class="room-code-display">
+            <div>קוד החדר:</div>
+            <div id="displayCode" class="code-big">---</div>
+        </div>
+        
+        <h3>קבוצות ושחקנים:</h3>
+        <div id="teamsContainer" class="teams-grid">
+            <!-- קבוצות ייווצרו כאן -->
+        </div>
+
+        <button onclick="startGame()">התחל סיבוב! 🚀</button>
     </div>
 
+    <!-- 3. מסך משחק -->
     <div id="gameScreen" class="hidden">
-        <div id="lettersDisplay"></div>
-        <div id="mainTimer" class="timer-huge">60</div>
-        <h3>מילים שנמצאו: <span id="liveCount" style="color:var(--accent)">0</span></h3>
+        <div class="timer-huge" id="mainTimer">60</div>
+        <div class="game-stats">
+            סה"כ מילים שנמצאו: <span id="liveCount">0</span>
+        </div>
+        <div style="text-align:center; color:white; margin-top:20px;">
+            השחקנים משחקים כעת...
+        </div>
     </div>
 
+    <!-- 4. תוצאות -->
     <div id="resultsScreen" class="card hidden">
-        <h1>🏆 תוצאות</h1>
-        <div id="leaderboard" style="text-align:right;"></div>
+        <h2 style="text-align:center; color:#F84779;">🏆 סיכום סיבוב</h2>
+        <div id="leaderboard"></div>
         <button onclick="location.reload()">משחק חדש</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    
     <script>
         let socket;
         let myGameCode = null;
 
-        try {
-            if (typeof io !== 'undefined') {
-                socket = io();
-            } else {
-                throw new Error("Socket.io not found");
-            }
-        } catch (e) {
-            console.warn("Socket.io missing. Running in Mock Mode.");
-            socket = { on: (e,c)=>{}, emit: (e,d)=>console.log(e,d) }; 
-        }
+        try { if(typeof io !== 'undefined') socket = io(); else throw new Error(); } 
+        catch(e) { console.warn("No Socket"); socket = { on:()=>{}, emit:()=>{} }; }
 
         function createGame() {
             const name = document.getElementById('hostName').value;
+            const teams = document.getElementById('teamCount').value;
+            const time = document.getElementById('roundTime').value;
             if(!name) return alert('נא להזין שם');
-            socket.emit('speed:createGame', { hostName: name });
+            
+            socket.emit('speed:createGame', { 
+                hostName: name, 
+                teamCount: parseInt(teams),
+                duration: parseInt(time)
+            });
         }
 
-        if (typeof io !== 'undefined') {
-            socket.on('speed:gameCreated', ({ gameCode }) => {
-                myGameCode = gameCode;
-                document.getElementById('displayCode').textContent = gameCode;
-                document.getElementById('setupScreen').classList.add('hidden');
-                document.getElementById('lobbyScreen').classList.remove('hidden');
-            });
+        socket.on('speed:gameCreated', ({ gameCode, teams }) => {
+            myGameCode = gameCode;
+            document.getElementById('displayCode').textContent = gameCode;
+            renderTeams(teams);
+            
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('lobbyScreen').classList.remove('hidden');
+        });
 
-            socket.on('speed:playerJoined', ({ players }) => {
-                const list = document.getElementById('playersList');
-                list.innerHTML = players.map(p => `<span class="player-chip">${p.name}</span>`).join('');
-            });
+        socket.on('speed:playerJoined', ({ teams }) => {
+            renderTeams(teams);
+        });
 
-            socket.on('speed:roundStart', ({ letters, duration }) => {
-                document.getElementById('lobbyScreen').classList.add('hidden');
-                document.getElementById('gameScreen').classList.remove('hidden');
-                
-                document.getElementById('lettersDisplay').innerHTML = letters.map(l => `<div class="letter-box">${l}</div>`).join('');
-                
-                let sec = duration;
-                const timer = setInterval(() => {
-                    sec--;
-                    const el = document.getElementById('mainTimer');
-                    if(el) el.textContent = sec;
-                    if(sec <= 0) clearInterval(timer);
-                }, 1000);
-            });
+        function renderTeams(teams) {
+            const container = document.getElementById('teamsContainer');
+            container.innerHTML = '';
+            
+            Object.values(teams).forEach(team => {
+                const pNames = team.players.map(p => p.name).join(', ');
+                // יצירת לינק להזמנה
+                const inviteLink = `${window.location.origin}/speed/player.html?code=${myGameCode}&teamId=${team.id}`;
+                const waText = `היי קבוצת ${team.name}! כנסו למשחק כאן:\n${inviteLink}`;
+                const waLink = `https://wa.me/?text=${encodeURIComponent(waText)}`;
 
-            socket.on('speed:hostUpdate', ({ totalWords }) => {
-                document.getElementById('liveCount').textContent = totalWords;
-            });
-
-            socket.on('speed:roundEnd', ({ leaderboard }) => {
-                document.getElementById('gameScreen').classList.add('hidden');
-                document.getElementById('resultsScreen').classList.remove('hidden');
-                
-                const html = leaderboard.map((p, i) => `
-                    <div style="background:rgba(255,255,255,0.1); padding:10px; margin:5px; border-radius:10px; display:flex; justify-content:space-between;">
-                        <span>#${i+1} <b>${p.name}</b></span>
-                        <span>${p.score} נק' (מתוך ${p.totalWords} מילים)</span>
+                container.innerHTML += `
+                    <div class="team-box">
+                        <div class="team-title">
+                            ${team.name}
+                            <a href="${waLink}" target="_blank" class="wa-btn">שלח בווצאפ 📲</a>
+                        </div>
+                        <div class="player-list">${pNames || 'ממתין לשחקנים...'}</div>
                     </div>
-                `).join('');
-                document.getElementById('leaderboard').innerHTML = html;
+                `;
             });
         }
 
         function startGame() {
             socket.emit('speed:startGame', { code: myGameCode });
         }
+
+        socket.on('speed:roundStart', ({ duration }) => {
+            document.getElementById('lobbyScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            
+            let sec = duration;
+            const t = setInterval(() => {
+                sec--;
+                document.getElementById('mainTimer').textContent = sec;
+                if(sec <= 0) clearInterval(t);
+            }, 1000);
+        });
+
+        socket.on('speed:hostUpdate', ({ totalWords }) => {
+            document.getElementById('liveCount').textContent = totalWords;
+        });
+
+        socket.on('speed:roundEnd', ({ leaderboard }) => {
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('resultsScreen').classList.remove('hidden');
+            
+            let html = '';
+            leaderboard.forEach((t, i) => {
+                html += `
+                    <div style="background:#f9f9f9; padding:10px; margin-bottom:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span style="font-size:1.2rem; font-weight:bold;">#${i+1} ${t.name}</span>
+                            <br><span style="font-size:0.9rem; color:#666;">מצאו ${t.totalWords} מילים</span>
+                        </div>
+                        <div style="font-size:1.5rem; font-weight:bold; color:#F84779;">
+                            ${t.score} נק'
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('leaderboard').innerHTML = html;
+        });
     </script>
 </body>
 </html>
