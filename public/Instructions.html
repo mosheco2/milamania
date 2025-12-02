@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מילמניה - הוראות משחק</title>
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root { --primary: #F84779; --secondary: #15C4C1; --dark: #2B1E4A; --light: #FFF8EA; }
+        body { margin: 0; background: var(--light); color: var(--dark); font-family: "Varela Round", sans-serif; line-height: 1.6; }
+        
+        .header { background: radial-gradient(circle, #2B1E4A, #1a1a2e); color: white; padding: 30px 20px; text-align: center; border-radius: 0 0 30px 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .header h1 { margin: 0; font-size: 2.5rem; }
+        .back-btn { background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 10px; text-decoration: none; font-weight: bold; }
+        
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-top: -25px; margin-bottom: 30px; }
+        .tab-btn { background: white; border: none; padding: 12px 25px; border-radius: 30px; font-size: 1.1rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); color: #666; transition: 0.3s; }
+        .tab-btn.active { background: var(--primary); color: white; transform: translateY(-3px); }
+        
+        .content-section { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: none; animation: fadeIn 0.4s; }
+        .content-section.active { display: block; }
+        
+        h2 { color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0; }
+        h3 { color: var(--secondary); margin-top: 20px; }
+        
+        ul { padding-right: 20px; }
+        li { margin-bottom: 8px; }
+        
+        .tip-box { background: #e0f2fe; border-right: 4px solid var(--secondary); padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 0.95rem; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <a href="index.html" class="back-btn"><i class="ph-bold ph-house"></i> חזרה לבית</a>
+        <h1>איך משחקים? 📜</h1>
+        <p>המדריך המלא למשחקי מילמניה</p>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('classic')">🎭 מילמניה קלאסי</button>
+            <button class="tab-btn" onclick="showTab('speed')">⚡ ספיד מניה</button>
+        </div>
+
+        <!-- Classic Instructions -->
+        <div id="classic" class="content-section active">
+            <h2>מילמניה: המסיבה (המשחק הקלאסי)</h2>
+            <p>המשחק המוכר והאהוב בסגנון Alias/Taboo. המטרה: לגרום לקבוצה שלכם לנחש כמה שיותר מילים בזמן מוגבל.</p>
+            
+            <h3>👨‍👩‍👧‍👦 הרכב הקבוצות</h3>
+            <ul>
+                <li>המשחק מיועד ל-2 קבוצות או יותר.</li>
+                <li>בכל סיבוב, נבחר שחקן אחד מהקבוצה להיות ה<strong>"מסביר"</strong>.</li>
+            </ul>
+
+            <h3>⏱️ מהלך הסיבוב</h3>
+            <ol>
+                <li>המסביר מקבל מילה על המסך (למשל: "פיצה").</li>
+                <li>עליו לתאר את המילה לחברי הקבוצה שלו <strong>מבלי לומר את המילה עצמה</strong> או חלקים ממנה.</li>
+                <li>הקבוצה צריכה לנחש את המילה.</li>
+                <li>אם ניחשו נכון: המסביר לוחץ "נכון" ✅ (מקבלים נקודה).</li>
+                <li>אם נתקעים: אפשר ללחוץ "דלג" ⏭️ (לרוב מדלג ללא ניקוד או מוריד נקודה, תלוי בהגדרות).</li>
+                <li>המטרה היא להשיג כמה שיותר נקודות לפני שהזמן נגמר!</li>
+            </ol>
+
+            <div class="tip-box">
+                💡 <strong>טיפ:</strong> נסו להשתמש באסוציאציות, חרוזים, או תיאורי מצב. אסור להגיד "זה מתחרז עם..." אבל מותר לתאר סיטואציה!
+            </div>
+        </div>
+
+        <!-- Speed Instructions -->
+        <div id="speed" class="content-section">
+            <h2>ספיד מניה ⚡</h2>
+            <p>משחק קצב מהיר שבו כל הקבוצות משחקות <strong>במקביל</strong>. המטרה: למצוא מילים ייחודיות מאותיות אקראיות.</p>
+
+            <h3>🧩 איך זה עובד?</h3>
+            <ul>
+                <li>כל הקבוצות מקבלות את <strong>אותן 7 אותיות</strong> בדיוק.</li>
+                <li>יש לכם 60 שניות (או זמן אחר שהגדיר המנהל).</li>
+                <li>עליכם להרכיב כמה שיותר מילים תקניות מהאותיות הללו.</li>
+                <li>כל שחקן יכול לגרור אותיות על הלוח הקבוצתי - כולם רואים את הלוח ומשתפים פעולה!</li>
+            </ul>
+
+            <h3>🏆 הניקוד (החלק המתוחכם!)</h3>
+            <p>בסוף הסיבוב, המערכת בודקת את המילים של כולם:</p>
+            <ul>
+                <li>אם שתי קבוצות או יותר מצאו את אותה מילה (למשל "שמש") - <strong>אף אחת לא מקבלת ניקוד</strong> על המילה הזו!</li>
+                <li>מקבלים נקודות <strong>רק על מילים ייחודיות</strong> שהקבוצה שלכם מצאה ואף קבוצה אחרת לא.</li>
+            </ul>
+
+            <div class="tip-box">
+                💡 <strong>טיפ:</strong> אל תחפשו רק את המילים הפשוטות שכולם ימצאו. נסו למצוא מילים נדירות, הטיות של פעלים, או מילים ארוכות כדי להבטיח את הניקוד!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(id) {
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>
