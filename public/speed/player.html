@@ -8,127 +8,56 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         :root { 
-            --bg-gradient: radial-gradient(circle at top, #2B1E4A, #161026);
-            --tile-bg: #fff; 
-            --tile-text: #2B1E4A; 
-            --accent: #FFD700; 
-            --primary: #F84779;
+            --bg: #2B1E4A; --tile: #fff; --accent: #FFD700; --primary: #F84779;
         }
+        body { margin:0; background: var(--bg); color: white; font-family: "Varela Round", sans-serif; overflow: hidden; user-select: none; display: flex; flex-direction: column; height: 100dvh; }
         
-        * { box-sizing: border-box; font-family: "Varela Round", sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            margin: 0; 
-            background: var(--bg-gradient); 
-            color: white; 
-            height: 100dvh; /* גובה דינמי למובייל */
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; 
-        }
-        
-        /* מסך כניסה */
-        #loginScreen, #waitScreen {
-            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;
-        }
-        
-        .input-group { width: 100%; max-width: 320px; margin-bottom: 10px; }
-        input { width: 100%; padding: 15px; border-radius: 12px; border: none; font-size: 1.1rem; text-align: center; background: rgba(255,255,255,0.9); }
-        .btn-big { width: 100%; padding: 15px; border-radius: 50px; background: linear-gradient(135deg, var(--primary), #ff8e53); color: white; font-weight: bold; font-size: 1.2rem; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(248, 71, 121, 0.4); margin-top: 10px; }
+        /* כניסה */
+        #loginScreen, #waitScreen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .input-group { width: 100%; max-width: 300px; margin-bottom: 10px; }
+        input { width: 100%; padding: 15px; border-radius: 12px; border: none; text-align: center; font-size: 1.2rem; background: rgba(255,255,255,0.9); }
+        .btn-big { width: 100%; max-width: 300px; padding: 15px; border-radius: 50px; background: linear-gradient(135deg, var(--primary), #ff8e53); border: none; color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; box-shadow: 0 4px 15px rgba(248, 71, 121, 0.4); margin-top: 10px; }
         .btn-big:active { transform: scale(0.98); }
 
-        /* מסך משחק ראשי */
-        #gameScreen { 
-            height: 100%; 
-            display: flex; 
-            flex-direction: column; 
-        }
-
-        /* סרגל עליון */
-        .top-bar { 
-            padding: 15px; 
-            background: rgba(0,0,0,0.3); 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            backdrop-filter: blur(5px);
-        }
+        /* מסך משחק */
+        #gameScreen { height: 100%; display: flex; flex-direction: column; }
+        .top-bar { padding: 15px; background: rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(5px); }
         .score-box { font-size: 1.1rem; font-weight: bold; display: flex; gap: 10px; }
         .timer-badge { background: var(--primary); padding: 5px 12px; border-radius: 15px; font-variant-numeric: tabular-nums; }
+        
+        .words-area { flex: 1; margin: 10px; background: rgba(255,255,255,0.05); border-radius: 15px; padding: 10px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start; border: 1px solid rgba(255,255,255,0.1); }
+        .word-tag { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; animation: popIn 0.3s; font-size: 0.9rem; }
 
-        /* אזור המילים שנמצאו */
-        .words-area { 
-            flex: 1; 
-            background: rgba(255,255,255,0.05); 
-            margin: 10px; 
-            border-radius: 15px; 
-            padding: 10px; 
-            overflow-y: auto; 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 8px; 
-            align-content: flex-start; 
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .found-word { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 0.9rem; animation: popIn 0.3s; }
-
-        /* אזור תחתון (לוח ומקלדת) - גובה קבוע */
-        .play-area {
-            background: rgba(0,0,0,0.4);
-            border-radius: 25px 25px 0 0;
-            padding: 15px;
-            padding-bottom: 25px; /* Extra padding for bottom safe area */
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+        /* אזור המשחק התחתון (מקובע למטה) */
+        .play-area { 
+            background: rgba(0,0,0,0.4); 
+            border-radius: 25px 25px 0 0; 
+            padding: 15px 10px 25px; 
+            display: flex; flex-direction: column; gap: 15px; 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.3);
         }
-
-        /* שורת הסלוטים */
-        .slots-container { 
-            display: flex; 
-            gap: 5px; 
-            justify-content: center; 
-            min-height: 55px; 
-        }
-        .slot { 
-            width: 13vw; height: 13vw; max-width: 55px; max-height: 55px;
-            border: 2px dashed rgba(255,255,255,0.3); 
-            border-radius: 12px; 
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        /* שורת האותיות */
-        .bank-container { 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 8px; 
-            justify-content: center; 
-            min-height: 60px;
-        }
-
-        /* האריח */
+        
+        /* סלוטים */
+        .slots-container { display: flex; gap: 5px; justify-content: center; min-height: 55px; }
+        .slot { width: 13vw; height: 13vw; max-width: 55px; max-height: 55px; border: 2px dashed rgba(255,255,255,0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        
+        /* בנק אותיות */
+        .bank-container { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; min-height: 60px; }
+        
+        /* אריח */
         .tile { 
-            width: 13vw; height: 13vw; max-width: 55px; max-height: 55px;
-            background: var(--tile-bg); color: var(--tile-text); 
-            border-radius: 12px; 
-            font-size: 1.6rem; font-weight: bold; 
-            display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 4px 0 #ccc; 
-            cursor: pointer;
-            transition: transform 0.1s;
+            width: 13vw; height: 13vw; max-width: 55px; max-height: 55px; 
+            background: var(--tile-bg); color: #2B1E4A; border-radius: 12px; 
+            font-size: 1.6rem; font-weight: bold; display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 4px 0 #ccc; cursor: pointer; transition: transform 0.1s;
         }
         .tile:active { transform: scale(0.95); }
 
-        /* כפתורי שליטה */
-        .controls { display: flex; gap: 10px; height: 60px; }
-        .btn-game { 
-            flex: 1; border: none; border-radius: 15px; font-size: 1.5rem; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center; 
-            color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.2);
-        }
-        .btn-clear { background: #e74c3c; flex: 0.8; }
-        .btn-submit { background: #2ecc71; flex: 2; font-weight: 800; font-size: 1.4rem; }
+        /* כפתורים */
+        .controls { display: flex; gap: 10px; height: 50px; }
+        .btn-game { flex: 1; border: none; border-radius: 12px; font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+        .btn-clear { background: #e74c3c; flex: 0.7; }
+        .btn-submit { background: #2ecc71; flex: 2; font-weight: 800; }
         .btn-game:active { transform: translateY(3px); box-shadow: none; }
 
         .hidden { display: none !important; }
@@ -142,10 +71,10 @@
         <h1 style="color:var(--accent); font-size:2.5rem; margin-bottom:5px;">ספיד מניה ⚡</h1>
         <p style="opacity:0.8; margin-bottom:30px;">הצטרפות למשחק קבוצתי</p>
         
-        <div class="input-group"><input type="text" id="pCode" placeholder="קוד משחק (למשל ABCD)" style="text-transform:uppercase"></div>
+        <div class="input-group"><input type="text" id="pCode" placeholder="קוד משחק" style="text-transform:uppercase"></div>
         <div class="input-group"><input type="text" id="pName" placeholder="השם שלך"></div>
-        <button class="btn-big" onclick="joinGame()">הצטרף למשחק</button>
-        <p id="statusMsg" style="color:#ff6b6b; margin-top:10px;"></p>
+        <button class="btn-big" onclick="join()">הצטרף למשחק</button>
+        <p id="statusMsg" style="color:#ff6b6b; margin-top:10px; font-size:0.9rem;"></p>
     </div>
 
     <!-- Wait -->
@@ -169,16 +98,11 @@
         </div>
 
         <div class="play-area">
-            <!-- 7 סלוטים -->
             <div class="slots-container" id="slotsRow"></div>
-            
-            <!-- בנק אותיות -->
             <div class="bank-container" id="bankRow"></div>
-
-            <!-- כפתורים -->
             <div class="controls">
                 <button class="btn-game btn-clear" onclick="clearBoard()"><i class="ph-bold ph-x"></i></button>
-                <button class="btn-game btn-submit" onclick="submitWord()">שלח <i class="ph-bold ph-paper-plane-right" style="margin-right:8px;"></i></button>
+                <button class="btn-game btn-submit" onclick="submit()">שלח <i class="ph-bold ph-paper-plane-right" style="margin-right:8px;"></i></button>
             </div>
         </div>
     </div>
@@ -188,26 +112,26 @@
     <script>
         let socket;
         let letters = [];
-        let slotsState = new Array(7).fill(null);
+        let slotsState = Array(7).fill(null);
         let myTeamId = null;
 
-        // Auto-connect
+        // חיבור בטוח
         try { if(typeof io !== 'undefined') socket = io(); else throw new Error(); } 
-        catch(e) { console.warn("Mock"); socket = { on:()=>{}, emit:()=>{} }; }
+        catch(e) { console.warn("Mock Mode"); socket = { on:()=>{}, emit:()=>{} }; }
 
-        // URL Params (For host auto-join)
-        const urlParams = new URLSearchParams(window.location.search);
+        // אוטומציה לפרמטרים ב-URL (תיקון שם המשתנה ל-urlParams)
+        const urlParams = new URLSearchParams(location.search);
         if(urlParams.get('code')) document.getElementById('pCode').value = urlParams.get('code');
         if(urlParams.get('name')) document.getElementById('pName').value = urlParams.get('name');
-        if(urlParams.get('name')) setTimeout(joinGame, 500); // Auto click if name provided
+        if(urlParams.get('name')) setTimeout(join, 500);
 
-        function joinGame() {
+        function join() {
             const code = document.getElementById('pCode').value.toUpperCase();
             const name = document.getElementById('pName').value;
             const teamId = urlParams.get('teamId');
             
             if(!code || !name) {
-                document.getElementById('statusMsg').innerText = "נא למלא את כל השדות";
+                document.getElementById('statusMsg').innerText = "נא למלא קוד ושם";
                 return;
             }
             socket.emit('speed:join', { code, name, teamId });
@@ -225,22 +149,20 @@
             document.getElementById('loginScreen').classList.add('hidden');
             
             if (gameState === 'playing' && existingLetters) {
-                // הצטרפות באמצע משחק
-                startRoundLogic(existingLetters, 60); // זמן משוער
+                startRoundLogic(existingLetters, 60); 
             } else {
                 document.getElementById('waitScreen').classList.remove('hidden');
             }
         });
 
-        socket.on('speed:roundStart', ({ letters: sLetters, duration }) => {
-            startRoundLogic(sLetters, duration);
+        socket.on('speed:roundStart', ({ letters: l, duration }) => {
+            startRoundLogic(l, duration);
         });
 
         function startRoundLogic(sLetters, duration) {
-            letters = sLetters.map((char, i) => ({ char, id: i }));
+            letters = sLetters.map((c, i) => ({ char: c, id: i }));
             slotsState.fill(null);
-            
-            renderBoard();
+            render();
             
             document.getElementById('waitScreen').classList.add('hidden');
             document.getElementById('gameScreen').classList.remove('hidden');
@@ -249,62 +171,55 @@
             let sec = duration;
             const t = setInterval(() => {
                 sec--;
-                document.getElementById('timer').textContent = sec;
-                if(sec <= 0) { clearInterval(t); } // השרת ינהל את הסיום
+                const timerEl = document.getElementById('timer');
+                if(timerEl) timerEl.innerText = sec;
+                if(sec<=0) clearInterval(t);
             }, 1000);
         }
 
         socket.on('speed:boardUpdated', ({ indices }) => {
-            // עדכון הלוח מחבר צוות אחר
             slotsState = indices.map(id => id !== null ? letters.find(l => l.id === id) : null);
-            renderBoard(false);
+            render(false);
         });
 
         socket.on('speed:wordAccepted', ({ word }) => {
-            // אנימציה והוספה לרשימה
             const tag = document.createElement('div');
-            tag.className = 'found-word';
-            tag.textContent = word;
-            document.getElementById('wordsArea').appendChild(tag);
-            // גלילה למטה
+            tag.className = 'word-tag';
+            tag.innerText = word;
             const area = document.getElementById('wordsArea');
+            area.appendChild(tag);
             area.scrollTop = area.scrollHeight;
             
-            // ניקוי לוח רק לשולח? לא, לכולם
             slotsState.fill(null);
-            renderBoard(false);
+            render(false);
         });
 
-        // --- Render & Logic ---
-        function renderBoard(emit = true) {
-            const slotsContainer = document.getElementById('slotsRow');
-            const bankContainer = document.getElementById('bankRow');
-            
-            slotsContainer.innerHTML = '';
-            bankContainer.innerHTML = '';
+        function render(emit = true) {
+            const slotsEl = document.getElementById('slotsRow');
+            const bankEl = document.getElementById('bankRow');
+            slotsEl.innerHTML = ''; bankEl.innerHTML = '';
 
             // Render Slots
             for(let i=0; i<7; i++) {
-                const slotEl = document.createElement('div');
-                slotEl.className = 'slot';
-                
-                const letterObj = slotsState[i];
-                if(letterObj) {
-                    const tile = createTile(letterObj);
-                    tile.onclick = () => { removeFromSlot(i); };
-                    slotEl.appendChild(tile);
-                } else {
-                    // סלוט ריק - קליק עליו לא עושה כלום כרגע (אפשר להוסיף לוגיקה)
+                const slot = document.createElement('div');
+                slot.className = 'slot';
+                if(slotsState[i]) {
+                    const tile = createTile(slotsState[i]);
+                    tile.onclick = () => { slotsState[i] = null; render(); };
+                    slot.appendChild(tile);
                 }
-                slotsContainer.appendChild(slotEl);
+                slotsEl.appendChild(slot);
             }
 
             // Render Bank
             letters.forEach(l => {
                 if(!slotsState.includes(l)) {
                     const tile = createTile(l);
-                    tile.onclick = () => { addToFirstFreeSlot(l); };
-                    bankContainer.appendChild(tile);
+                    tile.onclick = () => {
+                        const idx = slotsState.indexOf(null);
+                        if(idx !== -1) { slotsState[idx] = l; render(); }
+                    };
+                    bankEl.appendChild(tile);
                 }
             });
 
@@ -315,35 +230,17 @@
         }
 
         function createTile(l) {
-            const el = document.createElement('div');
-            el.className = 'tile';
-            el.innerText = l.char;
-            return el;
+            const d = document.createElement('div');
+            d.className = 'tile';
+            d.innerText = l.char;
+            return d;
         }
 
-        function addToFirstFreeSlot(l) {
-            const idx = slotsState.indexOf(null);
-            if(idx !== -1) {
-                slotsState[idx] = l;
-                renderBoard(true);
-            }
-        }
-
-        function removeFromSlot(idx) {
-            slotsState[idx] = null;
-            renderBoard(true);
-        }
-
-        function clearBoard() {
-            slotsState.fill(null);
-            renderBoard(true);
-        }
-
-        function submitWord() {
+        function clearBoard() { slotsState.fill(null); render(); }
+        
+        function submit() {
             const word = slotsState.filter(x => x).map(x => x.char).join('');
-            if(word.length < 2) return;
-            // אפקט לחיצה
-            socket.emit('speed:submitWord', { word });
+            if(word.length >= 2) socket.emit('speed:submitWord', { word });
         }
     </script>
 </body>
