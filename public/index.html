@@ -92,6 +92,7 @@
                 <button onclick="backToMain()" style="background:none; border:none; color:white; cursor:pointer; font-size:1rem; display:flex; align-items:center; gap:5px;">חזרה <i class="ph ph-arrow-left"></i></button>
             </div>
 
+            <!-- משחק קיים -->
             <div class="game-card existing-game" onclick="startGame('classic')">
                 <div class="featured-tag">המשחק המקורי 🔥</div>
                 <div class="card-icon">🎭</div>
@@ -100,6 +101,7 @@
                 <div class="card-meta"><span><i class="ph ph-users"></i> 4+ שחקנים</span><span><i class="ph ph-smiley"></i> מסיבה</span></div>
             </div>
 
+            <!-- ספיד מניה (פעיל עכשיו!) -->
             <div class="game-card" style="border: 2px solid var(--secondary); background: rgba(21, 196, 193, 0.1);" onclick="startGame('speed')">
                 <div class="new-tag">חדש! ⚡</div>
                 <div class="card-icon">⚡</div>
@@ -108,6 +110,7 @@
                 <div class="card-meta"><span><i class="ph ph-users"></i> 3-8+ שחקנים</span><span><i class="ph ph-lightning"></i> מהיר</span></div>
             </div>
 
+            <!-- משחקים עתידיים -->
             <div class="game-card" onclick="startGame('tactical')">
                 <div class="new-tag" style="background:#555;">בקרוב</div>
                 <div class="card-icon">🧠</div>
@@ -126,6 +129,7 @@
         </div>
     </div>
 
+    <!-- מודלים -->
     <div id="overlay" class="overlay" onclick="closeJoinPanel()"></div>
     <div id="joinPanel" class="join-form">
         <h2 style="margin-top:0; color:var(--primary);">הצטרפות למשחק</h2>
@@ -136,22 +140,13 @@
     </div>
 
     <script>
-        // ניהול באנרים גלובלי (אם קיים)
-        fetch("/api/banners").then(r=>r.json()).then(d => {
-            if(d.bottomBanner && d.bottomBanner.img) {
-                document.getElementById("globalBottomBannerImg").src = d.bottomBanner.img;
-                document.getElementById("globalBottomBannerLink").href = d.bottomBanner.link || "#";
-                document.getElementById("globalBottomBanner").style.display = "block";
-            }
-        }).catch(e => console.log("Banners info: Dev mode"));
-
         function showHostPanel() { document.getElementById('mainMenu').style.display = 'none'; document.getElementById('gamesGrid').style.display = 'grid'; }
         function backToMain() { document.getElementById('gamesGrid').style.display = 'none'; document.getElementById('mainMenu').style.display = 'flex'; }
         function showJoinPanel() { document.getElementById('overlay').style.display = 'block'; document.getElementById('joinPanel').style.display = 'block'; }
         function closeJoinPanel() { document.getElementById('overlay').style.display = 'none'; document.getElementById('joinPanel').style.display = 'none'; }
         
         function goToPlayer(type) {
-            if(type === 'classic') window.location.href = 'home.html'; // הולך לדף הבית הקיים
+            if(type === 'classic') window.location.href = 'home.html'; 
             if(type === 'speed') window.location.href = 'speed/player.html';
         }
 
