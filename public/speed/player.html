@@ -5,83 +5,180 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>ספיד מניה</title>
     <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-        :root { --bg: #2B1E4A; --tile: #fff; --accent: #FFD700; }
-        body { margin:0; background: var(--bg); color: white; font-family: "Varela Round", sans-serif; overflow: hidden; user-select: none; -webkit-user-select: none; }
-        
-        .screen { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
-        
-        /* כניסה */
-        input { padding: 15px; font-size: 1.2rem; border-radius: 10px; border: none; text-align: center; margin-bottom: 10px; width: 100%; max-width: 300px; }
-        button { padding: 15px; font-size: 1.2rem; border-radius: 50px; border: none; background: linear-gradient(135deg, #F84779, #F7C948); color: white; font-weight: bold; width: 100%; max-width: 300px; margin-top: 10px; }
-
-        /* לוח משחק */
-        .top-bar { width: 100%; padding: 10px; display: flex; justify-content: space-between; background: rgba(0,0,0,0.3); }
-        
-        .found-words-area { flex: 1; width: 100%; background: rgba(255,255,255,0.1); margin: 10px 0; border-radius: 10px; padding: 10px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start; }
-        .word-tag { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 15px; font-size: 0.9rem; }
-
-        /* אזור הגרירה */
-        .board-area { width: 100%; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 15px 15px 0 0; display: flex; flex-direction: column; align-items: center; gap: 20px; padding-bottom: 30px; }
-        
-        .slots-row { display: flex; gap: 5px; min-height: 50px; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 10px; justify-content: center; width: 100%; }
-        .slot { width: 45px; height: 45px; border: 2px dashed rgba(255,255,255,0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; }
-        
-        .letters-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; min-height: 60px; }
-        
-        .tile { 
-            width: 50px; height: 50px; background: white; color: #2B1E4A; border-radius: 10px; 
-            font-size: 1.5rem; font-weight: bold; display: flex; justify-content: center; align-items: center; 
-            box-shadow: 0 4px 0 #ccc; cursor: pointer; touch-action: none; position: relative; z-index: 10;
+        :root { 
+            --bg-gradient: radial-gradient(circle at top, #2B1E4A, #161026);
+            --tile-bg: #fff; 
+            --tile-text: #2B1E4A; 
+            --accent: #FFD700; 
+            --primary: #F84779;
         }
         
-        .controls { display: flex; gap: 10px; width: 100%; margin-top: 10px; }
-        .btn-ctrl { flex: 1; padding: 15px; border-radius: 10px; border: none; font-size: 1.2rem; cursor: pointer; }
+        * { box-sizing: border-box; font-family: "Varela Round", sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            margin: 0; 
+            background: var(--bg-gradient); 
+            color: white; 
+            height: 100dvh; /* גובה דינמי למובייל */
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+        }
+        
+        /* מסך כניסה */
+        #loginScreen, #waitScreen {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;
+        }
+        
+        .input-group { width: 100%; max-width: 320px; margin-bottom: 10px; }
+        input { width: 100%; padding: 15px; border-radius: 12px; border: none; font-size: 1.1rem; text-align: center; background: rgba(255,255,255,0.9); }
+        .btn-big { width: 100%; padding: 15px; border-radius: 50px; background: linear-gradient(135deg, var(--primary), #ff8e53); color: white; font-weight: bold; font-size: 1.2rem; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(248, 71, 121, 0.4); margin-top: 10px; }
+        .btn-big:active { transform: scale(0.98); }
+
+        /* מסך משחק ראשי */
+        #gameScreen { 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        /* סרגל עליון */
+        .top-bar { 
+            padding: 15px; 
+            background: rgba(0,0,0,0.3); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            backdrop-filter: blur(5px);
+        }
+        .score-box { font-size: 1.1rem; font-weight: bold; display: flex; gap: 10px; }
+        .timer-badge { background: var(--primary); padding: 5px 12px; border-radius: 15px; font-variant-numeric: tabular-nums; }
+
+        /* אזור המילים שנמצאו */
+        .words-area { 
+            flex: 1; 
+            background: rgba(255,255,255,0.05); 
+            margin: 10px; 
+            border-radius: 15px; 
+            padding: 10px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 8px; 
+            align-content: flex-start; 
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .found-word { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 0.9rem; animation: popIn 0.3s; }
+
+        /* אזור תחתון (לוח ומקלדת) - גובה קבוע */
+        .play-area {
+            background: rgba(0,0,0,0.4);
+            border-radius: 25px 25px 0 0;
+            padding: 15px;
+            padding-bottom: 25px; /* Extra padding for bottom safe area */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.3);
+        }
+
+        /* שורת הסלוטים */
+        .slots-container { 
+            display: flex; 
+            gap: 5px; 
+            justify-content: center; 
+            min-height: 55px; 
+        }
+        .slot { 
+            width: 13vw; height: 13vw; max-width: 55px; max-height: 55px;
+            border: 2px dashed rgba(255,255,255,0.3); 
+            border-radius: 12px; 
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* שורת האותיות */
+        .bank-container { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 8px; 
+            justify-content: center; 
+            min-height: 60px;
+        }
+
+        /* האריח */
+        .tile { 
+            width: 13vw; height: 13vw; max-width: 55px; max-height: 55px;
+            background: var(--tile-bg); color: var(--tile-text); 
+            border-radius: 12px; 
+            font-size: 1.6rem; font-weight: bold; 
+            display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 4px 0 #ccc; 
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .tile:active { transform: scale(0.95); }
+
+        /* כפתורי שליטה */
+        .controls { display: flex; gap: 10px; height: 60px; }
+        .btn-game { 
+            flex: 1; border: none; border-radius: 15px; font-size: 1.5rem; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; 
+            color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+        }
+        .btn-clear { background: #e74c3c; flex: 0.8; }
+        .btn-submit { background: #2ecc71; flex: 2; font-weight: 800; font-size: 1.4rem; }
+        .btn-game:active { transform: translateY(3px); box-shadow: none; }
 
         .hidden { display: none !important; }
+        @keyframes popIn { from{transform:scale(0)} to{transform:scale(1)} }
     </style>
 </head>
 <body>
 
-    <!-- כניסה -->
-    <div id="loginScreen" class="screen">
-        <h1 style="color:var(--accent); margin-bottom:10px;">ספיד מניה ⚡</h1>
-        <p>הצטרפות למשחק קבוצתי</p>
-        <input type="text" id="pCode" placeholder="קוד משחק" style="text-transform:uppercase">
-        <input type="text" id="pName" placeholder="השם שלך">
-        <button onclick="join()">כנס</button>
-        <div id="msg" style="margin-top:10px; font-size:0.9rem; color:#ff8888;"></div>
+    <!-- Login -->
+    <div id="loginScreen">
+        <h1 style="color:var(--accent); font-size:2.5rem; margin-bottom:5px;">ספיד מניה ⚡</h1>
+        <p style="opacity:0.8; margin-bottom:30px;">הצטרפות למשחק קבוצתי</p>
+        
+        <div class="input-group"><input type="text" id="pCode" placeholder="קוד משחק (למשל ABCD)" style="text-transform:uppercase"></div>
+        <div class="input-group"><input type="text" id="pName" placeholder="השם שלך"></div>
+        <button class="btn-big" onclick="joinGame()">הצטרף למשחק</button>
+        <p id="statusMsg" style="color:#ff6b6b; margin-top:10px;"></p>
     </div>
 
-    <!-- המתנה -->
-    <div id="waitScreen" class="screen hidden">
-        <h2 id="teamTitle"></h2>
-        <p>ממתינים למנהל...</p>
-        <div class="loader">⏳</div>
+    <!-- Wait -->
+    <div id="waitScreen" class="hidden">
+        <h2 style="color:var(--accent);" id="teamNameTitle"></h2>
+        <p>ממתינים למנהל שיתחיל את הסיבוב...</p>
+        <div style="font-size:3rem; margin-top:20px; animation: popIn 1s infinite alternate;">⏳</div>
     </div>
 
-    <!-- משחק -->
-    <div id="gameScreen" class="screen hidden" style="justify-content: flex-start; padding: 0;">
+    <!-- Game -->
+    <div id="gameScreen" class="hidden">
         <div class="top-bar">
-            <span>זמן: <span id="timer">60</span></span>
-            <span>קבוצה: <span id="teamNameDisplay"></span></span>
+            <div class="score-box">
+                <i class="ph-bold ph-users"></i> <span id="teamNameDisplay"></span>
+            </div>
+            <div class="timer-badge" id="timer">60</div>
         </div>
 
-        <div id="foundWords" class="found-words-area">
-            <div style="width:100%; text-align:center; opacity:0.5; font-size:0.8rem;">מילים שהקבוצה מצאה יופיעו כאן</div>
+        <div id="wordsArea" class="words-area">
+            <div style="width:100%; text-align:center; opacity:0.5; margin-top:20px;">המילים יופיעו כאן...</div>
         </div>
 
-        <!-- הלוח -->
-        <div class="board-area">
-            <!-- אזור הרכבה (7 סלוטים) -->
-            <div class="slots-row" id="slotsRow"></div>
+        <div class="play-area">
+            <!-- 7 סלוטים -->
+            <div class="slots-container" id="slotsRow"></div>
             
-            <!-- אזור האותיות (בנק) -->
-            <div class="letters-row" id="bankRow"></div>
+            <!-- בנק אותיות -->
+            <div class="bank-container" id="bankRow"></div>
 
+            <!-- כפתורים -->
             <div class="controls">
-                <button class="btn-ctrl" style="background:#e74c3c; color:white;" onclick="clearBoard()">נקה</button>
-                <button class="btn-ctrl" style="background:#2ecc71; color:white; flex:2;" onclick="submit()">שלח מילה!</button>
+                <button class="btn-game btn-clear" onclick="clearBoard()"><i class="ph-bold ph-x"></i></button>
+                <button class="btn-game btn-submit" onclick="submitWord()">שלח <i class="ph-bold ph-paper-plane-right" style="margin-right:8px;"></i></button>
             </div>
         </div>
     </div>
@@ -91,70 +188,94 @@
     <script>
         let socket;
         let letters = [];
-        let slotsState = [null, null, null, null, null, null, null]; // 7 slots
+        let slotsState = new Array(7).fill(null);
         let myTeamId = null;
 
-        // חיבור
+        // Auto-connect
         try { if(typeof io !== 'undefined') socket = io(); else throw new Error(); } 
         catch(e) { console.warn("Mock"); socket = { on:()=>{}, emit:()=>{} }; }
 
-        // אוטומציה לפרמטרים ב-URL (עבור המנהל שנכנס כשחקן)
+        // URL Params (For host auto-join)
         const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.get('code')) document.getElementById('pCode').value = urlParams.get('code');
         if(urlParams.get('name')) document.getElementById('pName').value = urlParams.get('name');
+        if(urlParams.get('name')) setTimeout(joinGame, 500); // Auto click if name provided
 
-        function join() {
+        function joinGame() {
             const code = document.getElementById('pCode').value.toUpperCase();
             const name = document.getElementById('pName').value;
-            const teamId = urlParams.get('teamId'); // אם הגיע מהלינק בוואטסאפ
+            const teamId = urlParams.get('teamId');
             
-            if(!code || !name) return;
+            if(!code || !name) {
+                document.getElementById('statusMsg').innerText = "נא למלא את כל השדות";
+                return;
+            }
             socket.emit('speed:join', { code, name, teamId });
         }
 
-        socket.on('speed:joinedSuccess', ({ teamName, teamId }) => {
+        socket.on('speed:error', ({message}) => {
+            document.getElementById('statusMsg').innerText = message;
+        });
+
+        socket.on('speed:joinedSuccess', ({ teamName, teamId, gameState, letters: existingLetters }) => {
             myTeamId = teamId;
+            document.getElementById('teamNameTitle').innerText = teamName;
+            document.getElementById('teamNameDisplay').innerText = teamName;
+            
             document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('waitScreen').classList.remove('hidden');
-            document.getElementById('teamTitle').textContent = `שלום, חבר ב${teamName}!`;
-            document.getElementById('teamNameDisplay').textContent = teamName;
+            
+            if (gameState === 'playing' && existingLetters) {
+                // הצטרפות באמצע משחק
+                startRoundLogic(existingLetters, 60); // זמן משוער
+            } else {
+                document.getElementById('waitScreen').classList.remove('hidden');
+            }
         });
 
         socket.on('speed:roundStart', ({ letters: sLetters, duration }) => {
-            // אתחול משחק
+            startRoundLogic(sLetters, duration);
+        });
+
+        function startRoundLogic(sLetters, duration) {
             letters = sLetters.map((char, i) => ({ char, id: i }));
-            slotsState = new Array(7).fill(null);
+            slotsState.fill(null);
             
             renderBoard();
             
             document.getElementById('waitScreen').classList.add('hidden');
             document.getElementById('gameScreen').classList.remove('hidden');
-            document.getElementById('foundWords').innerHTML = ''; // ניקוי מילים ישנות
+            document.getElementById('wordsArea').innerHTML = '';
 
             let sec = duration;
             const t = setInterval(() => {
                 sec--;
                 document.getElementById('timer').textContent = sec;
-                if(sec <= 0) { clearInterval(t); alert("נגמר הזמן!"); location.reload(); }
+                if(sec <= 0) { clearInterval(t); } // השרת ינהל את הסיום
             }, 1000);
-        });
+        }
 
-        // --- סנכרון קבוצתי ---
-        socket.on('speed:boardUpdated', ({ indices, movedBy }) => {
-            // עדכון המצב המקומי לפי מה שחבר לקבוצה עשה
-            slotsState = indices.map(letterId => letterId !== null ? letters.find(l => l.id === letterId) : null);
-            renderBoard(false); // רינדור בלי לשדר חזרה
+        socket.on('speed:boardUpdated', ({ indices }) => {
+            // עדכון הלוח מחבר צוות אחר
+            slotsState = indices.map(id => id !== null ? letters.find(l => l.id === id) : null);
+            renderBoard(false);
         });
 
         socket.on('speed:wordAccepted', ({ word }) => {
+            // אנימציה והוספה לרשימה
             const tag = document.createElement('div');
-            tag.className = 'word-tag';
+            tag.className = 'found-word';
             tag.textContent = word;
-            document.getElementById('foundWords').appendChild(tag);
-            clearBoard(false); // ניקוי הלוח אחרי הצלחה
+            document.getElementById('wordsArea').appendChild(tag);
+            // גלילה למטה
+            const area = document.getElementById('wordsArea');
+            area.scrollTop = area.scrollHeight;
+            
+            // ניקוי לוח רק לשולח? לא, לכולם
+            slotsState.fill(null);
+            renderBoard(false);
         });
 
-        // --- לוגיקת רינדור וגרירה (קליקים להעברה פשוטה ומהירה) ---
+        // --- Render & Logic ---
         function renderBoard(emit = true) {
             const slotsContainer = document.getElementById('slotsRow');
             const bankContainer = document.getElementById('bankRow');
@@ -162,80 +283,66 @@
             slotsContainer.innerHTML = '';
             bankContainer.innerHTML = '';
 
-            // 1. רינדור הסלוטים העליונים
+            // Render Slots
             for(let i=0; i<7; i++) {
-                const slotDiv = document.createElement('div');
-                slotDiv.className = 'slot';
-                slotDiv.dataset.index = i;
+                const slotEl = document.createElement('div');
+                slotEl.className = 'slot';
                 
-                // הוספת האות אם קיימת בסלוט הזה
                 const letterObj = slotsState[i];
-                if (letterObj) {
+                if(letterObj) {
                     const tile = createTile(letterObj);
-                    // קליק להחזרה לבנק
-                    tile.onclick = () => { moveLetter(letterObj.id, null); };
-                    slotDiv.appendChild(tile);
+                    tile.onclick = () => { removeFromSlot(i); };
+                    slotEl.appendChild(tile);
                 } else {
-                    // קליק על סלוט ריק (מעביר את האות הפנויה הראשונה)
-                    slotDiv.onclick = () => handleSlotClick(i);
+                    // סלוט ריק - קליק עליו לא עושה כלום כרגע (אפשר להוסיף לוגיקה)
                 }
-                slotsContainer.appendChild(slotDiv);
+                slotsContainer.appendChild(slotEl);
             }
 
-            // 2. רינדור הבנק (אותיות שלא בשימוש)
+            // Render Bank
             letters.forEach(l => {
-                if (!slotsState.includes(l)) { // אם האות לא בלוח
+                if(!slotsState.includes(l)) {
                     const tile = createTile(l);
-                    // קליק להעברה לסלוט הפנוי הראשון
-                    tile.onclick = () => { autoPlaceLetter(l); };
+                    tile.onclick = () => { addToFirstFreeSlot(l); };
                     bankContainer.appendChild(tile);
                 }
             });
 
             if(emit && myTeamId) {
-                // שליחת מצב הלוח (מערך של IDs או Null) לקבוצה
-                const indices = slotsState.map(obj => obj ? obj.id : null);
+                const indices = slotsState.map(o => o ? o.id : null);
                 socket.emit('speed:updateTeamBoard', { indices });
             }
         }
 
-        function createTile(letterObj) {
-            const div = document.createElement('div');
-            div.className = 'tile';
-            div.textContent = letterObj.char;
-            div.dataset.id = letterObj.id;
-            return div;
+        function createTile(l) {
+            const el = document.createElement('div');
+            el.className = 'tile';
+            el.innerText = l.char;
+            return el;
         }
 
-        function autoPlaceLetter(letterObj) {
-            // מוצא את הסלוט הפנוי הראשון
-            const emptyIndex = slotsState.indexOf(null);
-            if (emptyIndex !== -1) {
-                slotsState[emptyIndex] = letterObj;
+        function addToFirstFreeSlot(l) {
+            const idx = slotsState.indexOf(null);
+            if(idx !== -1) {
+                slotsState[idx] = l;
                 renderBoard(true);
             }
         }
 
-        function moveLetter(letterId, targetIndex) {
-            // הסרה מהמיקום הנוכחי
-            const currentIdx = slotsState.findIndex(l => l && l.id === letterId);
-            if (currentIdx !== -1) slotsState[currentIdx] = null;
-            
-            // השמה במיקום החדש (אם יש)
-            if (targetIndex !== null) {
-                slotsState[targetIndex] = letters.find(l => l.id === letterId);
-            }
+        function removeFromSlot(idx) {
+            slotsState[idx] = null;
             renderBoard(true);
         }
 
-        function clearBoard(emit = true) {
+        function clearBoard() {
             slotsState.fill(null);
-            renderBoard(emit);
+            renderBoard(true);
         }
 
-        function submit() {
+        function submitWord() {
             const word = slotsState.filter(x => x).map(x => x.char).join('');
-            if (word.length < 2) return;
+            if(word.length < 2) return;
+            // אפקט לחיצה
             socket.emit('speed:submitWord', { word });
         }
     </script>
