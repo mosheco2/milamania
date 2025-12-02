@@ -1,6 +1,6 @@
 const speedGames = {};
 
-// מאגר אותיות משופר
+// מאגר אותיות משופר עם משקלים הגיוניים לעברית
 const LETTERS_POOL = [
     ...'אאאאאאבבבגגגדההההויווווזחחטייייכלללמממנננסעעפפצקררררשתתת'.split('')
 ];
@@ -23,7 +23,7 @@ function initSpeedGame(io) {
         socket.on('speed:createGame', ({ hostName, teamCount, duration }) => {
             const gameCode = Math.random().toString(36).substring(2, 6).toUpperCase();
             
-            // יצירת קבוצות
+            // יצירת קבוצות (ברירת מחדל: 2 קבוצות)
             const teams = {};
             const teamNames = ['הכחולים', 'האדומים', 'הירוקים', 'הצהובים', 'הסגולים'];
             for(let i=0; i< (teamCount || 2); i++) {
@@ -33,7 +33,7 @@ function initSpeedGame(io) {
                     name: teamNames[i], 
                     score: 0, 
                     players: [],
-                    currentBoard: [], // המצב המשותף של הלוח!
+                    currentBoard: [], // המצב המשותף של הלוח! (Shared State)
                     foundWords: [] 
                 };
             }
@@ -57,7 +57,7 @@ function initSpeedGame(io) {
             const game = speedGames[code];
             if (!game) return socket.emit('speed:error', { message: "חדר לא נמצא" });
             
-            // אם לא נבחרה קבוצה, נבחר אוטומטית את הראשונה
+            // אם לא נבחרה קבוצה (כניסה רגילה), נבחר אוטומטית את הראשונה
             if (!teamId) teamId = Object.keys(game.teams)[0];
             if (!game.teams[teamId]) return socket.emit('speed:error', { message: "קבוצה לא קיימת" });
 
@@ -72,7 +72,7 @@ function initSpeedGame(io) {
             socket.join(code);
             socket.join(`speed-${code}-${teamId}`); // חדר ייעודי לקבוצה לסנכרון לוח
 
-            // עדכון המנהל
+            // עדכון המנהל בזמן אמת על השחקן החדש
             io.to(game.hostId).emit('speed:playerJoined', { teams: game.teams });
 
             // שליחת אישור לשחקן עם פרטי הקבוצה
@@ -90,27 +90,27 @@ function initSpeedGame(io) {
             game.state = 'playing';
             game.letters = generateLetters(7); 
             
-            // איפוס לוחות ומילים לכל הקבוצות
+            // איפוס לוחות ומילים לכל הקבוצות לקראת הסיבוב
             Object.values(game.teams).forEach(t => {
                 t.foundWords = [];
                 t.currentBoard = []; // איפוס הלוח המשותף
             });
 
-            // שליחת אותיות לכולם
+            // שליחת אותיות לכולם והתחלת הטיימר אצל הלקוחות
             io.to(code).emit('speed:roundStart', { 
                 letters: game.letters,
                 duration: game.gameDuration
             });
 
-            // טיימר צד שרת
+            // טיימר צד שרת לסיום המשחק
             setTimeout(() => {
                 endSpeedRound(io, code);
             }, game.gameDuration * 1000);
         });
 
-        // --- סנכרון לוח קבוצתי (Drag & Drop) ---
+        // --- סנכרון לוח קבוצתי (Drag & Drop בזמן אמת) ---
         socket.on('speed:updateTeamBoard', ({ indices }) => {
-            // 1. מצא את המשחק והקבוצה
+            // 1. מצא את המשחק והקבוצה של השחקן
             let gameCode, player;
             for(let c in speedGames) {
                 if(speedGames[c].players[socket.id]) {
@@ -127,7 +127,7 @@ function initSpeedGame(io) {
             if(game.teams[player.teamId]) {
                 game.teams[player.teamId].currentBoard = indices;
                 
-                // 3. שידור לכל חברי הקבוצה (מלבד השולח)
+                // 3. שידור לכל חברי הקבוצה (מלבד השולח, כדי למנוע הבהובים)
                 socket.to(`speed-${gameCode}-${player.teamId}`).emit('speed:boardUpdated', { 
                     indices: indices,
                     movedBy: player.name 
@@ -152,15 +152,20 @@ function initSpeedGame(io) {
 
             const team = game.teams[player.teamId];
             
-            // בדיקה אם המילה כבר נמצאה ע"י הקבוצה
+            // בדיקה אם המילה כבר נמצאה ע"י הקבוצה הזו
             if (!team.foundWords.includes(word)) {
                 team.foundWords.push(word);
                 
-                // עדכון המנהל
+                // עדכון המנהל בזמן אמת (מי מצא ואיזו מילה)
                 const totalWordsAllTeams = Object.values(game.teams).reduce((acc, t) => acc + t.foundWords.length, 0);
-                io.to(game.hostId).emit('speed:hostUpdate', { totalWords: totalWordsAllTeams });
                 
-                // עדכון כל חברי הקבוצה שהמילה התקבלה
+                io.to(game.hostId).emit('speed:hostUpdate', { 
+                    totalWords: totalWordsAllTeams,
+                    recentWord: word,
+                    recentTeam: team.name
+                });
+                
+                // עדכון כל חברי הקבוצה שהמילה התקבלה (וויזואליזציה של הצלחה)
                 io.to(`speed-${gameCode}-${player.teamId}`).emit('speed:wordAccepted', { word });
             }
         });
@@ -184,7 +189,7 @@ function endSpeedRound(io, gameCode) {
         });
     });
 
-    // שלב 2: ניקוד לקבוצות
+    // שלב 2: ניקוד לקבוצות (רק מילים ייחודיות)
     const leaderboard = [];
     Object.values(game.teams).forEach(team => {
         let uniqueCount = 0;
@@ -199,6 +204,7 @@ function endSpeedRound(io, gameCode) {
         });
     });
 
+    // מיון ושידור תוצאות
     leaderboard.sort((a, b) => b.score - a.score);
     io.to(gameCode).emit('speed:roundEnd', { leaderboard });
 }
