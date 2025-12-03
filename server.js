@@ -12,12 +12,11 @@ const io = new Server(server, {
 });
 
 // --- טעינת מודול ספיד מניה ---
-// וודא שיצרת תיקייה בשם backend ושמת בה את הקובץ speedGameManager.js
 const speedModulePath = path.join(__dirname, 'backend', 'speedGameManager.js');
 if (fs.existsSync(speedModulePath)) {
     const { initSpeedGame } = require('./backend/speedGameManager');
     initSpeedGame(io);
-    console.log("✅ Speed Mania module loaded successfully.");
+    console.log("✅ Speed Mania module loaded.");
 } else {
     console.error("⚠️ Error: 'backend/speedGameManager.js' not found.");
 }
@@ -29,7 +28,7 @@ const ADMIN_CODE = process.env.ADMIN_CODE || "ONEBTN";
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
-// --- Database (חלק מהקוד המקורי שלך - מקוצר אך שומר על פונקציונליות) ---
+// --- Database ---
 let pool = null;
 let dbReady = false;
 
@@ -44,7 +43,6 @@ async function initDb() {
       connectionString,
       ssl: process.env.PGSSL === "false" ? false : { rejectUnauthorized: false },
     });
-    // יצירת טבלאות בסיסיות למניעת שגיאות
     await pool.query(`CREATE TABLE IF NOT EXISTS site_settings (id SERIAL PRIMARY KEY, top_banner_img TEXT, top_banner_link TEXT, bottom_banner_img TEXT, bottom_banner_link TEXT, top_banner_img_mobile TEXT, bottom_banner_img_mobile TEXT);`);
     await pool.query(`INSERT INTO site_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;`);
     dbReady = true;
@@ -55,7 +53,7 @@ async function initDb() {
 }
 initDb();
 
-// --- API לבאנרים ---
+// --- API ---
 app.get("/api/banners", async (req, res) => {
     let banners = {};
     if (dbReady && pool) {
