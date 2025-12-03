@@ -10,6 +10,7 @@
         :root { --bg: #2B1E4A; --tile: #fff; --accent: #FFD700; --primary: #F84779; }
         body { margin:0; background: var(--bg); color: white; font-family: "Varela Round", sans-serif; overflow: hidden; user-select: none; display: flex; flex-direction: column; height: 100dvh; }
         
+        .help-icon { position: absolute; top: 15px; left: 15px; color: rgba(255,255,255,0.6); font-size: 1.5rem; text-decoration: none; }
         #loginScreen, #waitScreen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
         input { width: 100%; max-width: 300px; padding: 15px; margin-bottom: 10px; border-radius: 12px; border: none; text-align: center; font-size: 1.2rem; }
         .btn { width: 100%; max-width: 300px; padding: 15px; border-radius: 50px; background: linear-gradient(135deg, var(--primary), #ff8e53); border: none; color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
@@ -30,15 +31,12 @@
         .act-btn { flex: 1; padding: 15px; border-radius: 15px; border: none; font-size: 1.4rem; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .btn-clear { background: #e74c3c; flex: 0.6; }
         .btn-submit { background: #2ecc71; flex: 2; font-weight: 800; }
-        
-        .help-icon { position: absolute; top: 15px; left: 15px; color: rgba(255,255,255,0.6); font-size: 1.5rem; cursor: pointer; text-decoration: none; }
 
         .hidden { display: none !important; }
         @keyframes popIn { from{transform:scale(0)} to{transform:scale(1)} }
     </style>
 </head>
 <body>
-
     <a href="../instructions.html" target="_blank" class="help-icon"><i class="ph-bold ph-question"></i></a>
 
     <div id="loginScreen">
@@ -46,7 +44,7 @@
         <input type="text" id="code" placeholder="קוד משחק" style="text-transform:uppercase;">
         <input type="text" id="name" placeholder="השם שלך">
         <button class="btn" onclick="join()">כנס למשחק</button>
-        <p id="statusMsg" style="color:#ff6b6b; margin-top:10px;"></p>
+        <p id="statusMsg" style="color:#ff6b6b; margin-top:10px; font-size:0.9rem;"></p>
     </div>
 
     <div id="waitScreen" class="hidden">
@@ -75,23 +73,18 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         let socket;
-        let letters = [];
-        let slotsState = Array(7).fill(null);
-        let myTeamId = null;
-
-        // בדיקה בטוחה ל-Socket.io
-        try {
-            if (typeof io !== 'undefined') {
-                socket = io();
-            } else {
-                throw new Error('Socket.io not loaded');
-            }
-        } catch (e) {
-            console.warn("Socket.io not found. Running UI in Mock mode.");
-            socket = { on: () => {}, emit: () => {} };
+        try { 
+            if(typeof io !== 'undefined') socket = io(); 
+            else throw new Error("Socket.io missing");
+        } catch(e) { 
+            console.warn("Mock Mode"); 
+            socket = { on:()=>{}, emit:()=>{} }; 
         }
+        
+        let letters = [], slotsState = Array(7).fill(null), myTeamId = null;
 
-        const urlParams = new URLSearchParams(location.search);
+        // Fix: Renamed 'p' to 'urlParams' to avoid SyntaxError for identifier already declared
+        const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.get('code')) document.getElementById('code').value = urlParams.get('code');
         if(urlParams.get('name')) document.getElementById('name').value = urlParams.get('name');
         if(urlParams.get('name')) setTimeout(join, 500);
@@ -103,40 +96,18 @@
             if(code && name) socket.emit('speed:join', { code, name, teamId });
         }
 
-        if (typeof io !== 'undefined') {
-            socket.on('speed:error', ({message}) => document.getElementById('statusMsg').innerText = message);
+        socket.on('speed:error', ({message}) => document.getElementById('statusMsg').innerText = message);
 
-            socket.on('speed:joinedSuccess', ({ teamName, teamId, gameState, letters: existingLetters }) => {
-                myTeamId = teamId;
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('waitTitle').innerText = `חבר ב${teamName}`;
-                
-                if (gameState === 'playing' && existingLetters) {
-                    startRoundLogic(existingLetters, 60); 
-                } else {
-                    document.getElementById('waitScreen').classList.remove('hidden');
-                }
-                document.getElementById('teamDisplay').innerText = teamName;
-            });
+        socket.on('speed:joinedSuccess', ({ teamName, teamId, gameState, letters: l }) => {
+            myTeamId = teamId;
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('waitTitle').innerText = `חבר ב${teamName}`;
+            document.getElementById('teamDisplay').innerText = teamName;
+            if (gameState === 'playing' && l) startRoundLogic(l, 60); 
+            else document.getElementById('waitScreen').classList.remove('hidden');
+        });
 
-            socket.on('speed:roundStart', ({ letters: l, duration }) => startRoundLogic(l, duration));
-
-            socket.on('speed:boardUpdated', ({ indices }) => {
-                slotsState = indices.map(id => id !== null ? letters.find(l => l.id === id) : null);
-                render(false);
-            });
-
-            socket.on('speed:wordAccepted', ({ word }) => {
-                const tag = document.createElement('div');
-                tag.className = 'word-tag';
-                tag.innerText = word;
-                const area = document.getElementById('words');
-                area.appendChild(tag);
-                area.scrollTop = area.scrollHeight;
-                slotsState.fill(null);
-                render(false);
-            });
-        }
+        socket.on('speed:roundStart', ({ letters: l, duration }) => startRoundLogic(l, duration));
 
         function startRoundLogic(l, duration) {
             letters = l.map((c, i) => ({ char: c, id: i }));
@@ -149,10 +120,27 @@
             let sec = duration;
             const t = setInterval(() => {
                 sec--;
-                document.getElementById('timer').innerText = sec;
+                const timerEl = document.getElementById('timer');
+                if(timerEl) timerEl.innerText = sec;
                 if(sec<=0) clearInterval(t);
             }, 1000);
         }
+
+        socket.on('speed:boardUpdated', ({ indices }) => {
+            slotsState = indices.map(id => id !== null ? letters.find(l => l.id === id) : null);
+            render(false);
+        });
+
+        socket.on('speed:wordAccepted', ({ word }) => {
+            const tag = document.createElement('div');
+            tag.className = 'word-tag';
+            tag.innerText = word;
+            const area = document.getElementById('words');
+            area.appendChild(tag);
+            area.scrollTop = area.scrollHeight;
+            slotsState.fill(null);
+            render(false);
+        });
 
         function render(emit = true) {
             const slotsEl = document.getElementById('slots');
