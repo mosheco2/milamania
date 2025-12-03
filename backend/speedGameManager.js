@@ -16,35 +16,55 @@ function generateLetters(count = 7) {
 function initSpeedGame(io) {
     io.on('connection', (socket) => {
         
+        // --- יצירת משחק ---
         socket.on('speed:createGame', ({ hostName, teamCount, duration }) => {
             const gameCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+            
             const teams = {};
             const teamConfigs = [
-                {name: 'הכחולים 🔵', color: '#3498db'}, {name: 'האדומים 🔴', color: '#e74c3c'},
-                {name: 'הירוקים 🟢', color: '#2ecc71'}, {name: 'הצהובים 🟡', color: '#f1c40f'},
+                {name: 'הכחולים 🔵', color: '#3498db'}, 
+                {name: 'האדומים 🔴', color: '#e74c3c'},
+                {name: 'הירוקים 🟢', color: '#2ecc71'}, 
+                {name: 'הצהובים 🟡', color: '#f1c40f'},
                 {name: 'הסגולים 🟣', color: '#9b59b6'}
             ];
             
             for(let i=0; i< (teamCount || 2); i++) {
                 const tid = "T" + (i+1);
-                teams[tid] = { id: tid, ...teamConfigs[i], score: 0, players: [], currentBoard: [null,null,null,null,null,null,null], foundWords: [] };
+                teams[tid] = { 
+                    id: tid, 
+                    ...teamConfigs[i],
+                    score: 0, 
+                    players: [],
+                    currentBoard: [null,null,null,null,null,null,null], 
+                    foundWords: [] 
+                };
             }
 
             speedGames[gameCode] = {
-                hostId: socket.id, hostName, players: {}, teams,
-                state: 'lobby', letters: [], gameDuration: duration || 60, startTime: null
+                hostId: socket.id,
+                hostName: hostName,
+                players: {},
+                teams: teams,
+                state: 'lobby',
+                letters: [],
+                gameDuration: duration || 60,
+                startTime: null,
+                timerInterval: null
             };
 
             socket.join(gameCode);
             socket.emit('speed:gameCreated', { gameCode, teams });
         });
 
+        // --- הצטרפות שחקן ---
         socket.on('speed:join', ({ code, name, teamId }) => {
             const game = speedGames[code];
             if (!game) return socket.emit('speed:error', { message: "חדר לא נמצא" });
             if (!teamId) teamId = Object.keys(game.teams)[0];
 
             game.players[socket.id] = { id: socket.id, name, teamId };
+            
             if(!game.teams[teamId].players.find(p => p.id === socket.id)) {
                 game.teams[teamId].players.push({ id: socket.id, name });
             }
@@ -55,11 +75,16 @@ function initSpeedGame(io) {
             io.to(game.hostId).emit('speed:hostFullUpdate', { teams: game.teams, state: game.state });
             
             socket.emit('speed:joinedSuccess', { 
-                teamName: game.teams[teamId].name, teamColor: game.teams[teamId].color, teamId,
-                gameState: game.state, letters: game.letters, currentBoard: game.teams[teamId].currentBoard
+                teamName: game.teams[teamId].name, 
+                teamColor: game.teams[teamId].color, 
+                teamId,
+                gameState: game.state, 
+                letters: game.letters, 
+                currentBoard: game.teams[teamId].currentBoard
             });
         });
 
+        // --- התחלת סיבוב ---
         socket.on('speed:startGame', ({ code }) => {
             const game = speedGames[code];
             if (!game) return;
@@ -68,40 +93,61 @@ function initSpeedGame(io) {
             game.letters = generateLetters(7); 
             game.startTime = Date.now();
             
-            Object.values(game.teams).forEach(t => { t.foundWords = []; t.currentBoard = [null,null,null,null,null,null,null]; });
+            Object.values(game.teams).forEach(t => { 
+                t.foundWords = []; 
+                t.currentBoard = [null,null,null,null,null,null,null]; 
+            });
 
             io.to(code).emit('speed:roundStart', { letters: game.letters, duration: game.gameDuration });
             io.to(game.hostId).emit('speed:hostFullUpdate', { teams: game.teams, state: 'playing', timeLeft: game.gameDuration });
 
-            setTimeout(() => { endSpeedRound(io, code); }, game.gameDuration * 1000);
+            // ניהול טיימר בשרת
+            if (game.timerInterval) clearTimeout(game.timerInterval);
+            game.timerInterval = setTimeout(() => {
+                endSpeedRound(io, code);
+            }, game.gameDuration * 1000);
         });
 
+        // --- סיום סיבוב ידני (חדש!) ---
+        socket.on('speed:endRound', ({ code }) => {
+            const game = speedGames[code];
+            if (game && game.state === 'playing') {
+                if (game.timerInterval) clearTimeout(game.timerInterval);
+                endSpeedRound(io, code);
+            }
+        });
+
+        // --- עדכון לוח ---
         socket.on('speed:updateTeamBoard', ({ indices }) => {
             const { game, player } = getPlayerGame(socket.id);
             if(!game || !player) return;
+            
             game.teams[player.teamId].currentBoard = indices;
             socket.to(`speed-${game.code}-${player.teamId}`).emit('speed:boardUpdated', { indices });
         });
 
+        // --- אישור מילה ---
         socket.on('speed:submitWord', ({ word }) => {
             const { game, player } = getPlayerGame(socket.id);
             if (!game || game.state !== 'playing') return;
 
             const team = game.teams[player.teamId];
-            // קבלת כל מילה שלא קיימת כבר (גם אם לא במילון - לוגיקת משחק מסיבה)
+            
             if (!team.foundWords.includes(word)) {
                 team.foundWords.push(word);
-                // שידור לכל הקבוצה
+                
+                // שידור לכל חברי הקבוצה
                 io.to(`speed-${game.code}-${player.teamId}`).emit('speed:wordAccepted', { word });
                 
-                // איפוס הלוח
+                // איפוס הלוח לקבוצה
                 team.currentBoard = [null,null,null,null,null,null,null];
                 io.to(`speed-${game.code}-${player.teamId}`).emit('speed:boardUpdated', { indices: team.currentBoard });
-                
-                io.to(game.hostId).emit('speed:hostFullUpdate', { teams: game.teams });
+
+                // עדכון מנהל
+                io.to(game.hostId).emit('speed:hostFullUpdate', { teams: game.teams, state: 'playing' });
             }
         });
-        
+
         socket.on('speed:getHostState', ({ code }) => {
             const game = speedGames[code];
             if(game) {
@@ -114,7 +160,9 @@ function initSpeedGame(io) {
 
 function getPlayerGame(socketId) {
     for(let code in speedGames) {
-        if(speedGames[code].players[socketId]) return { game: speedGames[code], player: speedGames[code].players[socketId] };
+        if(speedGames[code].players[socketId]) {
+            return { game: speedGames[code], player: speedGames[code].players[socketId] };
+        }
     }
     return {};
 }
@@ -122,6 +170,7 @@ function getPlayerGame(socketId) {
 function endSpeedRound(io, gameCode) {
     const game = speedGames[gameCode];
     if (!game || game.state !== 'playing') return;
+
     game.state = 'ended';
 
     const allWordsMap = {}; 
@@ -138,6 +187,7 @@ function endSpeedRound(io, gameCode) {
     });
 
     leaderboard.sort((a, b) => b.score - a.score);
+    
     io.to(gameCode).emit('speed:roundEnd', { leaderboard });
     io.to(game.hostId).emit('speed:hostFullUpdate', { teams: game.teams, state: 'ended' });
 }
