@@ -312,7 +312,11 @@
           <img id="host-logo" class="logo-small hidden" alt="מילמניה לוגו" />
           <div>
             <div class="chip">מילמניה · ניהול משחק 👑</div>
-            <h1 style="margin:4px 0 0; font-size:1.7rem;">מנהל המשחק</h1><p style="background:#FFFDF7;padding:10px 14px;border:1px solid #e2e2e2;border-radius:12px;margin-top:10px;">פתח משחק, שלח לחברים הזמנה, היכנס למסך שחקן והצטרף בעצמך לקבוצה.<br>ממסך המנהל אתה מנהל את המשחק (יש לך כוחות על), ממסך השחקן אתה משחק כמו כל שאר השחקנים.</p>
+            <h1 style="margin:4px 0 0; font-size:1.7rem;">מנהל המשחק</h1>
+            <p style="background:#FFFDF7;padding:10px 14px;border:1px solid #e2e2e2;border-radius:12px;margin-top:10px;font-size:0.9rem;">
+              פתח משחק, שלח לחברים הזמנה, היכנס למסך שחקן והצטרף בעצמך לקבוצה.<br>
+              ממסך המנהל אתה מנהל את המשחק, ממסך השחקן אתה משחק כמו כל שאר השחקנים.
+            </p>
           </div>
         </div>
         <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
@@ -326,11 +330,6 @@
           </div>
         </div>
       </div>
-
-      <p class="status-text" style="margin-top:8px;">
-        בלשונית "מצב מנהל" אתה שולט במשחק. בלשונית "מצב שחקן (אני)" תצטרף למשחק כשחקן רגיל
-        באותו דף, ותוכל לעבור בין המסכים בלחיצה על הלשוניות.
-      </p>
     </div>
 
     <div id="hostMode">
@@ -506,8 +505,7 @@
       <div class="card">
         <h3 style="margin:0 0 6px;">אני כשחקן</h3>
         <p class="status-text" style="margin-bottom:8px;">
-          כאן תגדיר את השם והקבוצה שלך כשחקן. כשתלחץ על הכפתור, תצטרף למשחק כשחקן רגיל
-          עם אותו חיבור, ותוכל לעבור בין מסך השחקן למסך הניהול בלחיצה על הלשוניות.
+          כאן תגדיר את השם והקבוצה שלך כשחקן. כשתלחץ על הכפתור, תצטרף למשחק כשחקן רגיל.
         </p>
 
         <div class="row">
@@ -531,21 +529,34 @@
       </div>
 
       <div class="card hidden" id="hostPlayerGameCard">
-        <h3 style="margin:0 0 6px;">מצב המשחק שלי</h3>
+        
+        <div id="quickAdminPanel" style="background:#FFFDF7; padding:12px; border-radius:14px; margin-bottom:14px; border:1px solid rgba(248, 71, 121, 0.4);">
+          <div style="font-weight:700; font-size:0.95rem; margin-bottom:8px; color:#F84779;">
+            ניהול משחק מהיר (כוחות מנהל) 👑
+          </div>
+          <div class="row" style="margin-bottom:0;">
+            <div style="flex:1;">
+              <select id="quickRoundTeamSelect" style="padding:8px; font-size:0.9rem;">
+                <option value="">בחר קבוצה לסיבוב...</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:6px; flex:1;">
+              <button id="quickStartRoundBtn" class="btn btn-success btn-small" style="flex:1;">התחל</button>
+              <button id="quickStopRoundBtn" class="btn btn-danger btn-small" style="flex:1;" disabled>סיים</button>
+            </div>
+          </div>
+        </div>
 
+        <h3 style="margin:0 0 6px;">מצב המשחק שלי</h3>
         <div id="hostPlayerGameInfo" class="status-text" style="margin-bottom:8px;"></div>
 
         <div style="margin-bottom:8px;">
-          <div style="font-weight:600; font-size:0.95rem; margin-bottom:2px; color:#433362;">
-            הקבוצה שלי
-          </div>
+          <div style="font-weight:600; font-size:0.95rem; margin-bottom:2px; color:#433362;">הקבוצה שלי</div>
           <div id="hostPlayerTeamName" class="status-text"></div>
         </div>
 
         <div style="margin-bottom:8px;">
-          <div style="font-weight:600; font-size:0.95rem; margin-bottom:2px; color:#433362;">
-            השחקנים בקבוצה שלי
-          </div>
+          <div style="font-weight:600; font-size:0.95rem; margin-bottom:2px; color:#433362;">השחקנים בקבוצה שלי</div>
           <div id="hostPlayerTeamPlayers" class="status-text"></div>
         </div>
 
@@ -607,6 +618,7 @@
   <script>
     const socket = io();
     const LS_HOST_GAME_KEY = "mil_hostGameCode";
+    const LS_HOST_PLAYER_INFO = "mil_hostPlayer"; // שמירת נתוני שחקן של המנהל
 
     let currentGameCode = null;
     let lastGameState = null;
@@ -657,6 +669,11 @@
     const floatingToPlayer = document.getElementById("floatingToPlayer");
     const floatingToHost = document.getElementById("floatingToHost");
 
+    // אלמנטים ניהול מהיר במצב שחקן
+    const quickRoundTeamSelect = document.getElementById("quickRoundTeamSelect");
+    const quickStartRoundBtn = document.getElementById("quickStartRoundBtn");
+    const quickStopRoundBtn = document.getElementById("quickStopRoundBtn");
+
     // מצב שחקן (אני)
     const hostPlayerNameInput = document.getElementById("hostPlayerName");
     const hostPlayerTeamSelect = document.getElementById("hostPlayerTeamSelect");
@@ -676,7 +693,6 @@
     const hostBtnCorrect = document.getElementById("hostBtnCorrect");
     const hostBtnSkip = document.getElementById("hostBtnSkip");
 
-    // state לשחקן-מנהל
     let isHostAlsoPlayer = false;
     let hostPlayerClientId = null;
     let hostPlayerTeamId = null;
@@ -685,7 +701,7 @@
     let hostLastRoundKey = null;
     let hostIsCurrentExplainer = false;
 
-    // --- מעבר טאבים מאוחד (עליון + צף) ---
+    // --- מעבר טאבים מאוחד ---
     function switchHostTab(mode) {
       if (mode === 'player') {
         if(tabPlayer) tabPlayer.classList.add("active");
@@ -710,7 +726,6 @@
     }
     if (floatingToPlayer) floatingToPlayer.addEventListener("click", () => switchHostTab('player'));
     if (floatingToHost) floatingToHost.addEventListener("click", () => switchHostTab('host'));
-    // -------------------------------------
 
     function formatTime(seconds) {
       const s = Math.max(0, Math.floor(seconds || 0));
@@ -727,7 +742,6 @@
       return selected;
     }
 
-    // קטגוריות - בחר הכל
     if (selectAllCatsCheckbox) {
       selectAllCatsCheckbox.addEventListener("change", () => {
         const checked = selectAllCatsCheckbox.checked;
@@ -770,20 +784,13 @@
           if (!clientId || !currentGameCode) return;
           const ok = confirm("להסיר את השחקן הזה מהמשחק?");
           if (!ok) return;
-          socket.emit(
-            "removePlayer",
-            { gameCode: currentGameCode, clientId },
-            (resp) => {
+          socket.emit("removePlayer", { gameCode: currentGameCode, clientId }, (resp) => {
               if (!resp || !resp.ok) {
                 alert(resp && resp.error ? resp.error : "שגיאה בהסרת שחקן.");
                 return;
               }
-              hostStatus.textContent = "השחקן הוסר מהמשחק.";
-              if (resp.game) {
-                renderGameState(resp.game);
-              }
-            }
-          );
+              if (resp.game) renderGameState(resp.game);
+          });
         };
       });
     }
@@ -795,28 +802,30 @@
         roundTimerEl.textContent = "טיימר: --:--";
         if (startRoundBtn) startRoundBtn.disabled = !currentGameCode;
         if (stopRoundBtn) stopRoundBtn.disabled = true;
+        if (quickStartRoundBtn) quickStartRoundBtn.disabled = !currentGameCode;
+        if (quickStopRoundBtn) quickStopRoundBtn.disabled = true;
         return;
       }
 
       const r = game.currentRound;
       const isActive = (typeof r.active === "boolean") ? r.active : !!r.isActive;
-      const secondsLeft = (typeof r.secondsLeft === "number")
-        ? r.secondsLeft
-        : (r.roundSeconds || 0);
+      const secondsLeft = (typeof r.secondsLeft === "number") ? r.secondsLeft : (r.roundSeconds || 0);
 
       if (!isActive) {
         roundTimerEl.textContent = "טיימר: --:--";
         if (startRoundBtn) startRoundBtn.disabled = !currentGameCode;
         if (stopRoundBtn) stopRoundBtn.disabled = true;
+        if (quickStartRoundBtn) quickStartRoundBtn.disabled = !currentGameCode;
+        if (quickStopRoundBtn) quickStopRoundBtn.disabled = true;
         return;
       }
 
       roundTimerEl.textContent = "טיימר: " + formatTime(secondsLeft);
       if (startRoundBtn) startRoundBtn.disabled = true;
       if (stopRoundBtn) stopRoundBtn.disabled = false;
+      if (quickStartRoundBtn) quickStartRoundBtn.disabled = true;
+      if (quickStopRoundBtn) quickStopRoundBtn.disabled = false;
     }
-
-    // --------- לוגיקת שחקן (אני) ----------
 
     function updateHostPresenterUI() {
       if (!hostIsCurrentExplainer || !lastGameState || !lastGameState.currentRound) {
@@ -824,14 +833,12 @@
         return;
       }
       hostPresenterSection.classList.remove("hidden");
-
       if (!hostCurrentWord) {
         hostPresenterWordEl.textContent = "ממתין למילה מהשרת...";
         hostPresenterCategoryEl.textContent = "";
       } else {
         hostPresenterWordEl.textContent = hostCurrentWord;
-        hostPresenterCategoryEl.textContent =
-          hostCurrentCategory ? "קטגוריה: " + hostCurrentCategory : "";
+        hostPresenterCategoryEl.textContent = hostCurrentCategory ? "קטגוריה: " + hostCurrentCategory : "";
       }
     }
 
@@ -839,9 +846,7 @@
       if (!currentGameCode) return;
       socket.emit("getNextWord", { gameCode: currentGameCode }, (resp) => {
         if (!resp || !resp.ok) {
-          hostPresenterWordEl.textContent =
-            resp && resp.error ? resp.error : "שגיאה בטעינת מילה.";
-          hostPresenterCategoryEl.textContent = "";
+          hostPresenterWordEl.textContent = resp && resp.error ? resp.error : "שגיאה בטעינת מילה.";
           return;
         }
         hostCurrentWord = resp.word || "";
@@ -855,11 +860,6 @@
 
       if (!hostPlayerClientId || !game) {
         hostPlayerGameInfo.textContent = "עדיין לא מחובר למשחק כשחקן.";
-        hostPlayerTeamNameEl.textContent = "";
-        hostPlayerTeamPlayersEl.textContent = "";
-        hostPlayerScoreboardEl.textContent = "";
-        hostRoundStatusPlayerEl.textContent = "";
-        hostPlayerBigTimerEl.textContent = "טיימר: --:--";
         hostPresenterSection.classList.add("hidden");
         return;
       }
@@ -868,13 +868,7 @@
       const me = playersMap[hostPlayerClientId];
 
       if (!me) {
-        hostPlayerGameInfo.textContent =
-          "לא נמצאת ברשימת השחקנים. ייתכן שהוסרת מהמשחק.";
-        hostPlayerTeamNameEl.textContent = "";
-        hostPlayerTeamPlayersEl.textContent = "";
-        hostPlayerScoreboardEl.textContent = "";
-        hostRoundStatusPlayerEl.textContent = "";
-        hostPlayerBigTimerEl.textContent = "טיימר: --:--";
+        hostPlayerGameInfo.textContent = "לא נמצאת ברשימת השחקנים. ייתכן שהוסרת מהמשחק.";
         hostPresenterSection.classList.add("hidden");
         return;
       }
@@ -885,75 +879,32 @@
       const team = game.teams && hostPlayerTeamId ? game.teams[hostPlayerTeamId] : null;
       const teamName = team ? (team.name || `קבוצה ${hostPlayerTeamId}`) : "ללא קבוצה";
 
-      hostPlayerGameInfo.innerHTML =
-        `אתה מחובר לחדר בקוד <strong>${currentGameCode || "-"}</strong> בשם <strong>${me.name || ""}</strong>.`;
+      hostPlayerGameInfo.innerHTML = `אתה מחובר לחדר בקוד <strong>${currentGameCode || "-"}</strong> בשם <strong>${me.name || ""}</strong>.`;
       hostPlayerTeamNameEl.textContent = teamName;
 
       if (team && team.players && team.players.length) {
-        const names = team.players
-          .map((cid) => (playersMap[cid] && playersMap[cid].name) ? playersMap[cid].name : null)
-          .filter(Boolean);
-        hostPlayerTeamPlayersEl.textContent = names.length
-          ? names.join(", ")
-          : "אין עדיין שחקנים נוספים בקבוצה שלך.";
-      } else {
-        hostPlayerTeamPlayersEl.textContent = "עדיין לא הוקצו שחקנים לקבוצה שלך.";
+        const names = team.players.map((cid) => (playersMap[cid] && playersMap[cid].name) ? playersMap[cid].name : null).filter(Boolean);
+        hostPlayerTeamPlayersEl.textContent = names.length ? names.join(", ") : "אין עדיין שחקנים נוספים בקבוצה שלך.";
       }
 
-      // ניקוד כללי
       if (game.teams) {
-        const lines = Object.entries(game.teams).map(([teamId, t]) => {
-          const nm = t.name || `קבוצה ${teamId}`;
-          const sc = t.score || 0;
-          return `${nm}: ${sc} נקודות`;
-        });
+        const lines = Object.entries(game.teams).map(([teamId, t]) => `${t.name || `קבוצה ${teamId}`}: ${t.score || 0} נקודות`);
         hostPlayerScoreboardEl.innerHTML = lines.join("<br/>");
-      } else {
-        hostPlayerScoreboardEl.textContent = "";
       }
 
-      // מצב הסיבוב
       const r = game.currentRound || null;
       if (r && (r.active === true || r.isActive === true)) {
-        const roundSecondsLeft =
-          typeof r.secondsLeft === "number" ? r.secondsLeft : null;
+        const roundSecondsLeft = typeof r.secondsLeft === "number" ? r.secondsLeft : null;
         const explainerName = r.explainerName || "";
         const explainerTeamId = r.teamId || "";
-        const teamObj =
-          explainerTeamId && game.teams ? game.teams[explainerTeamId] : null;
-        const explainerTeamName = teamObj ? (teamObj.name || `קבוצה ${explainerTeamId}`) : "";
-        const explainerTeamText =
-          explainerTeamName || (explainerTeamId ? `קבוצה ${explainerTeamId}` : "");
-
+        
         let msg = "סיבוב פעיל כרגע.";
-        if (explainerName && explainerTeamText) {
-          msg = `עכשיו מסביר/ה: <strong>${explainerName}</strong> (${explainerTeamText}).`;
-        } else if (explainerName) {
-          msg = `עכשיו מסביר/ה: <strong>${explainerName}</strong>.`;
-        }
-
-        if (roundSecondsLeft !== null) {
-          msg += ` · נשארו כ־${roundSecondsLeft} שניות.`;
-        }
-
-        if (hostPlayerTeamId && explainerTeamId && hostPlayerTeamId === explainerTeamId) {
-          msg += " זה הסיבוב של הקבוצה שלך – תרימו לו/לה! 🎯";
-        }
-
-        if (typeof r.roundScore === "number") {
-          msg += ` · ניקוד בסיבוב: ${r.roundScore}`;
-        }
-
+        if (explainerName) msg = `עכשיו מסביר/ה: <strong>${explainerName}</strong>.`;
+        if (roundSecondsLeft !== null) msg += ` · נשארו כ־${roundSecondsLeft} שניות.`;
         hostRoundStatusPlayerEl.innerHTML = msg;
-
-        if (roundSecondsLeft !== null) {
-          hostPlayerBigTimerEl.textContent = "טיימר: " + formatTime(roundSecondsLeft);
-        } else {
-          hostPlayerBigTimerEl.textContent = "טיימר: --:--";
-        }
+        hostPlayerBigTimerEl.textContent = roundSecondsLeft !== null ? "טיימר: " + formatTime(roundSecondsLeft) : "טיימר: --:--";
 
         hostIsCurrentExplainer = (r.explainerId && r.explainerId === hostPlayerClientId);
-
         if (hostIsCurrentExplainer) {
           const roundKey = String(r.startedAt || "") + "|" + String(r.teamId || "");
           if (roundKey !== hostLastRoundKey) {
@@ -961,106 +912,61 @@
             hostCurrentWord = null;
             hostCurrentCategory = "";
           }
-          if (!hostCurrentWord) {
-            requestNextWordForHost();
-          } else {
-            updateHostPresenterUI();
-          }
+          if (!hostCurrentWord) requestNextWordForHost();
+          else updateHostPresenterUI();
         } else {
           hostPresenterSection.classList.add("hidden");
         }
       } else {
-        hostRoundStatusPlayerEl.textContent =
-          "כרגע אין סיבוב פעיל. חכו שמנהל המשחק יתחיל סיבוב חדש.";
+        hostRoundStatusPlayerEl.textContent = "כרגע אין סיבוב פעיל. הפעל סיבוב כדי להתחיל!";
         hostPlayerBigTimerEl.textContent = "טיימר: --:--";
         hostIsCurrentExplainer = false;
         hostPresenterSection.classList.add("hidden");
       }
     }
 
-    // כפתורים של המסביר
     if (hostBtnCorrect) {
       hostBtnCorrect.addEventListener("click", () => {
         if (!currentGameCode || !hostIsCurrentExplainer) return;
-        socket.emit(
-          "changeRoundScore",
-          { gameCode: currentGameCode, delta: +1 },
-          () => { requestNextWordForHost(); }
-        );
+        socket.emit("changeRoundScore", { gameCode: currentGameCode, delta: +1 }, () => { requestNextWordForHost(); });
       });
     }
     if (hostBtnSkip) {
       hostBtnSkip.addEventListener("click", () => {
         if (!currentGameCode || !hostIsCurrentExplainer) return;
-        socket.emit(
-          "changeRoundScore",
-          { gameCode: currentGameCode, delta: -1 },
-          () => { requestNextWordForHost(); }
-        );
+        socket.emit("changeRoundScore", { gameCode: currentGameCode, delta: -1 }, () => { requestNextWordForHost(); });
       });
     }
 
-    // -----------------------------------------
-    // renderGameState (מנהל + עדכון לשחקן-מנהל)
-    // -----------------------------------------
     function renderGameState(game) {
       lastGameState = game;
 
       if (!game) {
         if (gameCodeRow) gameCodeRow.style.display = "none";
-        if (gameCodeDisplay) gameCodeDisplay.textContent = "";
         if (whatsappInviteBtn) whatsappInviteBtn.disabled = true;
         if (endGameBtn) endGameBtn.disabled = true;
-        scoreboardEl.innerHTML = "";
-        playersByTeamEl.innerHTML = "";
-        scoreTargetEl.textContent = "";
-        if (roundStatusEl) roundStatusEl.textContent = "";
         updateTimerFromGame(null);
-
-        if (hostPlayerTeamSelect) {
-          hostPlayerTeamSelect.innerHTML = '<option value="">בחירת קבוצה...</option>';
-        }
-        if (isHostAlsoPlayer) {
-          renderGameStateForHostPlayer(null);
-        }
+        if (isHostAlsoPlayer) renderGameStateForHostPlayer(null);
         return;
       }
 
-      if (game.code) {
-        currentGameCode = game.code;
-      }
+      if (game.code) currentGameCode = game.code;
 
       if (gameCodeRow) gameCodeRow.style.display = "block";
-      if (gameCodeDisplay && currentGameCode) {
-        gameCodeDisplay.textContent = "קוד המשחק: " + currentGameCode;
-      }
-      if (whatsappInviteBtn && currentGameCode) {
-        whatsappInviteBtn.disabled = false;
-      }
+      if (gameCodeDisplay) gameCodeDisplay.textContent = "קוד המשחק: " + currentGameCode;
+      if (whatsappInviteBtn) whatsappInviteBtn.disabled = false;
       if (endGameBtn) endGameBtn.disabled = false;
 
-      if (scoreTargetEl) {
-        scoreTargetEl.textContent = game.targetScore
-          ? `משחק עד ${game.targetScore} נקודות`
-          : "";
-      }
+      if (scoreTargetEl) scoreTargetEl.textContent = game.targetScore ? `משחק עד ${game.targetScore} נקודות` : "";
 
       if (scoreboardEl && game.teams) {
         scoreboardEl.innerHTML = "";
         Object.entries(game.teams).forEach(([teamId, team]) => {
           const row = document.createElement("div");
-          row.className = "team-row";
-          row.style.display = "flex";
-          row.style.justifyContent = "space-between";
-          row.style.alignItems = "center";
-          row.style.padding = "6px 0";
-
-          const nameSpan = document.createElement("span");
-          nameSpan.textContent = team.name || `קבוצה ${teamId}`;
-          const scoreSpan = document.createElement("span");
-          scoreSpan.textContent = team.score || 0;
-          row.appendChild(nameSpan);
-          row.appendChild(scoreSpan);
+          row.style.display = "flex"; row.style.justifyContent = "space-between"; row.style.padding = "6px 0";
+          const nameSpan = document.createElement("span"); nameSpan.textContent = team.name || `קבוצה ${teamId}`;
+          const scoreSpan = document.createElement("span"); scoreSpan.textContent = team.score || 0;
+          row.appendChild(nameSpan); row.appendChild(scoreSpan);
           scoreboardEl.appendChild(row);
         });
       }
@@ -1069,38 +975,21 @@
         playersByTeamEl.innerHTML = "";
         const playersMap = game.players || game.playersByClientId || {};
         Object.entries(game.teams).forEach(([teamId, team]) => {
-          const wrapper = document.createElement("div");
-          wrapper.style.marginBottom = "8px";
-
-          const title = document.createElement("div");
-          title.textContent = (team.name || `קבוצה ${teamId}`) + ":";
-          title.style.fontWeight = "600";
-          title.style.marginBottom = "2px";
+          const wrapper = document.createElement("div"); wrapper.style.marginBottom = "8px";
+          const title = document.createElement("div"); title.textContent = (team.name || `קבוצה ${teamId}`) + ":"; title.style.fontWeight = "600";
           wrapper.appendChild(title);
-
           const list = document.createElement("div");
-          list.className = "team-players";
-
           if (Array.isArray(team.players) && team.players.length) {
             team.players.forEach((cid) => {
               const p = playersMap[cid];
-              const name = (p && p.name) ? p.name : cid;
-              const pill = document.createElement("span");
-              pill.className = "player-pill";
-              pill.innerHTML = `
-                <span>${name}</span>
-                <button type="button" class="remove-player-btn" data-client-id="${cid}">✖</button>
-              `;
+              const pill = document.createElement("span"); pill.className = "player-pill";
+              pill.innerHTML = `<span>${(p && p.name) ? p.name : cid}</span><button class="remove-player-btn" data-client-id="${cid}">✖</button>`;
               list.appendChild(pill);
             });
-          } else {
-            list.textContent = "—";
-          }
-
+          } else { list.textContent = "—"; }
           wrapper.appendChild(list);
           playersByTeamEl.appendChild(wrapper);
         });
-
         attachRemovePlayerHandlers();
       }
 
@@ -1108,274 +997,118 @@
         const r = game.currentRound;
         if (r && r.teamId) {
           const t = game.teams && game.teams[r.teamId];
-          const teamName = t ? (t.name || `קבוצה ${r.teamId}`) : "";
-          const explainerName = r.explainerName || "";
-          let msg =
-            `סיבוב לקבוצה: ${teamName}` +
-            (explainerName ? ` · מסביר: ${explainerName}` : "");
-          if (typeof r.roundScore === "number") {
-            msg += ` · ניקוד בסיבוב: ${r.roundScore}`;
-          }
-          roundStatusEl.innerHTML = msg;
+          roundStatusEl.innerHTML = `סיבוב לקבוצה: ${t ? t.name : r.teamId} ` + (r.explainerName ? ` · מסביר: ${r.explainerName}` : "");
         } else {
           roundStatusEl.textContent = "אין סיבוב פעיל כרגע.";
         }
       }
 
-      if (roundTeamSelect) {
-        const oldValue = roundTeamSelect.value;
-        roundTeamSelect.innerHTML = '<option value="">בחר קבוצה...</option>';
+      // סנכרון רשימות הקבוצות 
+      const syncTeamSelects = (selectEl) => {
+        if (!selectEl) return;
+        const oldVal = selectEl.value;
+        selectEl.innerHTML = '<option value="">בחר קבוצה...</option>';
         if (game.teams) {
           Object.entries(game.teams).forEach(([teamId, team]) => {
             const opt = document.createElement("option");
-            opt.value = teamId;
-            opt.textContent = team.name || `קבוצה ${teamId}`;
-            roundTeamSelect.appendChild(opt);
+            opt.value = teamId; opt.textContent = team.name || `קבוצה ${teamId}`;
+            selectEl.appendChild(opt);
           });
         }
-        let selectedTeamId = oldValue;
-        if (!selectedTeamId) {
-          const teamIds = Object.keys(game.teams || {});
-          if (teamIds.length > 0) selectedTeamId = teamIds[0];
-        }
-        if (selectedTeamId && game.teams && game.teams[selectedTeamId]) {
-          roundTeamSelect.value = selectedTeamId;
-        }
-      }
+        if (oldVal && game.teams && game.teams[oldVal]) selectEl.value = oldVal;
+        else if (Object.keys(game.teams || {}).length > 0) selectEl.value = Object.keys(game.teams)[0];
+      };
 
-      if (inviteTeamSelect) {
-        const oldInvite = inviteTeamSelect.value;
-        inviteTeamSelect.innerHTML = '<option value="">בחר קבוצה...</option>';
-        if (game.teams) {
-          Object.entries(game.teams).forEach(([teamId, team]) => {
-            const opt = document.createElement("option");
-            opt.value = teamId;
-            opt.textContent = team.name || `קבוצה ${teamId}`;
-            inviteTeamSelect.appendChild(opt);
-          });
-        }
-        if (oldInvite && game.teams && game.teams[oldInvite]) {
-          inviteTeamSelect.value = oldInvite;
-        }
-      }
-
-      if (hostPlayerTeamSelect) {
-        const oldHostTeam = hostPlayerTeamSelect.value;
-        hostPlayerTeamSelect.innerHTML = '<option value="">בחירת קבוצה...</option>';
-        if (game.teams) {
-          Object.entries(game.teams).forEach(([teamId, team]) => {
-            const opt = document.createElement("option");
-            opt.value = teamId;
-            opt.textContent = team.name || `קבוצה ${teamId}`;
-            hostPlayerTeamSelect.appendChild(opt);
-          });
-        }
-        let selectedHostTeam = oldHostTeam;
-        if (!selectedHostTeam) {
-          const teamIds = Object.keys(game.teams || {});
-          if (teamIds.length > 0) selectedHostTeam = teamIds[0];
-        }
-        if (selectedHostTeam && game.teams && game.teams[selectedHostTeam]) {
-          hostPlayerTeamSelect.value = selectedHostTeam;
-        }
-      }
+      syncTeamSelects(roundTeamSelect);
+      syncTeamSelects(inviteTeamSelect);
+      syncTeamSelects(hostPlayerTeamSelect);
+      syncTeamSelects(quickRoundTeamSelect); // סנכרון התיבה בניהול המהיר
 
       updateTimerFromGame(game);
       refreshExplainerOptions();
 
-      if (isHostAlsoPlayer) {
-        renderGameStateForHostPlayer(game);
-      }
+      if (isHostAlsoPlayer) renderGameStateForHostPlayer(game);
     }
 
-    if (roundTeamSelect) {
-      roundTeamSelect.addEventListener("change", () => {
-        refreshExplainerOptions();
-      });
-    }
+    if (roundTeamSelect) roundTeamSelect.addEventListener("change", refreshExplainerOptions);
 
-    // יצירת משחק
     if (createGameBtn) {
       createGameBtn.addEventListener("click", () => {
         const hostName = (hostNameInput.value || "").trim();
-        if (!hostName) {
-          hostStatus.textContent = "נא להזין שם מנהל.";
-          return;
-        }
-
-        const numTeams = parseInt(numTeamsSelect.value || "2", 10);
-        const targetScore = parseInt(targetScoreInput.value || "30", 10);
-        const roundSeconds = parseInt(roundSecondsInput.value || "60", 10);
+        if (!hostName) return alert("נא להזין שם מנהל.");
         const cats = collectCategories();
+        const teamNames = { A: teamNameAInput.value.trim(), B: teamNameBInput.value.trim(), C: teamNameCInput.value.trim(), D: teamNameDInput.value.trim(), E: teamNameEInput.value.trim() };
 
-        const teamNames = {
-          A: (teamNameAInput.value || "").trim(),
-          B: (teamNameBInput.value || "").trim(),
-          C: (teamNameCInput.value || "").trim(),
-          D: (teamNameDInput.value || "").trim(),
-          E: (teamNameEInput.value || "").trim(),
-        };
-
-        socket.emit(
-          "createGame",
-          {
-            hostName,
-            numTeams,
-            targetScore,
-            roundSeconds,
-            categories: cats,
-            teamNames,
-          },
-          (response) => {
-            if (!response || !response.ok) {
-              hostStatus.textContent =
-                response && response.error
-                  ? response.error
-                  : "שגיאה ביצירת המשחק.";
-              return;
-            }
+        socket.emit("createGame", {
+            hostName, numTeams: parseInt(numTeamsSelect.value || "2", 10), targetScore: parseInt(targetScoreInput.value || "30", 10),
+            roundSeconds: parseInt(roundSecondsInput.value || "60", 10), categories: cats, teamNames
+          }, (response) => {
+            if (!response || !response.ok) return alert(response.error || "שגיאה ביצירת המשחק.");
             currentGameCode = response.gameCode;
             try { localStorage.setItem(LS_HOST_GAME_KEY, currentGameCode); } catch(e) {}
-
-            hostStatus.textContent = `המשחק נוצר! קוד המשחק: ${currentGameCode}`;
-            if (gameCodeRow) gameCodeRow.style.display = "block";
-            if (gameCodeDisplay) gameCodeDisplay.textContent = "קוד המשחק: " + currentGameCode;
-            if (endGameBtn) endGameBtn.disabled = false;
-
-            if (roundSecondsInline) {
-              roundSecondsInline.value = roundSeconds.toString();
-            }
-            if (hostPlayerNameInput && !hostPlayerNameInput.value) {
-              hostPlayerNameInput.value = hostName;
-            }
-
-            if (response.game) {
-              renderGameState(response.game);
-            }
-          }
-        );
+            if (hostPlayerNameInput && !hostPlayerNameInput.value) hostPlayerNameInput.value = hostName;
+            if (response.game) renderGameState(response.game);
+          });
       });
     }
 
-    // סגירת משחק
     if (endGameBtn) {
       endGameBtn.addEventListener("click", () => {
         if (!currentGameCode) return;
         socket.emit("endGame", { gameCode: currentGameCode }, () => {
-          hostStatus.textContent = "המשחק נסגר.";
           currentGameCode = null;
-          try { localStorage.removeItem(LS_HOST_GAME_KEY); } catch(e) {}
+          try { localStorage.removeItem(LS_HOST_GAME_KEY); localStorage.removeItem(LS_HOST_PLAYER_INFO); } catch(e) {}
           renderGameState(null);
         });
       });
     }
 
-    // התחלת סיבוב
+    // התחלת סיבוב (מסך ראשי)
     if (startRoundBtn) {
       startRoundBtn.addEventListener("click", () => {
         if (!currentGameCode) return;
-        const teamId = roundTeamSelect.value;
-        const roundSecondsVal =
-          parseInt(roundSecondsInline.value || roundSecondsInput.value || "60", 10) || 60;
-        const explainerClientId =
-          explainerSelect && explainerSelect.value ? explainerSelect.value : null;
-
-        socket.emit(
-          "startRound",
-          {
-            gameCode: currentGameCode,
-            teamId,
-            roundSeconds: roundSecondsVal,
-            explainerClientId,
-          },
-          (resp) => {
-            if (!resp || !resp.ok) {
-              hostStatus.textContent =
-                resp && resp.error ? resp.error : "שגיאה בהתחלת הסיבוב.";
-              return;
-            }
-            hostStatus.textContent = "הסיבוב התחיל. הטיימר והמצב יתעדכנו לפי השרת.";
-          }
-        );
-      });
-    }
-
-    // סיום סיבוב
-    if (stopRoundBtn) {
-      stopRoundBtn.addEventListener("click", () => {
-        if (!currentGameCode) return;
-        socket.emit("endRound", { gameCode: currentGameCode }, (resp) => {
-          if (resp && !resp.ok) {
-            hostStatus.textContent = resp.error || "שגיאה בסיום הסיבוב.";
-            return;
-          }
-          hostStatus.textContent = "הסיבוב הסתיים.";
+        socket.emit("startRound", { gameCode: currentGameCode, teamId: roundTeamSelect.value, roundSeconds: parseInt(roundSecondsInline.value || roundSecondsInput.value || "60", 10) || 60, explainerClientId: explainerSelect ? explainerSelect.value : null }, (resp) => {
+            if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : "שגיאה בהתחלת הסיבוב.");
         });
       });
     }
 
+    // סיום סיבוב (מסך ראשי)
+    if (stopRoundBtn) stopRoundBtn.addEventListener("click", () => { socket.emit("endRound", { gameCode: currentGameCode }); });
+
+    // התחלת סיבוב (ניהול מהיר - מסך שחקן)
+    if (quickStartRoundBtn) {
+      quickStartRoundBtn.addEventListener("click", () => {
+        if (!currentGameCode) return;
+        const roundSecs = parseInt(roundSecondsInline.value || roundSecondsInput.value || "60", 10) || 60;
+        socket.emit("startRound", { gameCode: currentGameCode, teamId: quickRoundTeamSelect.value, roundSeconds: roundSecs, explainerClientId: null }, (resp) => {
+            if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : "שגיאה בהתחלת הסיבוב.");
+        });
+      });
+    }
+
+    // סיום סיבוב (ניהול מהיר - מסך שחקן)
+    if (quickStopRoundBtn) quickStopRoundBtn.addEventListener("click", () => { socket.emit("endRound", { gameCode: currentGameCode }); });
+
     // הצטרפות המנהל כשחקן
     if (openPlayerViewBtn) {
       openPlayerViewBtn.addEventListener("click", () => {
-        if (!currentGameCode) {
-          alert("אין משחק פעיל כרגע. קודם צור משחק.");
-          return;
-        }
+        if (!currentGameCode) return alert("אין משחק פעיל כרגע. קודם צור משחק.");
+        const name = (hostPlayerNameInput.value || hostNameInput.value).trim();
+        const teamId = hostPlayerTeamSelect.value;
+        if (!name || !teamId) return alert("נא להזין שם ולבחור קבוצה.");
 
-        const name =
-          (hostPlayerNameInput && hostPlayerNameInput.value.trim()) ||
-          (hostNameInput && hostNameInput.value.trim());
-
-        if (!name) {
-          alert("נא להזין שם לשחקן.");
-          return;
-        }
-
-        const teamId = hostPlayerTeamSelect ? hostPlayerTeamSelect.value : "";
-        if (!teamId) {
-          alert("נא לבחור קבוצה.");
-          return;
-        }
-
-        socket.emit(
-          "joinGame",
-          { gameCode: currentGameCode, name, teamId },
-          (resp) => {
-            if (!resp || resp.ok === false) {
-              const err = resp && resp.error ? resp.error : "שגיאה בהצטרפות למשחק.";
-              alert(err);
-              if (playerJoinStatus) playerJoinStatus.textContent = err;
-              return;
-            }
-
+        socket.emit("joinGame", { gameCode: currentGameCode, name, teamId }, (resp) => {
+            if (!resp || resp.ok === false) return alert(resp.error || "שגיאה בהצטרפות למשחק.");
             isHostAlsoPlayer = true;
             hostPlayerClientId = resp.clientId;
             hostPlayerTeamId = resp.teamId || teamId;
-
-            let teamName = hostPlayerTeamId;
-            if (lastGameState && lastGameState.teams && lastGameState.teams[hostPlayerTeamId]) {
-              teamName = lastGameState.teams[hostPlayerTeamId].name || hostPlayerTeamId;
-            }
-
-            if (playerJoinStatus) {
-              playerJoinStatus.textContent =
-                `מעולה! הצטרפת למשחק בקבוצה "${teamName}" בשם "${name}". ` +
-                `תוכל לעבור חופשי בין "מצב מנהל" ל"מצב שחקן (אני)" בלי לאבד את החיבור.`;
-            }
+            
+            // שומרים את נתוני ההצטרפות בשביל ריקונקט עתידי
+            try { localStorage.setItem(LS_HOST_PLAYER_INFO, JSON.stringify({ name, teamId })); } catch(e) {}
 
             hostPlayerGameCard.classList.remove("hidden");
-
-            if (resp.game) {
-              renderGameStateForHostPlayer(resp.game);
-            } else {
-              socket.emit("getGameState", { gameCode: currentGameCode }, (resp2) => {
-                if (resp2 && resp2.ok && resp2.game) {
-                  renderGameStateForHostPlayer(resp2.game);
-                }
-              });
-            }
-
-            // מעבר אוטומטי לטאב השחקן (כולל כפתורים צפים)
+            if (resp.game) renderGameStateForHostPlayer(resp.game);
             switchHostTab('player');
           }
         );
@@ -1385,160 +1118,97 @@
     function buildPlayerInviteLink(teamId, teamName) {
       if (!currentGameCode) return null;
       const origin = window.location.origin;
-      const baseUrl = origin + "/player.html";
       const params = new URLSearchParams();
-      params.set("autoJoin", "1");
-      params.set("code", currentGameCode);
+      params.set("autoJoin", "1"); params.set("code", currentGameCode);
       if (teamId) params.set("teamId", teamId);
       if (teamName) params.set("teamName", teamName);
-      return baseUrl + "?" + params.toString();
+      return origin + "/player.html?" + params.toString();
     }
 
-    // הזמנה לוואטסאפ
     if (whatsappInviteBtn) {
       whatsappInviteBtn.addEventListener("click", () => {
-        if (!currentGameCode) {
-          alert("אין משחק פעיל כרגע.");
-          return;
-        }
-        const teamId = inviteTeamSelect ? inviteTeamSelect.value : "";
-        if (!teamId) {
-          alert("בחר קבוצה להזמנה.");
-          return;
-        }
-
-        const team =
-          lastGameState &&
-          lastGameState.teams &&
-          lastGameState.teams[teamId];
-
-        const teamName = (team && team.name) ? team.name : ("קבוצה " + teamId);
-        const link = buildPlayerInviteLink(teamId, teamName);
-
-        const text =
-          "🔥 יש לנו עכשיו משחק מילמניה חי!\n" +
-          `אתה מוזמן להצטרף לקבוצה "${teamName}".\n` +
-          `קוד המשחק: ${currentGameCode}\n` +
-          "להצטרפות למשחק לחץ על הקישור:\n" +
-          link + "\n\n" +
-          "טיפ: כנס עם שם מצחיק ותתכונן להרבה צחוקים 😄";
-
-        const waUrl = "https://wa.me/?text=" + encodeURIComponent(text);
-        window.open(waUrl, "_blank");
+        if (!currentGameCode || !inviteTeamSelect.value) return alert("בחר קבוצה להזמנה.");
+        const teamId = inviteTeamSelect.value;
+        const team = lastGameState.teams[teamId];
+        const link = buildPlayerInviteLink(teamId, team.name);
+        const text = `🔥 יש לנו עכשיו משחק מילמניה חי!\nאתה מוזמן להצטרף לקבוצה "${team.name}".\nקוד המשחק: ${currentGameCode}\nלהצטרפות לחץ כאן:\n${link}`;
+        window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
       });
     }
 
     // ----------------- Socket events -----------------
-
-    socket.on("gameState", (game) => {
-      renderGameState(game);
-    });
-
-    socket.on("gameUpdated", (game) => {
-      renderGameState(game);
-    });
+    socket.on("gameState", renderGameState);
+    socket.on("gameUpdated", renderGameState);
 
     socket.on("gameEnded", (data) => {
       if (data && data.code && currentGameCode && data.code !== currentGameCode) return;
-      hostStatus.textContent = "המשחק נסגר.";
       currentGameCode = null;
-      try { localStorage.removeItem(LS_HOST_GAME_KEY); } catch(e) {}
+      try { localStorage.removeItem(LS_HOST_GAME_KEY); localStorage.removeItem(LS_HOST_PLAYER_INFO); } catch(e) {}
       renderGameState(null);
     });
 
     socket.on("roundTimeUp", (data) => {
       if (!data) return;
-      const score = typeof data.roundScore === "number" ? data.roundScore : 0;
-
-      let msgLine;
-      if (score <= 5) {
-        msgLine = "אתם צוות חלש, כדאי שתתאמנו יותר";
-      } else if (score <= 10) {
-        msgLine = "אתם צוות נחמד, בטוח שאתם יכולים יותר";
-      } else {
-        msgLine = "אתם צוות על, השארתם להם אבק...";
-      }
-
-      alert("⏱ נגמר הזמן!\n\n" + msgLine + `\n\n(מספר תשובות נכונות בסיבוב: ${score})`);
-
-      // עדכון צד השחקן של המנהל
+      alert("⏱ נגמר הזמן!\n\n(מספר תשובות נכונות בסיבוב: " + (data.roundScore || 0) + ")");
       if (hostPlayerBigTimerEl) hostPlayerBigTimerEl.textContent = "טיימר: --:--";
       hostIsCurrentExplainer = false;
       if (hostPresenterSection) hostPresenterSection.classList.add("hidden");
     });
 
-    // לוגו ובאנר
-    (function loadBrandingForHost() {
-      fetch("/api/banners")
-        .then((res) => res.json())
-        .then((data) => {
-          if (!data) return;
-
-          const logoCfg = data.logo;
-          if (logoCfg && logoCfg.imageUrl && hostLogoEl) {
-            hostLogoEl.src = logoCfg.imageUrl;
-            hostLogoEl.alt = logoCfg.altText || "מילמניה";
-            hostLogoEl.classList.remove("hidden");
-            hostLogoEl.addEventListener("error", () => {
-              hostLogoEl.classList.add("hidden");
-            });
-          }
-
-          if (!hostBannerSlot) return;
-          const cfg = data.host;
-          if (!cfg || !cfg.imageUrl || !cfg.linkUrl) return;
-
-          const a = document.createElement("a");
-          a.href = cfg.linkUrl;
-          a.target = "_blank";
-          a.rel = "noopener";
-
-          const img = document.createElement("img");
-          img.src = cfg.imageUrl;
-          img.alt = cfg.altText || "Banner";
-          img.style.maxWidth = "100%";
-          img.style.borderRadius = "18px";
-          img.style.display = "block";
-          img.style.marginTop = "8px";
-
-          img.addEventListener("error", () => {
-            a.style.display = "none";
-          });
-
-          a.appendChild(img);
-          hostBannerSlot.appendChild(a);
-        })
-        .catch(() => {});
-    })();
-
-    // שחזור חיבור של מנהל למשחק קיים
+    // ----------------- שחזור חיבור (Reconnect) -----------------
+    
+    // כשהדף עולה בפעם הראשונה או מרפרשים את ה-Tab
     (function restoreHostFromStorage() {
       try {
         const storedCode = localStorage.getItem(LS_HOST_GAME_KEY);
         if (!storedCode) return;
-
-        currentGameCode = storedCode;
+        
+        // 1. קודם משחזרים את המנהל
         socket.emit("hostReconnect", { gameCode: storedCode }, (resp) => {
           if (resp && resp.ok && resp.game) {
-            hostStatus.textContent = "שוחזר חיבור למשחק " + storedCode;
+            currentGameCode = storedCode;
             renderGameState(resp.game);
+            
+            // 2. ואז, אם המנהל היה גם שחקן - מחברים אותו אוטומטית בחזרה!
+            const playerInfoStr = localStorage.getItem(LS_HOST_PLAYER_INFO);
+            if (playerInfoStr) {
+               const playerInfo = JSON.parse(playerInfoStr);
+               socket.emit("joinGame", { gameCode: storedCode, name: playerInfo.name, teamId: playerInfo.teamId }, (pResp) => {
+                  if (pResp && pResp.ok) {
+                     isHostAlsoPlayer = true;
+                     hostPlayerClientId = pResp.clientId;
+                     hostPlayerTeamId = pResp.teamId;
+                     if (hostPlayerNameInput) hostPlayerNameInput.value = playerInfo.name;
+                     if (hostPlayerTeamSelect) hostPlayerTeamSelect.value = pResp.teamId;
+                     hostPlayerGameCard.classList.remove("hidden");
+                     // אפשר גם לעבור אוטומטית למסך שחקן:
+                     // switchHostTab('player'); 
+                  }
+               });
+            }
           } else {
             localStorage.removeItem(LS_HOST_GAME_KEY);
+            localStorage.removeItem(LS_HOST_PLAYER_INFO);
           }
         });
       } catch (e) {}
     })();
 
-    // רענון מצב משחק כשחוזרים לטאב
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && currentGameCode) {
-        socket.emit("getGameState", { gameCode: currentGameCode }, (resp) => {
-          if (resp && resp.ok && resp.game) {
-            renderGameState(resp.game);
+    // ניתוקים רגעיים (למשל כשנועלים את הטלפון והסוקט נרדם, ואז מדליקים חזרה)
+    socket.on("connect", () => {
+      // אם כבר היינו מחוברים לחדר ב-Session הנוכחי, נחבר חזרה מאחורי הקלעים
+      if (currentGameCode) {
+        socket.emit("hostReconnect", { gameCode: currentGameCode }, (resp) => {
+          if (resp && resp.ok && isHostAlsoPlayer) {
+            const name = hostPlayerNameInput.value || hostNameInput.value;
+            socket.emit("joinGame", { gameCode: currentGameCode, name, teamId: hostPlayerTeamId }, (pResp) => {
+              if (pResp && pResp.ok) hostPlayerClientId = pResp.clientId;
+            });
           }
         });
       }
     });
+
   </script>
 </body>
 </html>
