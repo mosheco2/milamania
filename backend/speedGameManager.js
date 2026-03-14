@@ -42,6 +42,7 @@ function initSpeedGame(io) {
             }
 
             speedGames[gameCode] = {
+                code: gameCode, // <-- התיקון: שמירת קוד המשחק באובייקט כדי שנוכל לגשת אליו בהמשך
                 hostId: socket.id,
                 hostName: hostName,
                 players: {},
