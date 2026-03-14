@@ -636,32 +636,11 @@
       }
 
       const gameCode = rawCode;
-
-      let existingJoin = null;
-      try {
-        const raw = localStorage.getItem(LOCAL_PLAYER_KEY);
-        existingJoin = raw ? JSON.parse(raw) : null;
-      } catch (e) {
-        existingJoin = null;
-      }
-
-      if (
-        existingJoin &&
-        existingJoin.gameCode === gameCode &&
-        existingJoin.name &&
-        existingJoin.name !== playerName
-      ) {
-        joinStatus.textContent =
-          `בדפדפן הזה כבר הצטרפת למשחק ${gameCode} בשם "${existingJoin.name}". ` +
-          "אי אפשר להצטרף שוב לאותו משחק עם שם אחר מאותו מכשיר.";
-        return;
-      }
-
       const payload = {
         gameCode,
         name: playerName,
         teamId: teamSelect.value || null,
-        teamName: urlParams.get("teamName") || null // התיקון: מעבירים את השם לשרת
+        teamName: urlParams.get("teamName") || null
       };
 
       joinStatus.textContent = "מצטרף למשחק...";
@@ -677,12 +656,15 @@
           return;
         }
 
+        // שמירת נתוני החיבור ל-Reconnect אוטומטי בהמשך
         try {
           localStorage.setItem(
             LOCAL_PLAYER_KEY,
             JSON.stringify({
               gameCode,
               name: playerName,
+              teamId: resp.teamId,
+              teamName: payload.teamName,
               joinedAt: Date.now(),
             })
           );
@@ -738,6 +720,10 @@
       exitGameBtn.addEventListener("click", () => {
         const ok = confirm("לצאת מהמשחק? תוכל להצטרף שוב אחר כך עם אותו קוד.");
         if (!ok) return;
+        
+        // מחיקת הנתונים המקומיים כדי שהדפדפן לא יתחבר שוב אוטומטית
+        try { localStorage.removeItem(LOCAL_PLAYER_KEY); } catch(e) {}
+        
         window.location.href = "home.html";
       });
     }
@@ -758,6 +744,9 @@
 
     socket.on("gameEnded", (data) => {
       if (data && data.code && currentGameCode && data.code !== currentGameCode) return;
+
+      // איפוס הנתונים בסיום המשחק
+      try { localStorage.removeItem(LOCAL_PLAYER_KEY); } catch(e) {}
 
       roundStatusPlayerEl.textContent = "המשחק הסתיים. תודה ששיחקתם! 🎉";
       playerBigTimerEl.textContent = "טיימר: --:--";
@@ -784,6 +773,47 @@
       presenterSection.classList.add("hidden");
     });
 
+    // ----------------- שחזור חיבור אוטומטי (Reconnect) -----------------
+    socket.on("connect", () => {
+      try {
+        const raw = localStorage.getItem(LOCAL_PLAYER_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw);
+          // אם מצאנו נתוני התחברות מהשעות האחרונות, נתחבר חזרה
+          if (saved && saved.gameCode && saved.name) {
+            joinStatus.textContent = "משחזר חיבור למשחק...";
+            
+            socket.emit("joinGame", {
+              gameCode: saved.gameCode,
+              name: saved.name,
+              teamId: saved.teamId || null,
+              teamName: saved.teamName || null
+            }, (resp) => {
+              if (resp && resp.ok) {
+                // התחברנו בהצלחה שוב!
+                myClientId = resp.clientId;
+                currentGameCode = saved.gameCode;
+                myTeamId = resp.teamId || null;
+                
+                joinSection.classList.add("hidden");
+                playerGameCard.classList.remove("hidden");
+                
+                if (resp.game) {
+                  renderGameStateForPlayer(resp.game);
+                }
+              } else {
+                // לא ניתן להתחבר (המשחק נסגר או שגיאה אחרת)
+                localStorage.removeItem(LOCAL_PLAYER_KEY);
+                joinSection.classList.remove("hidden");
+                playerGameCard.classList.add("hidden");
+                joinStatus.textContent = "המשחק כנראה הסתיים או נסגר. אנא הזן קוד מחדש.";
+              }
+            });
+          }
+        }
+      } catch (e) {}
+    });
+
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && currentGameCode) {
         socket.emit("getGameState", { gameCode: currentGameCode }, (resp) => {
@@ -798,7 +828,7 @@
       const code = (urlParams.get("code") || "").toUpperCase();
       const name = urlParams.get("name") || "";
       const teamId = urlParams.get("teamId") || "";
-      const teamNameParam = urlParams.get("teamName") || ""; // התיקון: שליפת השם מה-URL
+      const teamNameParam = urlParams.get("teamName") || ""; 
       const autoJoin = urlParams.get("autoJoin") === "1";
 
       if (code) {
@@ -812,7 +842,6 @@
         teamSelect.innerHTML = "";
         const opt = document.createElement("option");
         opt.value = teamId;
-        // התיקון: הצגת השם המותאם במקום "קבוצה A"
         opt.textContent = teamNameParam ? teamNameParam : "קבוצה " + teamId; 
         teamSelect.appendChild(opt);
         teamSelect.value = teamId;
