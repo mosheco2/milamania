@@ -91,12 +91,12 @@ initDb();
 const games = {};
 const roundTimers = {};
 
-// הגדרות עיצוב גלובליות שנשמרות בזיכרון (מהאדמין)
+// הגדרות עיצוב גלובליות שנשמרות בזיכרון (עבור מסכי הניהול)
 let globalBanners = {};
 let globalSettings = {};
 
 // ----------------------
-//   Word bank (למציג)
+//   Word bank
 // ----------------------
 
 const WORD_BANK = [
@@ -219,6 +219,7 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   const teamId = round.teamId;
   const roundScore = typeof round.roundScore === "number" && round.roundScore > 0 ? round.roundScore : 0;
 
+  // צבירת ניקוד
   if (teamId && game.teams[teamId]) {
     game.teams[teamId].score = (game.teams[teamId].score || 0) + roundScore;
   }
@@ -251,12 +252,14 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   });
 
   if (options.reason === "timer") {
-    const teamName = teamId && game.teams[teamId] ? game.teams[teamId].name : "";
+    // מניעת כפילות - הגדרת teamName פעם אחת באופן מסודר
+    const finalTeamName = teamId && game.teams[teamId] ? game.teams[teamId].name : "";
+    
     io.to("game-" + code).emit("roundTimeUp", { 
       code,
       roundScore,
       teamId,
-      teamName
+      teamName: finalTeamName
     });
   }
 
@@ -270,7 +273,7 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  // --- התיקון: שחזור חיבור למנהל ---
+  // שחזור חיבור מנהל
   socket.on("hostReconnect", (data, callback) => {
     try {
       const code = (data.gameCode || "").toUpperCase().trim();
@@ -290,6 +293,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // יצירת משחק
   socket.on("createGame", async (data, callback) => {
     try {
       const { hostName, targetScore = 40, defaultRoundSeconds = 60, categories = [], teamNames = {} } = data || {};
@@ -339,6 +343,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // הצטרפות משתמש למשחק (כולל שחזור מצב Reconnect)
   socket.on("joinGame", async (data, callback) => {
     try {
       const { gameCode, name, teamId } = data || {};
@@ -358,6 +363,8 @@ io.on("connection", (socket) => {
       }
 
       const clientId = socket.id;
+      
+      // התאמת שם קבוצה מהקישור במידת הצורך
       if (data.teamName && game.teams[chosenTeamId]) {
         game.teams[chosenTeamId].name = data.teamName;
       }
@@ -367,7 +374,7 @@ io.on("connection", (socket) => {
       if (!Array.isArray(game.teams[chosenTeamId].players)) game.teams[chosenTeamId].players = [];
       if (!game.teams[chosenTeamId].players.includes(clientId)) game.teams[chosenTeamId].players.push(clientId);
 
-      // --- התיקון: שחזור תפקיד המסביר אם השחקן חזר (Reconnect) ---
+      // שחזור תפקיד המסביר אם השחקן התנתק וחזר (Reconnect)
       if (
         game.currentRound && 
         game.currentRound.active &&
@@ -377,7 +384,6 @@ io.on("connection", (socket) => {
         console.log(`🔄 Reclaimed explainer role for ${playerName} in game ${code}`);
         game.currentRound.explainerId = clientId;
       }
-      // -------------------------------------------------------------
 
       game.lastActivity = new Date();
       game.updatedAt = new Date();
@@ -402,6 +408,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // הסרת שחקן (ע"י האדמין)
   socket.on("removePlayer", async (data, callback) => {
     try {
       const { gameCode, clientId } = data || {};
@@ -419,8 +426,9 @@ io.on("connection", (socket) => {
         game.teams[teamId].players = game.teams[teamId].players.filter(pId => pId !== clientId);
       }
 
+      // אם האדמין סילק את מי שמסביר עכשיו - מסיימים את הסיבוב
       if (game.currentRound && game.currentRound.explainerId === clientId) {
-        await finishRound(code, { reason: "player_disconnected" }); // אם מנהל העיף – מסיימים סיבוב
+        await finishRound(code, { reason: "player_disconnected" }); 
       } else {
         game.updatedAt = new Date();
         broadcastGame(game);
@@ -432,6 +440,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // התחלת סיבוב
   socket.on("startRound", async (data, callback) => {
     try {
       const { gameCode, teamId, durationSeconds, explainerClientId } = data || {};
@@ -495,6 +504,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // עדכון ניקוד סיבוב
   socket.on("changeRoundScore", (data, callback) => {
     try {
       const { gameCode, delta } = data || {};
@@ -514,6 +524,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // קבלת מילה למסביר
   socket.on("getNextWord", (data, callback) => {
     try {
       const gameCode = (data.gameCode || "").toUpperCase().trim();
@@ -527,6 +538,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // סיום סיבוב ידני
   socket.on("endRound", async (data, callback) => {
     try {
       await finishRound(data.gameCode, { reason: "manual" });
@@ -536,6 +548,42 @@ io.on("connection", (socket) => {
     }
   });
 
+  // עדכון ניקוד קבוצה חופשי ע"י מנהל
+  socket.on("updateScore", async (data, callback) => {
+    try {
+      const { gameCode, teamId, delta } = data || {};
+      const code = (gameCode || "").toUpperCase().trim();
+      const game = games[code];
+
+      if (!game || !game.teams[teamId]) {
+        return callback && callback({ ok: false, error: "המשחק/קבוצה לא נמצאו." });
+      }
+
+      const change = parseInt(delta, 10) || 0;
+      game.teams[teamId].score = Math.max(
+        0,
+        (game.teams[teamId].score || 0) + change
+      );
+      game.updatedAt = new Date();
+      game.lastActivity = new Date();
+
+      if (dbReady && pool) {
+        try {
+          await pool.query(
+            `UPDATE game_teams SET score = $1 WHERE game_code = $2 AND team_id = $3`,
+            [game.teams[teamId].score, code, teamId]);
+        } catch (err) { console.error("Error updating team score:", err); }
+      }
+
+      broadcastGame(game);
+      callback && callback({ ok: true, game: sanitizeGame(game) });
+    } catch (err) {
+      console.error("Error in updateScore:", err);
+      callback && callback({ ok: false, error: "שגיאה בעדכון ניקוד." });
+    }
+  });
+
+  // סיום המשחק
   socket.on("endGame", async (data, callback) => {
     try {
       const code = (data.gameCode || "").toUpperCase().trim();
@@ -572,6 +620,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ניתוק חיבור
   socket.on("disconnect", async () => {
     // מניעת ניתוק המנהל עצמו (Host)
     for (const code of Object.keys(games)) {
@@ -579,6 +628,8 @@ io.on("connection", (socket) => {
     }
 
     try {
+      console.log("Client disconnected:", socket.id);
+
       for (const code of Object.keys(games)) {
         const game = games[code];
         if (!game) continue;
@@ -598,17 +649,18 @@ io.on("connection", (socket) => {
         game.lastActivity = new Date();
         game.updatedAt = new Date();
 
-        // --- התיקון: לא מסיימים את הסיבוב! ---
-        if (
-          game.currentRound &&
-          game.currentRound.explainerId === clientId
-        ) {
-          console.log(`⚠️ Explainer disconnected (game ${code}). Timer continues, waiting for reconnect...`);
-          // רק משדרים מצב חדש למסכים, השרת מחכה שיחזור ויקבל את הטיימר חזרה
-          broadcastGame(game);
-        } else {
-          broadcastGame(game);
+        if (dbReady && pool) {
+          try {
+            await pool.query(`DELETE FROM game_players WHERE game_code = $1 AND client_id = $2`, [code, clientId]);
+          } catch (err) { console.error("Error deleting game player on disconnect:", err); }
         }
+
+        // --- התיקון: לא מסיימים את הסיבוב באגרסיביות! ---
+        if (game.currentRound && game.currentRound.explainerId === clientId) {
+          console.log(`⚠️ Explainer disconnected (game ${code}). Timer continues, waiting for reconnect...`);
+        }
+        
+        broadcastGame(game);
       }
     } catch (err) {
       console.error("Error in disconnect handler:", err);
