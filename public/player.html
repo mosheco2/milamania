@@ -257,8 +257,8 @@
         <div class="page-header-main">
           <img id="playerLogo" class="logo-small hidden" alt="מילמניה לוגו" />
           <div>
-            <div class="chip">מילמניה · מסך שחקן 🎮</div>
-            <h1 style="margin:4px 0 0;">ברוכים הבאים למשחק</h1>
+            <div class="chip" id="mainChip">מילמניה · מסך שחקן 🎮</div>
+            <h1 id="mainTitle" style="margin:4px 0 0;">ברוכים הבאים למשחק</h1>
           </div>
         </div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
@@ -359,6 +359,41 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    // --- מערכת מיתוג ועיצוב (SaaS) מתוקנת לשחקן ---
+    (function applyBrandingFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const customTitle = urlParams.get('title');
+      const customLogo = urlParams.get('logo');
+      const customColor = urlParams.get('color');
+
+      if (customTitle) {
+        document.title = customTitle + " - מסך שחקן";
+        const mainTitleEl = document.getElementById('mainTitle');
+        if (mainTitleEl) mainTitleEl.textContent = "ברוכים הבאים למשחק " + customTitle;
+        const chipEl = document.getElementById('mainChip');
+        if (chipEl) chipEl.textContent = customTitle + " · מסך שחקן 🎮";
+      }
+
+      if (customLogo) {
+        const logoEl = document.getElementById('playerLogo');
+        if (logoEl) {
+          logoEl.src = customLogo;
+          logoEl.classList.remove('hidden');
+        }
+      }
+
+      if (customColor) {
+        const hex = customColor.startsWith('#') ? customColor : '#' + customColor;
+        const style = document.createElement('style');
+        style.innerHTML = `
+          body::before { background: radial-gradient(circle at center, ${hex}4D, transparent 60%) !important; }
+          .btn-primary { background: linear-gradient(135deg, ${hex}, #F7C948) !important; box-shadow: 0 10px 25px ${hex}59 !important; border-color: ${hex} !important; }
+          #playerBigTimer { color: ${hex} !important; }
+        `;
+        document.head.appendChild(style);
+      }
+    })();
+
     const socket = io();
 
     const LOCAL_PLAYER_KEY = "millmania-player-join";
@@ -418,7 +453,8 @@
         .then((data) => {
           if (!data) return;
 
-          if (data.logo && data.logo.imageUrl && playerLogoEl) {
+          // לא נדרוס את הלוגו אם הוא הוגדר דרך ה-URL הממותג
+          if (!document.getElementById('playerLogo').src && data.logo && data.logo.imageUrl) {
             playerLogoEl.src = data.logo.imageUrl;
             playerLogoEl.alt = data.logo.altText || "מילמניה";
             playerLogoEl.classList.remove("hidden");
@@ -775,7 +811,6 @@
       presenterSection.classList.add("hidden");
     });
 
-    // --- הפופאפ החדש המשודרג עם שם הקבוצה ---
     socket.on("roundTimeUp", (data) => {
       if (!data) return;
       const score = typeof data.roundScore === "number" ? data.roundScore : 0;
