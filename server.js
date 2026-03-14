@@ -252,7 +252,7 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
   });
 
   if (options.reason === "timer") {
-    // מניעת כפילות - הגדרת teamName פעם אחת באופן מסודר
+    // שליחת שם הקבוצה לפופאפ סיום הזמן
     const finalTeamName = teamId && game.teams[teamId] ? game.teams[teamId].name : "";
     
     io.to("game-" + code).emit("roundTimeUp", { 
@@ -364,7 +364,6 @@ io.on("connection", (socket) => {
 
       const clientId = socket.id;
       
-      // התאמת שם קבוצה מהקישור במידת הצורך
       if (data.teamName && game.teams[chosenTeamId]) {
         game.teams[chosenTeamId].name = data.teamName;
       }
@@ -374,7 +373,7 @@ io.on("connection", (socket) => {
       if (!Array.isArray(game.teams[chosenTeamId].players)) game.teams[chosenTeamId].players = [];
       if (!game.teams[chosenTeamId].players.includes(clientId)) game.teams[chosenTeamId].players.push(clientId);
 
-      // שחזור תפקיד המסביר אם השחקן התנתק וחזר (Reconnect)
+      // שחזור תפקיד המסביר אם השחקן התנתק וחזר
       if (
         game.currentRound && 
         game.currentRound.active &&
@@ -408,7 +407,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // הסרת שחקן (ע"י האדמין)
+  // הסרת שחקן
   socket.on("removePlayer", async (data, callback) => {
     try {
       const { gameCode, clientId } = data || {};
@@ -426,7 +425,6 @@ io.on("connection", (socket) => {
         game.teams[teamId].players = game.teams[teamId].players.filter(pId => pId !== clientId);
       }
 
-      // אם האדמין סילק את מי שמסביר עכשיו - מסיימים את הסיבוב
       if (game.currentRound && game.currentRound.explainerId === clientId) {
         await finishRound(code, { reason: "player_disconnected" }); 
       } else {
@@ -548,7 +546,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // עדכון ניקוד קבוצה חופשי ע"י מנהל
+  // עדכון ניקוד קבוצה חופשי
   socket.on("updateScore", async (data, callback) => {
     try {
       const { gameCode, teamId, delta } = data || {};
@@ -628,8 +626,6 @@ io.on("connection", (socket) => {
     }
 
     try {
-      console.log("Client disconnected:", socket.id);
-
       for (const code of Object.keys(games)) {
         const game = games[code];
         if (!game) continue;
@@ -655,7 +651,6 @@ io.on("connection", (socket) => {
           } catch (err) { console.error("Error deleting game player on disconnect:", err); }
         }
 
-        // --- התיקון: לא מסיימים את הסיבוב באגרסיביות! ---
         if (game.currentRound && game.currentRound.explainerId === clientId) {
           console.log(`⚠️ Explainer disconnected (game ${code}). Timer continues, waiting for reconnect...`);
         }
@@ -801,6 +796,44 @@ app.post("/admin/game/:gameCode/close", async (req, res) => {
     io.to("game-" + code).emit("gameEnded", { code });
     res.json({ ok: true });
   } catch (err) {
+    res.status(500).json({ ok: false, error: "Server error" });
+  }
+});
+
+// --- הוספת נתיב: שינוי שם קבוצה ע"י אדמין ראשי ---
+app.post("/admin/game/:gameCode/team", async (req, res) => {
+  try {
+    const adminCode = req.query.code || "";
+    if (adminCode !== ADMIN_CODE) return res.status(403).json({ ok: false, error: "Forbidden" });
+
+    const code = (req.params.gameCode || "").toUpperCase().trim();
+    const { teamId, newName } = req.body || {};
+
+    if (!games[code]) return res.status(404).json({ ok: false, error: "Game not found." });
+    if (!teamId || !newName) return res.status(400).json({ ok: false, error: "Missing parameters." });
+    if (!games[code].teams[teamId]) return res.status(404).json({ ok: false, error: "Team not found." });
+
+    // עדכון בזיכרון
+    games[code].teams[teamId].name = newName.trim();
+    games[code].updatedAt = new Date();
+
+    // עדכון במסד הנתונים
+    if (dbReady && pool) {
+      try {
+        await pool.query(
+          `UPDATE game_teams SET team_name = $1 WHERE game_code = $2 AND team_id = $3`,
+          [newName.trim(), code, teamId]
+        );
+      } catch (err) {
+        console.error("Error renaming team in DB:", err);
+      }
+    }
+
+    // שידור למסכים
+    broadcastGame(games[code]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Error renaming team:", err);
     res.status(500).json({ ok: false, error: "Server error" });
   }
 });
