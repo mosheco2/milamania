@@ -252,7 +252,6 @@
 </head>
 <body>
   <div class="app">
-    <!-- כותרת עליונה -->
     <div class="card">
       <div class="page-header">
         <div class="page-header-main">
@@ -273,7 +272,6 @@
       </p>
     </div>
 
-    <!-- הצטרפות למשחק -->
     <div class="card" id="joinSection">
       <h3 style="margin:0 0 8px;">הצטרפות למשחק</h3>
 
@@ -304,7 +302,6 @@
       <div id="joinStatus" class="status-text" style="margin-top:8px;"></div>
     </div>
 
-    <!-- אחרי הצטרפות למשחק -->
     <div class="card hidden" id="playerGameCard">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <h3 style="margin:0 0 6px;">מצב המשחק שלי</h3>
@@ -341,7 +338,6 @@
       <div id="roundStatusPlayer" class="status-text"></div>
       <div id="playerBigTimer">טיימר: --:--</div>
 
-      <!-- מסך מציג למסביר -->
       <div id="presenterSection" class="hidden" style="margin-top:12px; padding-top:8px; border-top:1px dashed rgba(180,169,214,0.6);">
         <div class="team-block-title" style="text-align:center; margin-bottom:4px;">
           אתה המסביר בסיבוב הזה! 🗣️
@@ -665,6 +661,7 @@
         gameCode,
         name: playerName,
         teamId: teamSelect.value || null,
+        teamName: urlParams.get("teamName") || null // התיקון: מעבירים את השם לשרת
       };
 
       joinStatus.textContent = "מצטרף למשחק...";
@@ -801,6 +798,7 @@
       const code = (urlParams.get("code") || "").toUpperCase();
       const name = urlParams.get("name") || "";
       const teamId = urlParams.get("teamId") || "";
+      const teamNameParam = urlParams.get("teamName") || ""; // התיקון: שליפת השם מה-URL
       const autoJoin = urlParams.get("autoJoin") === "1";
 
       if (code) {
@@ -814,12 +812,13 @@
         teamSelect.innerHTML = "";
         const opt = document.createElement("option");
         opt.value = teamId;
-        opt.textContent = "קבוצה " + teamId;
+        // התיקון: הצגת השם המותאם במקום "קבוצה A"
+        opt.textContent = teamNameParam ? teamNameParam : "קבוצה " + teamId; 
         teamSelect.appendChild(opt);
         teamSelect.value = teamId;
         inviteInfo.style.display = "block";
         inviteInfo.textContent =
-          `קיבלת הזמנה להצטרף לקבוצה "${teamId}".`;
+          `קיבלת הזמנה להצטרף לקבוצה "${teamNameParam || teamId}".`;
       }
 
       if (autoJoin && code && name) {
