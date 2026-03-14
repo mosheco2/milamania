@@ -1,3 +1,4 @@
+<style>.btn-whatsapp{background:#25D366;color:white !important;}</style>
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -534,15 +535,24 @@
           <div style="font-weight:700; font-size:0.95rem; margin-bottom:8px; color:#F84779;">
             ניהול משחק מהיר (כוחות מנהל) 👑
           </div>
-          <div class="row" style="margin-bottom:0;">
+          
+          <div class="row" style="margin-bottom:6px;">
             <div style="flex:1;">
-              <select id="quickRoundTeamSelect" style="padding:8px; font-size:0.9rem;">
+              <select id="quickRoundTeamSelect" style="padding:8px; font-size:0.9rem; width:100%;">
                 <option value="">בחר קבוצה לסיבוב...</option>
               </select>
             </div>
+            <div style="flex:1;">
+              <select id="quickExplainerSelect" style="padding:8px; font-size:0.9rem; width:100%;">
+                <option value="">מסביר (בחירה אוטומטית)</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom:0;">
             <div style="display:flex; gap:6px; flex:1;">
-              <button id="quickStartRoundBtn" class="btn btn-success btn-small" style="flex:1;">התחל</button>
-              <button id="quickStopRoundBtn" class="btn btn-danger btn-small" style="flex:1;" disabled>סיים</button>
+              <button id="quickStartRoundBtn" class="btn btn-success btn-small" style="flex:1; font-size:0.9rem; padding:8px;">התחל סיבוב</button>
+              <button id="quickStopRoundBtn" class="btn btn-danger btn-small" style="flex:1; font-size:0.9rem; padding:8px;" disabled>סיים סיבוב</button>
             </div>
           </div>
         </div>
@@ -671,6 +681,7 @@
 
     // אלמנטים ניהול מהיר במצב שחקן
     const quickRoundTeamSelect = document.getElementById("quickRoundTeamSelect");
+    const quickExplainerSelect = document.getElementById("quickExplainerSelect");
     const quickStartRoundBtn = document.getElementById("quickStartRoundBtn");
     const quickStopRoundBtn = document.getElementById("quickStopRoundBtn");
 
@@ -757,23 +768,45 @@
     }
 
     function refreshExplainerOptions() {
-      if (!explainerSelect) return;
-      const teamId = roundTeamSelect.value;
-      explainerSelect.innerHTML = '<option value="">בחירה אוטומטית</option>';
-      if (!teamId || !lastGameState || !lastGameState.teams) return;
+      // עדכון במסך המנהל הראשי
+      if (explainerSelect) {
+        const teamId = roundTeamSelect.value;
+        explainerSelect.innerHTML = '<option value="">בחירה אוטומטית</option>';
+        if (teamId && lastGameState && lastGameState.teams) {
+          const team = lastGameState.teams[teamId];
+          if (team && Array.isArray(team.players)) {
+            const playersMap = lastGameState.players || lastGameState.playersByClientId || {};
+            team.players.forEach((clientId) => {
+              const p = playersMap[clientId];
+              if (!p) return;
+              const opt = document.createElement("option");
+              opt.value = clientId;
+              opt.textContent = p.name || clientId;
+              explainerSelect.appendChild(opt);
+            });
+          }
+        }
+      }
 
-      const team = lastGameState.teams[teamId];
-      if (!team || !Array.isArray(team.players)) return;
-
-      const playersMap = lastGameState.players || lastGameState.playersByClientId || {};
-      team.players.forEach((clientId) => {
-        const p = playersMap[clientId];
-        if (!p) return;
-        const opt = document.createElement("option");
-        opt.value = clientId;
-        opt.textContent = p.name || clientId;
-        explainerSelect.appendChild(opt);
-      });
+      // עדכון בפאנל המהיר (מצב שחקן)
+      if (quickExplainerSelect) {
+        const qTeamId = quickRoundTeamSelect.value;
+        quickExplainerSelect.innerHTML = '<option value="">מסביר (בחירה אוטומטית)</option>';
+        if (qTeamId && lastGameState && lastGameState.teams) {
+          const team = lastGameState.teams[qTeamId];
+          if (team && Array.isArray(team.players)) {
+            const playersMap = lastGameState.players || lastGameState.playersByClientId || {};
+            team.players.forEach((clientId) => {
+              const p = playersMap[clientId];
+              if (!p) return;
+              const opt = document.createElement("option");
+              opt.value = clientId;
+              opt.textContent = p.name || clientId;
+              quickExplainerSelect.appendChild(opt);
+            });
+          }
+        }
+      }
     }
 
     function attachRemovePlayerHandlers() {
@@ -1031,6 +1064,7 @@
     }
 
     if (roundTeamSelect) roundTeamSelect.addEventListener("change", refreshExplainerOptions);
+    if (quickRoundTeamSelect) quickRoundTeamSelect.addEventListener("change", refreshExplainerOptions);
 
     if (createGameBtn) {
       createGameBtn.addEventListener("click", () => {
@@ -1081,7 +1115,8 @@
       quickStartRoundBtn.addEventListener("click", () => {
         if (!currentGameCode) return;
         const roundSecs = parseInt(roundSecondsInline.value || roundSecondsInput.value || "60", 10) || 60;
-        socket.emit("startRound", { gameCode: currentGameCode, teamId: quickRoundTeamSelect.value, roundSeconds: roundSecs, explainerClientId: null }, (resp) => {
+        const explainerId = quickExplainerSelect ? quickExplainerSelect.value : null;
+        socket.emit("startRound", { gameCode: currentGameCode, teamId: quickRoundTeamSelect.value, roundSeconds: roundSecs, explainerClientId: explainerId }, (resp) => {
             if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : "שגיאה בהתחלת הסיבוב.");
         });
       });
@@ -1149,7 +1184,19 @@
 
     socket.on("roundTimeUp", (data) => {
       if (!data) return;
-      alert("⏱ נגמר הזמן!\n\n(מספר תשובות נכונות בסיבוב: " + (data.roundScore || 0) + ")");
+      const score = typeof data.roundScore === "number" ? data.roundScore : 0;
+
+      let msgLine;
+      if (score <= 5) {
+        msgLine = "אתם צוות חלש, כדאי שתתאמנו יותר";
+      } else if (score <= 10) {
+        msgLine = "אתם צוות נחמד, בטוח שאתם יכולים יותר";
+      } else {
+        msgLine = "אתם צוות על, השארתם להם אבק...";
+      }
+
+      alert("⏱ נגמר הזמן!\n\n" + msgLine + `\n\n(מספר תשובות נכונות בסיבוב: ${score})`);
+      
       if (hostPlayerBigTimerEl) hostPlayerBigTimerEl.textContent = "טיימר: --:--";
       hostIsCurrentExplainer = false;
       if (hostPresenterSection) hostPresenterSection.classList.add("hidden");
@@ -1181,8 +1228,6 @@
                      if (hostPlayerNameInput) hostPlayerNameInput.value = playerInfo.name;
                      if (hostPlayerTeamSelect) hostPlayerTeamSelect.value = pResp.teamId;
                      hostPlayerGameCard.classList.remove("hidden");
-                     // אפשר גם לעבור אוטומטית למסך שחקן:
-                     // switchHostTab('player'); 
                   }
                });
             }
