@@ -90,34 +90,34 @@ initDb();
 
 /**
  * games[code] = {
- *   code,
- *   hostSocketId,
- *   hostName,
- *   targetScore,
- *   defaultRoundSeconds,
- *   categories,
- *   createdAt,
- *   updatedAt,
- *   lastActivity,
- *   logoUrl,
- *   banners,
- *   teams: {
- *     A: { id: "A", name, score, players: [clientId, ...] },
- *     ...
- *   },
- *   playersByClientId: {
- *     clientId: { clientId, name, teamId }
- *   },
- *   currentRound: {
- *     teamId,
- *     explainerId,
- *     explainerName,
- *     secondsLeft,
- *     active,
- *     isActive,
- *     roundScore,
- *     startedAt
- *   }
+ * code,
+ * hostSocketId,
+ * hostName,
+ * targetScore,
+ * defaultRoundSeconds,
+ * categories,
+ * createdAt,
+ * updatedAt,
+ * lastActivity,
+ * logoUrl,
+ * banners,
+ * teams: {
+ * A: { id: "A", name, score, players: [clientId, ...] },
+ * ...
+ * },
+ * playersByClientId: {
+ * clientId: { clientId, name, teamId }
+ * },
+ * currentRound: {
+ * teamId,
+ * explainerId,
+ * explainerName,
+ * secondsLeft,
+ * active,
+ * isActive,
+ * roundScore,
+ * startedAt
+ * }
  * }
  */
 const games = {};
@@ -301,16 +301,12 @@ async function finishRound(gameCode, options = { reason: "manual" }) {
 
   // תאימות לפופ־אפ של סוף זמן – host + player משתמשים ב־roundTimeUp
   if (options.reason === "timer") {
-    const teamName =
-      teamId && game.teams[teamId] ? game.teams[teamId].name : null;
-
-    // --- סעיף 3: שליחת שם קבוצה לפופאפ סיום ---
-      const teamName = teamId && game.teams[teamId] ? game.teams[teamId].name : "";
-      io.to("game-" + code).emit("roundTimeUp", { teamName, 
+    const teamName = teamId && game.teams[teamId] ? game.teams[teamId].name : "";
+    io.to("game-" + code).emit("roundTimeUp", { 
       code,
       roundScore,
       teamId,
-      teamName,
+      teamName
     });
   }
 
@@ -453,7 +449,6 @@ io.on("connection", (socket) => {
       if (data.teamName && game.teams[chosenTeamId]) {
         game.teams[chosenTeamId].name = data.teamName;
       }
-
 
       game.playersByClientId[clientId] = {
         clientId,
@@ -859,11 +854,6 @@ io.on("connection", (socket) => {
         if (!player) continue;
 
         const clientId = socket.id;
-      // --- סעיף 1: התאמת שם קבוצה מהקישור ---
-      if (data.teamName && game.teams[chosenTeamId]) {
-        game.teams[chosenTeamId].name = data.teamName;
-      }
-
         const teamId = player.teamId;
 
         delete game.playersByClientId[clientId];
