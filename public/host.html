@@ -1,4 +1,3 @@
-<style>.btn-whatsapp{background:#25D366;color:white !important;}</style>
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -137,6 +136,10 @@
     .btn-danger:hover {
       transform: translateY(-1px);
       box-shadow: 0 14px 32px rgba(239, 68, 68, 0.5);
+    }
+    .btn-whatsapp { 
+      background: #25D366; 
+      color: white !important; 
     }
     .btn-ghost {
       background: transparent;
@@ -303,7 +306,6 @@
 </head>
 <body>
   <div class="app">
-    <!-- כותרת עליונה -->
     <div class="card" id="hostTop">
       <div class="page-header">
         <div class="page-header-main">
@@ -331,7 +333,6 @@
       </p>
     </div>
 
-    <!-- מצב מנהל -->
     <div id="hostMode">
       <div class="card">
         <div class="row">
@@ -501,9 +502,7 @@
       </div>
     </div>
 
-    <!-- מצב שחקן עבור המנהל – באותו דף עם אותו socket -->
     <div id="playerMode" class="hidden">
-      <!-- כרטיס הגדרות שחקן -->
       <div class="card">
         <h3 style="margin:0 0 6px;">אני כשחקן</h3>
         <p class="status-text" style="margin-bottom:8px;">
@@ -531,7 +530,6 @@
         <div id="playerJoinStatus" class="status-text" style="margin-top:8px;"></div>
       </div>
 
-      <!-- כרטיס מצב שחקן מלא (כמו player.html) -->
       <div class="card hidden" id="hostPlayerGameCard">
         <h3 style="margin:0 0 6px;">מצב המשחק שלי</h3>
 
@@ -562,7 +560,6 @@
         <div id="hostRoundStatusPlayer" class="status-text"></div>
         <div id="hostPlayerBigTimer">טיימר: --:--</div>
 
-        <!-- מסך המסביר -->
         <div id="hostPresenterSection" class="hidden" style="margin-top:12px; padding-top:8px; border-top:1px dashed rgba(180,169,214,0.6);">
           <div style="font-weight:600; font-size:0.95rem; text-align:center; margin-bottom:4px; color:#433362;">
             אתה המסביר בסיבוב הזה! 🗣️
@@ -579,6 +576,31 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div id="floating-buttons" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 999;">
+    <button id="floatingToPlayer" class="btn-gradient-player" style="
+      display:block;
+      margin-bottom:10px;
+      padding:14px 26px;
+      font-size:1rem;
+      border-radius:50px;
+      border:0;
+      color:white;
+      background: linear-gradient(90deg, #FF7AB6, #A450FF);
+      box-shadow:0 6px 18px rgba(0,0,0,0.2);
+    ">🎮 מעבר למצב שחקן</button>
+
+    <button id="floatingToHost" class="btn-gradient-host hidden" style="
+      display:block;
+      padding:14px 26px;
+      font-size:1rem;
+      border-radius:50px;
+      border:0;
+      color:white;
+      background: linear-gradient(90deg, #FFD76F, #FF6F91);
+      box-shadow:0 6px 18px rgba(0,0,0,0.2);
+    ">👑 מעבר למצב מנהל</button>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -630,6 +652,10 @@
     const tabPlayer = document.getElementById("tabPlayer");
     const hostMode = document.getElementById("hostMode");
     const playerMode = document.getElementById("playerMode");
+    
+    // כפתורים צפים
+    const floatingToPlayer = document.getElementById("floatingToPlayer");
+    const floatingToHost = document.getElementById("floatingToHost");
 
     // מצב שחקן (אני)
     const hostPlayerNameInput = document.getElementById("hostPlayerName");
@@ -658,6 +684,33 @@
     let hostCurrentCategory = "";
     let hostLastRoundKey = null;
     let hostIsCurrentExplainer = false;
+
+    // --- מעבר טאבים מאוחד (עליון + צף) ---
+    function switchHostTab(mode) {
+      if (mode === 'player') {
+        if(tabPlayer) tabPlayer.classList.add("active");
+        if(tabHost) tabHost.classList.remove("active");
+        if(hostMode) hostMode.classList.add("hidden");
+        if(playerMode) playerMode.classList.remove("hidden");
+        if(floatingToPlayer) floatingToPlayer.classList.add("hidden");
+        if(floatingToHost) floatingToHost.classList.remove("hidden");
+      } else {
+        if(tabHost) tabHost.classList.add("active");
+        if(tabPlayer) tabPlayer.classList.remove("active");
+        if(hostMode) hostMode.classList.remove("hidden");
+        if(playerMode) playerMode.classList.add("hidden");
+        if(floatingToPlayer) floatingToPlayer.classList.remove("hidden");
+        if(floatingToHost) floatingToHost.classList.add("hidden");
+      }
+    }
+
+    if (tabHost && tabPlayer) {
+      tabHost.addEventListener("click", () => switchHostTab('host'));
+      tabPlayer.addEventListener("click", () => switchHostTab('player'));
+    }
+    if (floatingToPlayer) floatingToPlayer.addEventListener("click", () => switchHostTab('player'));
+    if (floatingToHost) floatingToHost.addEventListener("click", () => switchHostTab('host'));
+    // -------------------------------------
 
     function formatTime(seconds) {
       const s = Math.max(0, Math.floor(seconds || 0));
@@ -1261,23 +1314,6 @@
       });
     }
 
-    // מעבר בין טאב מנהל לטאב שחקן (אני)
-    if (tabHost && tabPlayer && hostMode && playerMode) {
-      tabHost.addEventListener("click", () => {
-        tabHost.classList.add("active");
-        tabPlayer.classList.remove("active");
-        hostMode.classList.remove("hidden");
-        playerMode.classList.add("hidden");
-      });
-
-      tabPlayer.addEventListener("click", () => {
-        tabPlayer.classList.add("active");
-        tabHost.classList.remove("active");
-        hostMode.classList.add("hidden");
-        playerMode.classList.remove("hidden");
-      });
-    }
-
     // הצטרפות המנהל כשחקן
     if (openPlayerViewBtn) {
       openPlayerViewBtn.addEventListener("click", () => {
@@ -1339,13 +1375,8 @@
               });
             }
 
-            // מעבר אוטומטי לטאב השחקן
-            if (tabPlayer && tabHost && hostMode && playerMode) {
-              tabPlayer.classList.add("active");
-              tabHost.classList.remove("active");
-              hostMode.classList.add("hidden");
-              playerMode.classList.remove("hidden");
-            }
+            // מעבר אוטומטי לטאב השחקן (כולל כפתורים צפים)
+            switchHostTab('player');
           }
         );
       });
@@ -1423,7 +1454,7 @@
       if (score <= 5) {
         msgLine = "אתם צוות חלש, כדאי שתתאמנו יותר";
       } else if (score <= 10) {
-        msgLine = "אתכם צוות נחמד, בטוח שאתם יכולים יותר";
+        msgLine = "אתם צוות נחמד, בטוח שאתם יכולים יותר";
       } else {
         msgLine = "אתם צוות על, השארתם להם אבק...";
       }
@@ -1509,56 +1540,5 @@
       }
     });
   </script>
-
-<!-- Floating buttons -->
-<div id="floating-buttons" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 999;">
-  <button id="floatingToPlayer" class="btn-gradient-player" style="
-    display:block;
-    margin-bottom:10px;
-    padding:14px 26px;
-    font-size:1rem;
-    border-radius:50px;
-    border:0;
-    color:white;
-    background: linear-gradient(90deg, #FF7AB6, #A450FF);
-    box-shadow:0 6px 18px rgba(0,0,0,0.2);
-  ">🎮 מעבר למצב שחקן</button>
-
-  <button id="floatingToHost" class="btn-gradient-host hidden" style="
-    display:block;
-    padding:14px 26px;
-    font-size:1rem;
-    border-radius:50px;
-    border:0;
-    color:white;
-    background: linear-gradient(90deg, #FFD76F, #FF6F91);
-    box-shadow:0 6px 18px rgba(0,0,0,0.2);
-  ">👑 מעבר למצב מנהל</button>
-</div>
-
-<script>
-// Floating buttons logic
-const floatingToPlayer = document.getElementById("floatingToPlayer");
-const floatingToHost   = document.getElementById("floatingToHost");
-
-floatingToPlayer?.addEventListener("click", () => {
-  tabPlayer.classList.add("active");
-  tabHost.classList.remove("active");
-  hostMode.classList.add("hidden");
-  playerMode.classList.remove("hidden");
-  floatingToPlayer.classList.add("hidden");
-  floatingToHost.classList.remove("hidden");
-});
-
-floatingToHost?.addEventListener("click", () => {
-  tabHost.classList.add("active");
-  tabPlayer.classList.remove("active");
-  hostMode.classList.remove("hidden");
-  playerMode.classList.add("hidden");
-  floatingToPlayer.classList.remove("hidden");
-  floatingToHost.classList.add("hidden");
-});
-</script>
-
 </body>
 </html>
