@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <title>כהנ'ס - ניהול לוגו ובאנרים</title>
+  <title>מילמניה - ניהול לוגו ובאנרים</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     * {
@@ -140,11 +140,10 @@
 </head>
 <body>
   <div class="app">
-    <!-- כותרת + קוד מנהל -->
     <div class="card">
       <div class="top-bar">
         <div>
-          <div class="chip">כהנ'ס · ניהול לוגו ובאנרים</div>
+          <div class="chip">מילמניה · ניהול לוגו ובאנרים</div>
           <h1 style="margin:6px 0 4px; font-size:1.4rem;">מסך ניהול גרפי</h1>
           <p style="font-size:0.85rem; color:#9ca3af; margin:0;">
             כאן מגדירים לוגו כלל־מערכתי ובאנרים לעמוד הבית, מסך המנהל ומסך השחקנים.
@@ -155,13 +154,12 @@
 
       <div style="max-width:260px; margin-top:12px;">
         <label for="adminCode">קוד מנהל (admin code)</label>
-        <input id="adminCode" type="password" placeholder="cohens1234 או מה שהגדרת בשרת" />
+        <input id="adminCode" type="password" placeholder="ONEBTN או מה שהגדרת בשרת" />
       </div>
       <button id="saveBtn" class="btn btn-primary" style="margin-top:10px;">שמירת הגדרות</button>
       <div id="saveStatus" class="status"></div>
     </div>
 
-    <!-- לוגו ראשי -->
     <div class="card">
       <h3>לוגו ראשי</h3>
       <p style="font-size:0.8rem; color:#9ca3af; margin-top:0;">
@@ -171,11 +169,11 @@
       <div class="row">
         <div>
           <label for="logoImageUrl">כתובת תמונה (URL)</label>
-          <input id="logoImageUrl" type="text" placeholder="/cohens-logo.png" />
+          <input id="logoImageUrl" type="text" placeholder="/milmania-logo.png" />
         </div>
         <div>
           <label for="logoAltText">טקסט אלטרנטיבי (ALT)</label>
-          <input id="logoAltText" type="text" placeholder="כהנ'ס - Alias Party" />
+          <input id="logoAltText" type="text" placeholder="מילמניה" />
         </div>
       </div>
       <div class="preview">
@@ -184,7 +182,6 @@
       </div>
     </div>
 
-    <!-- באנר עמוד בית -->
     <div class="card">
       <h3>באנר - עמוד הבית</h3>
       <p style="font-size:0.8rem; color:#9ca3af; margin-top:0;">
@@ -193,7 +190,7 @@
       <div class="row">
         <div>
           <label for="indexImageUrl">כתובת תמונה (URL)</label>
-          <input id="indexImageUrl" type="text" placeholder="/madanei-karmela-banner.png" />
+          <input id="indexImageUrl" type="text" placeholder="/home-banner.png" />
         </div>
         <div>
           <label for="indexLinkUrl">קישור בלחיצה</label>
@@ -206,7 +203,6 @@
       </div>
     </div>
 
-    <!-- באנר מסך מנהל -->
     <div class="card">
       <h3>באנר - מסך מנהל</h3>
       <p style="font-size:0.8rem; color:#9ca3af; margin-top:0;">
@@ -228,7 +224,6 @@
       </div>
     </div>
 
-    <!-- באנר מסך שחקן -->
     <div class="card">
       <h3>באנר - מסך שחקן</h3>
       <p style="font-size:0.8rem; color:#9ca3af; margin-top:0;">
@@ -369,7 +364,7 @@
         })
         .catch(err => {
           console.error(err);
-          saveStatus.textContent = "שגיאה בשמירה. בדוק את קוד המנהל ונסה שוב.";
+          saveStatus.textContent = "שגיאה בשמירה. ודא שקוד המנהל נכון והשרת תומך בפעולה.";
           saveStatus.classList.add("err");
         });
     });
