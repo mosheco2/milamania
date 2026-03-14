@@ -636,6 +636,27 @@
       }
 
       const gameCode = rawCode;
+
+      let existingJoin = null;
+      try {
+        const raw = localStorage.getItem(LOCAL_PLAYER_KEY);
+        existingJoin = raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        existingJoin = null;
+      }
+
+      if (
+        existingJoin &&
+        existingJoin.gameCode === gameCode &&
+        existingJoin.name &&
+        existingJoin.name !== playerName
+      ) {
+        joinStatus.textContent =
+          `בדפדפן הזה כבר הצטרפת למשחק ${gameCode} בשם "${existingJoin.name}". ` +
+          "אי אפשר להצטרף שוב לאותו משחק עם שם אחר מאותו מכשיר.";
+        return;
+      }
+
       const payload = {
         gameCode,
         name: playerName,
@@ -754,20 +775,23 @@
       presenterSection.classList.add("hidden");
     });
 
+    // --- הפופאפ החדש המשודרג עם שם הקבוצה ---
     socket.on("roundTimeUp", (data) => {
       if (!data) return;
       const score = typeof data.roundScore === "number" ? data.roundScore : 0;
+      const teamNameText = data.teamName ? `לקבוצת ${data.teamName}` : "שלכם";
 
       let msgLine;
       if (score <= 5) {
-        msgLine = "אתם צוות חלש, כדאי שתתאמנו יותר";
+        msgLine = "אתם צוות חלש, כדאי שתתאמנו יותר 😅";
       } else if (score <= 10) {
-        msgLine = "אתם צוות נחמד, בטוח שאתם יכולים יותר";
+        msgLine = "אתם צוות נחמד, בטוח שאתם יכולים יותר 😉";
       } else {
-        msgLine = "אתם צוות על, השארתם להם אבק...";
+        msgLine = "אתם צוות על, השארתם להם אבק... 🔥";
       }
 
-      alert("⏱ נגמר הזמן!\n\n" + msgLine + `\n\n(מספר תשובות נכונות בסיבוב: ${score})`);
+      alert("⏱ נגמר הזמן " + teamNameText + "!\n\n" + msgLine + "\n\n(מספר תשובות נכונות בסיבוב: " + score + ")");
+      
       playerBigTimerEl.textContent = "טיימר: --:--";
       iAmCurrentExplainer = false;
       presenterSection.classList.add("hidden");
@@ -779,7 +803,7 @@
         const raw = localStorage.getItem(LOCAL_PLAYER_KEY);
         if (raw) {
           const saved = JSON.parse(raw);
-          // אם מצאנו נתוני התחברות מהשעות האחרונות, נתחבר חזרה
+          // אם מצאנו נתוני התחברות, נתחבר חזרה
           if (saved && saved.gameCode && saved.name) {
             joinStatus.textContent = "משחזר חיבור למשחק...";
             
