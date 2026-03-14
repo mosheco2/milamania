@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <title>דשבורד ניהול מילמניה</title>
+  <title>דשבורד ניהול מילמניה - אחוד</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
@@ -13,12 +13,13 @@
     .app { max-width: 1200px; width: 100%; padding: 20px; margin: 0 auto; }
     
     /* Header */
-    .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap:10px;}
     h1 { margin: 0; font-size: 1.8rem; }
     
     /* Cards */
     .card { background: var(--bg-card); border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #1e293b; margin-bottom: 20px; }
-    h3 { margin-top: 0; color: var(--accent); }
+    h3 { margin-top: 0; color: var(--accent); margin-bottom: 15px;}
+    h4 { margin-top: 0; color: #e5e7eb; margin-bottom: 10px; font-size: 1.1rem; border-bottom: 1px solid #1e293b; padding-bottom: 5px;}
     
     /* Tabs */
     .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; background: #1e293b; padding: 5px; border-radius: 12px; overflow-x: auto; }
@@ -34,22 +35,25 @@
 
     /* Active Room List */
     .room-item { background: #1e293b; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #334155; }
-    .room-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .room-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap:10px;}
     .room-title { font-size: 1.1rem; font-weight: bold; color: var(--text-primary); }
     .room-meta { font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px; }
     .player-list { margin-top: 10px; border-top: 1px solid #334155; padding-top: 10px; font-size: 0.9rem; color: var(--text-secondary); }
     
     /* Forms, Inputs, Tables */
-    .form-row { display: flex; gap: 15px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
+    .form-row { display: flex; gap: 15px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; }
     .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
     label { font-size: 0.9rem; color: var(--text-secondary); }
     input, select { background: var(--bg-dark); border: 1px solid #334155; color: var(--text-primary); padding: 10px; border-radius: 8px; font-size: 1rem; outline: none; font-family: inherit; }
     input:focus, select:focus { border-color: var(--accent); }
+    
     .btn { border: none; border-radius: 8px; padding: 10px 20px; font-weight: bold; cursor: pointer; transition: 0.2s; font-family: inherit; }
     .btn-submit { background: var(--accent); color: var(--bg-dark); width: 100%; }
     .btn-submit:hover { background: #0ea5e9; }
     .btn-danger { background: #ef444420; color: #ef4444; border: 1px solid #ef4444; }
     .btn-danger:hover { background: #ef4444; color: white; }
+    .btn-warning { background: #f59e0b20; color: #f59e0b; border: 1px solid #f59e0b; }
+    .btn-warning:hover { background: #f59e0b; color: white; }
     .btn-whatsapp { background: #25D366; color: white; width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .btn-whatsapp:hover { background: #1da851; }
 
@@ -64,43 +68,41 @@
     td.highlight { color: var(--accent); font-weight: bold; }
 
     .hidden { display: none !important; }
+    .status-msg { margin-top: 10px; font-weight: bold; }
+    .status-msg.ok { color: #4ade80; }
+    .status-msg.err { color: #f87171; }
   </style>
 </head>
 <body>
   <div class="app">
     <div class="header-row">
         <div style="display:flex; align-items:center; gap:10px;">
-            <h1>ניהול מילמניה 🛡️</h1>
+            <h1>מילמניה - פאנל ניהול ראשי 🛡️</h1>
         </div>
-        <button class="btn btn-danger" onclick="resetAllData()">⚠️ מחיקת היסטוריה</button>
+        <button class="btn btn-danger" onclick="resetAllData()">⚠️ מחיקת כל הנתונים</button>
     </div>
     
     <div class="nav-tabs">
-        <button class="nav-btn active" onclick="switchTab('dashboard')">📊 דשבורד חי</button>
-        <button class="nav-btn" onclick="switchTab('reports')">📑 דוחות ונתונים</button>
-        <button class="nav-btn" onclick="switchTab('generator')">🔗 מחולל מותג</button>
-        <button class="nav-btn" onclick="switchTab('settings')">📢 פרסום והגדרות</button>
+        <button class="nav-btn active" onclick="switchTab('dashboard')">📊 חדרים פעילים</button>
+        <button class="nav-btn" onclick="switchTab('banners')">📢 באנרים ועיצוב</button>
+        <button class="nav-btn" onclick="switchTab('generator')">🔗 מחולל חדרים ממותגים</button>
+        <button class="nav-btn" onclick="switchTab('reports')">📑 דוחות</button>
     </div>
 
     <div id="tab-dashboard">
         <div class="stats-row">
             <div class="stat-box">
                 <div class="stat-number" id="totalGames">0</div>
-                <div class="stat-label">סה"כ משחקים בזיכרון/DB</div>
+                <div class="stat-label">סה"כ משחקים בהיסטוריה</div>
             </div>
             <div class="stat-box">
                 <div class="stat-number" id="totalPlayers">0</div>
-                <div class="stat-label">סה"כ שחקנים במשחקים פעילים</div>
+                <div class="stat-label">שחקנים פעילים כרגע</div>
             </div>
             <div class="stat-box" style="border-color: var(--accent);">
                 <div class="stat-number" id="activeGamesCount" style="color: var(--accent);">0</div>
-                <div class="stat-label">משחקים פעילים כרגע</div>
+                <div class="stat-label">חדרים רצים עכשיו</div>
             </div>
-        </div>
-
-        <div class="card">
-            <h3>פעילות חודשית (לפי יצירת משחק)</h3>
-            <div style="height: 250px;"><canvas id="gamesChart"></canvas></div>
         </div>
 
         <div class="card">
@@ -109,163 +111,141 @@
                 <div style="color:var(--text-secondary); text-align:center; padding:20px;">טוען...</div>
             </div>
         </div>
+        
+        <div class="card">
+            <h3>גרף פתיחת משחקים</h3>
+            <div style="height: 250px;"><canvas id="gamesChart"></canvas></div>
+        </div>
     </div>
 
-    <div id="tab-reports" class="hidden">
+    <div id="tab-banners" class="hidden">
         <div class="card">
-            <h3>הפקת דוח</h3>
+            <h3>ניהול באנרים גלובליים</h3>
+            <p style="color:var(--text-secondary); margin-bottom:20px; font-size:0.9rem;">
+                כאן מנהלים את כל הבאנרים באתר. <br>
+                <b>טיפ:</b> ניתן להזין שם קובץ (למשל: <code>my-banner.png</code>) אם הוא נמצא בתיקיית ה-public שלך, או להדביק קישור מלא (<code>https://...</code>).
+            </p>
+
+            <h4>לוגו ראשי</h4>
             <div class="form-row">
-                <div class="form-group">
-                    <label>סוג דוח</label>
-                    <select id="reportType">
-                        <option value="games">היסטוריית משחקים</option>
-                        <option value="ips">רשימת משתמשים (IP)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>מתאריך</label>
-                    <input type="date" id="dateFrom">
-                </div>
-                <div class="form-group">
-                    <label>עד תאריך</label>
-                    <input type="date" id="dateTo">
-                </div>
-                <div class="form-group" style="justify-content: flex-end;">
-                    <button class="btn btn-submit" onclick="fetchReport()">הצג נתונים</button>
-                </div>
+                <div class="form-group"><label>קובץ/קישור לתמונה</label><input type="text" id="b_logoImg" placeholder="logo.png"></div>
+                <div class="form-group"><label>טקסט חלופי (Alt)</label><input type="text" id="b_logoLink" placeholder="מילמניה"></div>
             </div>
-        </div>
 
-        <div class="card">
-            <h3>תוצאות</h3>
-            <div id="reportResults" class="table-container">
-                <div style="color:var(--text-secondary); padding:10px; text-align:center;">בחר פרמטרים ולחץ על הצג נתונים...</div>
+            <h4>באנר - עמוד הבית (מתחת לכפתורים)</h4>
+            <div class="form-row">
+                <div class="form-group"><label>קובץ/קישור לתמונה</label><input type="text" id="b_homeImg" placeholder="home-banner.jpg"></div>
+                <div class="form-group"><label>קישור יעד בלחיצה</label><input type="text" id="b_homeLink" placeholder="https://example.com"></div>
             </div>
+
+            <h4>באנר - מסך מנהל המשחק (Host)</h4>
+            <div class="form-row">
+                <div class="form-group"><label>קובץ/קישור לתמונה</label><input type="text" id="b_hostImg" placeholder="host-ad.jpg"></div>
+                <div class="form-group"><label>קישור יעד בלחיצה</label><input type="text" id="b_hostLink"></div>
+            </div>
+
+            <h4>באנר - מסך שחקן הקצה (Player)</h4>
+            <div class="form-row">
+                <div class="form-group"><label>קובץ/קישור לתמונה</label><input type="text" id="b_playerImg" placeholder="player-ad.jpg"></div>
+                <div class="form-group"><label>קישור יעד בלחיצה</label><input type="text" id="b_playerLink"></div>
+            </div>
+            
+            <hr style="border-color: #334155; margin: 20px 0;">
+            
+            <button class="btn btn-submit" onclick="saveBanners()">💾 שמור את כל הבאנרים</button>
+            <div id="bannerStatus" class="status-msg"></div>
         </div>
     </div>
-    
+
     <div id="tab-generator" class="hidden">
         <div class="card">
-            <h3>יצירת לינק ממותג ללקוח (SaaS)</h3>
+            <h3>יצירת לינק ממותג ללקוח עסקי (SaaS)</h3>
             <p style="color:var(--text-secondary); margin-bottom:20px; font-size:0.9rem;">
-                מלא את פרטי הלקוח כדי לייצר עבורו לינק ייעודי. הלינק יפתח משחק שמותאם לצבעי המותג וללוגו שלו.
+                מלא את פרטי הלקוח כדי לייצר עבורו לינק ייעודי. הלינק יפתח למנהל המשחק סביבה שמותאמת לצבעי המותג והלוגו של החברה.
             </p>
             
             <div class="form-group" style="margin-bottom:15px;">
-                <label>שם החברה (יופיע בכותרת)</label>
-                <input type="text" id="genCompanyName" placeholder="למשל: אינטל">
+                <label>שם החברה (יופיע בכותרת במקום "מילמניה")</label>
+                <input type="text" id="genCompanyName" placeholder="למשל: חברת החשמל">
             </div>
             
             <div class="form-group" style="margin-bottom:15px;">
-                <label>לינק ללוגו (URL)</label>
-                <input type="text" id="genLogoUrl" placeholder="https://example.com/logo.png">
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label>סלוגן (אופציונלי)</label>
-                    <input type="text" id="genBrandSlogan" placeholder="למשל: האלופים של הרבעון!">
-                </div>
+                <label>קובץ/קישור ללוגו</label>
+                <input type="text" id="genLogoUrl" placeholder="client-logo.png">
             </div>
 
             <div class="form-group" style="margin-bottom:20px;">
-                <label>צבע רקע (Hex Code)</label>
+                <label>צבע רקע מרכזי (Hex Code)</label>
                 <div style="display:flex; gap:10px;">
-                    <input type="color" id="genColor" value="#ffffff" style="width:50px; padding:0; border:none; height:40px; background:none;">
-                    <input type="text" id="genColorText" value="#ffffff" style="flex:1;">
+                    <input type="color" id="genColor" value="#FFF8EA" style="width:50px; padding:0; border:none; height:40px; background:none;">
+                    <input type="text" id="genColorText" value="#FFF8EA" style="flex:1;" placeholder="#FFF8EA">
                 </div>
             </div>
             
-            <button class="btn btn-submit" onclick="generateLink()">צור לינק למנהל</button>
+            <button class="btn btn-submit" onclick="generateLink()">🔗 צור לינק למנהל הארגון</button>
             
             <div id="genResultArea" class="hidden" style="margin-top:30px; border-top:1px solid #334155; padding-top:20px;">
-                <label style="color:var(--accent); font-weight:bold;">הלינק המוכן לשליחה:</label>
+                <label style="color:var(--accent); font-weight:bold;">הלינק המוכן לשליחה ללקוח:</label>
                 <input type="text" class="link-output" id="finalLink" readonly>
                 <button class="btn btn-whatsapp" onclick="sendToWhatsapp()">שלח ללקוח בוואטסאפ 📲</button>
             </div>
         </div>
     </div>
 
-    <div id="tab-settings" class="hidden">
+    <div id="tab-reports" class="hidden">
         <div class="card">
-            <h3>הגדרות פרסום גלובליות</h3>
-            <p style="color:var(--text-secondary); margin-bottom:20px; font-size:0.9rem;">
-                הגדרות אלו ישפיעו על כל דפי האתר. הבאנר העליון הוא ברוחב מלא ובגובה 80px. הבאנר התחתון הוא ברוחב מלא, צמוד לתחתית המסך, ובגובה 160px.
-            </p>
-            
-            <div class="form-group" style="margin-bottom:15px;">
-                <label>באנר עליון - קישור לתמונה (URL)</label>
-                <input type="text" id="settingTopBannerImg" placeholder="https://example.com/top-banner.jpg">
+            <h3>הפקת דוח נתונים</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>סוג דוח</label>
+                    <select id="reportType">
+                        <option value="games">היסטוריית חדרים</option>
+                        <option value="ips">רשימת שחקנים</option>
+                    </select>
+                </div>
+                <div class="form-group" style="justify-content: flex-end;">
+                    <button class="btn btn-submit" onclick="fetchReport()">הצג נתונים</button>
+                </div>
             </div>
-            <div class="form-group" style="margin-bottom:20px;">
-                 <label>באנר עליון - קישור ליעד (URL)</label>
-                 <input type="text" id="settingTopBannerLink" placeholder="https://example.com/landing-page">
+            <div id="reportResults" class="table-container">
+                <div style="color:var(--text-secondary); padding:10px; text-align:center;">לחץ על "הצג נתונים" כדי לטעון...</div>
             </div>
-
-            <hr style="border-color: #334155; margin: 20px 0;">
-
-            <div class="form-group" style="margin-bottom:15px;">
-                <label>באנר תחתון - קישור לתמונה (URL)</label>
-                <input type="text" id="settingBottomBannerImg" placeholder="https://example.com/bottom-banner.jpg">
-            </div>
-            <div class="form-group" style="margin-bottom:20px;">
-                 <label>באנר תחתון - קישור ליעד (URL)</label>
-                 <input type="text" id="settingBottomBannerLink" placeholder="https://example.com/landing-page">
-            </div>
-            
-            <button class="btn btn-submit" onclick="saveSettings()">שמור הגדרות</button>
         </div>
     </div>
 
   </div>
 
   <script>
+    // הגדרת קוד האדמין מול השרת
     const ADMIN_CODE = "ONEBTN"; 
     let chartInstance = null;
 
-    const today = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-    document.getElementById('dateFrom').valueAsDate = thirtyDaysAgo;
-    document.getElementById('dateTo').valueAsDate = today;
-
+    // ניהול צבעים במחולל המותג
     document.getElementById('genColor').addEventListener('input', (e) => { document.getElementById('genColorText').value = e.target.value; });
     document.getElementById('genColorText').addEventListener('input', (e) => { document.getElementById('genColor').value = e.target.value; });
     document.getElementById('finalLink').addEventListener('click', function() { this.select(); document.execCommand('copy'); alert('הלינק הועתק!'); });
 
+    // ניווט טאבים
     function switchTab(tabName) {
-        const tabs = ['dashboard', 'reports', 'generator', 'settings'];
+        const tabs = ['dashboard', 'banners', 'generator', 'reports'];
         tabs.forEach(t => document.getElementById('tab-'+t).classList.add('hidden'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         
         document.getElementById('tab-'+tabName).classList.remove('hidden');
         document.querySelectorAll('.nav-btn')[tabs.indexOf(tabName)].classList.add('active');
+        
+        if (tabName === 'banners') loadBanners();
     }
 
-    async function resetAllData() {
-        if(confirm("⚠️ פעולה זו תמחק את כל היסטוריית המשחקים והשחקנים מהשרת!\nהאם אתה בטוח?")) {
-            try {
-                const res = await fetch(`/admin/reset?code=${ADMIN_CODE}`, { method: 'POST' });
-                if(res.status === 404) {
-                    alert("פעולת איפוס לא נתמכת בשרת הנוכחי.");
-                    return;
-                }
-                const json = await res.json();
-                if(json.ok) { alert("הנתונים אופסו בהצלחה."); location.reload(); } else { alert("שגיאה באיפוס."); }
-            } catch(e) { alert("תקלה ברשת או שהנתיב לא קיים."); }
-        }
-    }
-
+    // --- קריאות שרת: דשבורד ---
     async function loadDashboard() {
         try {
-            // התיקון: קריאה לנתיב האמיתי בשרת שלנו (summary במקום stats)
             const res = await fetch(`/admin/summary?code=${ADMIN_CODE}`);
             const data = await res.json();
             
             const activeGames = data.activeGames || [];
             const recentGames = data.recentGames || [];
 
-            // ספירת סך הכל משחקים ושחקנים פעילים (ללא כפילויות של clientIds)
             const totalGames = recentGames.length > 0 ? recentGames.length : activeGames.length;
             let uniquePlayers = new Set();
             activeGames.forEach(g => {
@@ -276,7 +256,6 @@
             document.getElementById('totalPlayers').innerText = uniquePlayers.size;
             document.getElementById('activeGamesCount').innerText = activeGames.length;
 
-            // בניית נתונים לגרף על בסיס תאריכי היצירה מהשרת (במקום dbStats)
             const daysCount = {};
             const sourceList = recentGames.length > 0 ? recentGames : activeGames;
             sourceList.forEach(g => {
@@ -300,7 +279,7 @@
         if (chartInstance) chartInstance.destroy();
         chartInstance = new Chart(ctx, {
             type: 'line',
-            data: { labels: labels, datasets: [{ label: 'משחקים שנפתחו', data: counts, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.2)', tension: 0.3, fill: true }] },
+            data: { labels: labels, datasets: [{ label: 'משחקים', data: counts, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.2)', tension: 0.3, fill: true }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } } }
         });
     }
@@ -310,137 +289,158 @@
         if(games.length === 0) { container.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding:20px;">אין חדרים פעילים כרגע</div>'; return; }
         let html = '';
         games.forEach(g => {
-            // התאמה למבנה המידע המוחזר מ-server.js
-            const playersList = (g.players || []).map(p => p.name).join(', ') || 'אין שחקנים מחוברים';
+            const playersList = (g.players || []).map(p => p.name).join(', ') || 'אין שחקנים';
             html += `
             <div class="room-item">
                 <div class="room-header">
-                    <div class="room-title">משחק קוד: <span style="color:var(--accent);">${g.code}</span> (יעד: ${g.targetScore} נק')</div>
-                    <button class="btn btn-danger" style="padding:6px 12px; font-size:0.8rem;" onclick="closeGame('${g.code}')">סגור חדר</button>
+                    <div class="room-title">קוד: <span style="color:var(--accent);">${g.code}</span> (מנהל: ${g.hostName || '-'})</div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-warning" style="padding:6px 12px; font-size:0.8rem;" onclick="renameTeamPrompt('${g.code}')">✏️ שינוי שם קבוצה</button>
+                        <button class="btn btn-danger" style="padding:6px 12px; font-size:0.8rem;" onclick="closeGame('${g.code}')">סגור חדר</button>
+                    </div>
                 </div>
-                <div class="room-meta">מנהל: ${g.hostName || '-'} • קבוצות: ${g.teamCount || 0} • שחקנים: ${g.playerCount || 0}</div>
-                <div class="player-list">שחקנים מחוברים: ${playersList}</div>
+                <div class="room-meta">יעד נקודות: ${g.targetScore} • קבוצות: ${g.teamCount || 0}</div>
+                <div class="player-list">שחקנים: ${playersList}</div>
             </div>`;
         });
         container.innerHTML = html;
     }
 
+    // פעולות מנהל חדרים
     async function closeGame(code) {
-        if(!confirm('לסגור את החדר? השחקנים ינותקו והמשחק יימחק.')) return;
+        if(!confirm('לסגור את החדר? כל השחקנים ינותקו מיידית.')) return;
         await fetch(`/admin/game/${code}/close?code=${ADMIN_CODE}`, {method:'POST'});
         loadDashboard();
     }
 
-    function formatDate(dateStr) {
-        if (!dateStr) return '-';
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return '-';
-        return date.toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
-    }
+    async function renameTeamPrompt(code) {
+        const teamId = prompt("איזו קבוצה תרצה לשנות? (הקלד A, B, C, D או E)");
+        if (!teamId) return;
+        const newName = prompt(`הזן שם חדש לקבוצה ${teamId.toUpperCase()}:`);
+        if (!newName) return;
 
-    async function fetchReport() {
-        const type = document.getElementById('reportType').value;
-        const from = document.getElementById('dateFrom').value;
-        const to = document.getElementById('dateTo').value;
-        const container = document.getElementById('reportResults');
-        container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-secondary);">טוען נתונים...</div>';
         try {
-            const res = await fetch(`/admin/reports?code=${ADMIN_CODE}&type=${type}&from=${from}&to=${to}`);
-            if(res.status === 404) {
-                container.innerHTML = '<div style="padding:20px; text-align:center; color:#ef4444;">נתיב הפקת הדוחות טרם הוגדר בשרת הראשי.</div>';
-                return;
-            }
-            const json = await res.json();
-            const data = json.data || [];
-            if(data.length === 0) { container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-secondary);">לא נמצאו נתונים לטווח התאריכים שנבחר.</div>'; return; }
-            
-            let html = '<table><thead><tr>';
-            if(type === 'ips') html += '<th>כתובת IP</th><th>שם השחקן</th><th>חדר אחרון</th><th>קוד חדר</th><th>נראה לאחרונה</th>';
-            if(type === 'games') html += '<th>קוד משחק</th><th>שם החדר</th><th>שם המנהל</th><th>IP מנהל</th><th>תאריך יצירה</th>';
-            html += '</tr></thead><tbody>';
-            
-            data.forEach(row => {
-                html += '<tr>';
-                if(type === 'ips') html += `<td style="direction:ltr;">${row.ip_address}</td><td class="highlight">${row.name || '-'}</td><td>${row.game_title || '-'}</td><td>${row.code || '-'}</td><td>${formatDate(row.created_at)}</td>`;
-                if(type === 'games') html += `<td class="highlight">${row.code}</td><td>${row.game_title || 'ללא שם'}</td><td>${row.host_name}</td><td style="direction:ltr;">${row.host_ip || '-'}</td><td>${formatDate(row.created_at)}</td>`;
-                html += '</tr>';
+            const res = await fetch(`/admin/game/${code}/team?code=${ADMIN_CODE}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teamId: teamId.toUpperCase(), newName })
             });
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        } catch (e) { console.error(e); container.innerHTML = '<div style="color:#ef4444; padding:20px; text-align:center;">שגיאה בטעינת הדוח.</div>'; }
+            if (res.status === 404) {
+                alert("נתיב שינוי שם קבוצה טרם הוגדר בשרת. יש להוסיף אותו ל-server.js.");
+            } else {
+                alert("שם הקבוצה שונה בהצלחה (השחקנים יראו זאת ברענון הבא של מצב המשחק)!");
+                loadDashboard();
+            }
+        } catch (e) {
+            alert("שגיאה בשינוי שם הקבוצה.");
+        }
     }
 
+    async function resetAllData() {
+        if(confirm("⚠️ פעולה זו תמחק את כל היסטוריית המשחקים מהשרת ותנתק את כולם!\nהאם אתה בטוח?")) {
+            const res = await fetch(`/admin/reset?code=${ADMIN_CODE}`, { method: 'POST' });
+            if(res.ok) { alert("הנתונים אופסו בהצלחה."); location.reload(); }
+        }
+    }
+
+    // --- קריאות שרת: באנרים (האיחוד) ---
+    async function loadBanners() {
+        try {
+            const res = await fetch('/api/banners');
+            const data = await res.json();
+            
+            if (data.logo) { document.getElementById('b_logoImg').value = data.logo.imageUrl || ''; document.getElementById('b_logoLink').value = data.logo.altText || ''; }
+            if (data.home || data.index) { const home = data.home || data.index; document.getElementById('b_homeImg').value = home.imageUrl || ''; document.getElementById('b_homeLink').value = home.linkUrl || ''; }
+            if (data.host) { document.getElementById('b_hostImg').value = data.host.imageUrl || ''; document.getElementById('b_hostLink').value = data.host.linkUrl || ''; }
+            if (data.player) { document.getElementById('b_playerImg').value = data.player.imageUrl || ''; document.getElementById('b_playerLink').value = data.player.linkUrl || ''; }
+        } catch (e) { console.error(e); }
+    }
+
+    async function saveBanners() {
+        const msg = document.getElementById('bannerStatus');
+        msg.textContent = "שומר...";
+        msg.className = "status-msg";
+
+        const payload = {
+            adminCode: ADMIN_CODE,
+            logo: { imageUrl: document.getElementById('b_logoImg').value.trim(), altText: document.getElementById('b_logoLink').value.trim() },
+            index: { imageUrl: document.getElementById('b_homeImg').value.trim(), linkUrl: document.getElementById('b_homeLink').value.trim() },
+            host: { imageUrl: document.getElementById('b_hostImg').value.trim(), linkUrl: document.getElementById('b_hostLink').value.trim() },
+            player: { imageUrl: document.getElementById('b_playerImg').value.trim(), linkUrl: document.getElementById('b_playerLink').value.trim() }
+        };
+
+        try {
+            const res = await fetch("/api/admin/banners", {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+            });
+            const json = await res.json();
+            if (json.ok) {
+                msg.textContent = "✅ ההגדרות נשמרו בהצלחה!";
+                msg.classList.add("ok");
+            } else {
+                msg.textContent = "❌ שגיאה בשמירה (ודא שקוד מנהל נכון ב-server.js).";
+                msg.classList.add("err");
+            }
+        } catch (e) {
+            msg.textContent = "❌ תקלה בתקשורת עם השרת.";
+            msg.classList.add("err");
+        }
+    }
+
+    // --- מחולל מותג (SaaS) ---
     function generateLink() {
         const companyName = document.getElementById('genCompanyName').value;
         const logo = document.getElementById('genLogoUrl').value;
-        const slogan = document.getElementById('genBrandSlogan').value;
         let color = document.getElementById('genColorText').value.replace('#', '');
         
         if(!companyName) { alert('חובה להזין שם חברה'); return; }
 
         const baseUrl = window.location.origin + '/host.html';
         const params = new URLSearchParams();
-        params.append('title', companyName); // שם החברה הופך לכותרת המשחק
+        params.append('title', companyName);
         if(logo) params.append('logo', logo);
-        if(slogan) params.append('slogan', slogan);
-        if(color && color !== 'ffffff') params.append('color', color);
+        if(color && color.toLowerCase() !== 'fff8ea') params.append('color', color);
         
-        const final = `${baseUrl}?${params.toString()}`;
-        document.getElementById('finalLink').value = final;
+        document.getElementById('finalLink').value = `${baseUrl}?${params.toString()}`;
         document.getElementById('genResultArea').classList.remove('hidden');
     }
     
     function sendToWhatsapp() {
         const link = document.getElementById('finalLink').value;
         const companyName = document.getElementById('genCompanyName').value;
-        const text = `היי ${companyName},\n\nהכנו עבורכם סביבת משחק ממותגת וחגיגית! 🎉\n\nאתם מוזמנים להיכנס לקישור הבא כדי לנהל את הפעילות:\n${link}\n\nתהנו!`;
+        const text = `היי ${companyName},\n\nהכנו עבורכם סביבת משחק ממותגת! 🎉\nהיכנסו לקישור הבא כדי לנהל את הפעילות:\n${link}\n\nתהנו!`;
         window.location.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
     }
 
-    // --- פונקציות לניהול הגדרות ---
-    async function loadSettings() {
+    // --- דוחות ---
+    async function fetchReport() {
+        const type = document.getElementById('reportType').value;
+        const container = document.getElementById('reportResults');
+        container.innerHTML = '<div style="padding:20px; text-align:center;">טוען נתונים...</div>';
         try {
-            const res = await fetch('/api/banners');
-            const data = await res.json();
-            if (data.topBanner) {
-                document.getElementById('settingTopBannerImg').value = data.topBanner.img || '';
-                document.getElementById('settingTopBannerLink').value = data.topBanner.link || '';
-            }
-            if (data.bottomBanner) {
-                document.getElementById('settingBottomBannerImg').value = data.bottomBanner.img || '';
-                document.getElementById('settingBottomBannerLink').value = data.bottomBanner.link || '';
-            }
-        } catch (e) { console.error("Error loading settings:", e); }
+            const res = await fetch(`/admin/reports?code=${ADMIN_CODE}&type=${type}`);
+            const json = await res.json();
+            const data = json.data || [];
+            if(data.length === 0) { container.innerHTML = '<div style="padding:20px; text-align:center;">לא נמצאו נתונים.</div>'; return; }
+            
+            let html = '<table><thead><tr>';
+            if(type === 'ips') html += '<th>כתובת / מזהה</th><th>שם השחקן</th><th>קוד חדר</th>';
+            if(type === 'games') html += '<th>קוד משחק</th><th>שם המנהל</th><th>תאריך יצירה</th>';
+            html += '</tr></thead><tbody>';
+            
+            data.forEach(row => {
+                html += '<tr>';
+                if(type === 'ips') html += `<td style="direction:ltr;">${row.ip_address}</td><td class="highlight">${row.name || '-'}</td><td>${row.code || '-'}</td>`;
+                if(type === 'games') html += `<td class="highlight">${row.code}</td><td>${row.host_name}</td><td style="direction:ltr;">${new Date(row.created_at).toLocaleString('he-IL')}</td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } catch (e) { container.innerHTML = '<div style="color:#ef4444; padding:20px; text-align:center;">שגיאה בטעינת הדוח.</div>'; }
     }
 
-    async function saveSettings() {
-        const topBannerImg = document.getElementById('settingTopBannerImg').value;
-        const topBannerLink = document.getElementById('settingTopBannerLink').value;
-        const bottomBannerImg = document.getElementById('settingBottomBannerImg').value;
-        const bottomBannerLink = document.getElementById('settingBottomBannerLink').value;
-        
-        try {
-            const res = await fetch(`/admin/settings?code=${ADMIN_CODE}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topBannerImg, topBannerLink, bottomBannerImg, bottomBannerLink })
-            });
-            if(res.status === 404) {
-                alert("נתיב השמירה להגדרות הכלליות חסר בשרת, לכן הנתונים לא נשמרו.");
-                return;
-            }
-            const json = await res.json();
-            if (json.ok) {
-                alert('ההגדרות נשמרו בהצלחה!');
-            } else {
-                alert('שגיאה בשמירת ההגדרות.');
-            }
-        } catch (e) { alert('תקלה ברשת. ודא שהשרת פועל.'); }
-    }
-    
     setInterval(() => { if(!document.getElementById('tab-dashboard').classList.contains('hidden')) loadDashboard(); }, 10000);
     loadDashboard();
-    loadSettings(); 
   </script>
 </body>
 </html>
