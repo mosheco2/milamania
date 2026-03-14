@@ -86,11 +86,11 @@
         <div class="stats-row">
             <div class="stat-box">
                 <div class="stat-number" id="totalGames">0</div>
-                <div class="stat-label">סה"כ משחקים (30 יום)</div>
+                <div class="stat-label">סה"כ משחקים בזיכרון/DB</div>
             </div>
             <div class="stat-box">
                 <div class="stat-number" id="totalPlayers">0</div>
-                <div class="stat-label">סה"כ שחקנים ייחודיים</div>
+                <div class="stat-label">סה"כ שחקנים במשחקים פעילים</div>
             </div>
             <div class="stat-box" style="border-color: var(--accent);">
                 <div class="stat-number" id="activeGamesCount" style="color: var(--accent);">0</div>
@@ -99,7 +99,7 @@
         </div>
 
         <div class="card">
-            <h3>פעילות חודשית</h3>
+            <h3>פעילות חודשית (לפי יצירת משחק)</h3>
             <div style="height: 250px;"><canvas id="gamesChart"></canvas></div>
         </div>
 
@@ -152,7 +152,7 @@
             </p>
             
             <div class="form-group" style="margin-bottom:15px;">
-                <label>שם החברה (יופיע בסטטיסטיקות)</label>
+                <label>שם החברה (יופיע בכותרת)</label>
                 <input type="text" id="genCompanyName" placeholder="למשל: אינטל">
             </div>
             
@@ -246,24 +246,50 @@
         if(confirm("⚠️ פעולה זו תמחק את כל היסטוריית המשחקים והשחקנים מהשרת!\nהאם אתה בטוח?")) {
             try {
                 const res = await fetch(`/admin/reset?code=${ADMIN_CODE}`, { method: 'POST' });
+                if(res.status === 404) {
+                    alert("פעולת איפוס לא נתמכת בשרת הנוכחי.");
+                    return;
+                }
                 const json = await res.json();
                 if(json.ok) { alert("הנתונים אופסו בהצלחה."); location.reload(); } else { alert("שגיאה באיפוס."); }
-            } catch(e) { alert("תקלה ברשת"); }
+            } catch(e) { alert("תקלה ברשת או שהנתיב לא קיים."); }
         }
     }
 
     async function loadDashboard() {
         try {
-            const res = await fetch(`/admin/stats?code=${ADMIN_CODE}`);
+            // התיקון: קריאה לנתיב האמיתי בשרת שלנו (summary במקום stats)
+            const res = await fetch(`/admin/summary?code=${ADMIN_CODE}`);
             const data = await res.json();
             
-            const totalGames = data.dbStats.gamesByDay.reduce((sum, d) => sum + parseInt(d.count), 0);
-            document.getElementById('totalGames').innerText = totalGames;
-            document.getElementById('totalPlayers').innerText = data.dbStats.totalUniqueIps;
-            document.getElementById('activeGamesCount').innerText = data.activeGames.length;
+            const activeGames = data.activeGames || [];
+            const recentGames = data.recentGames || [];
 
-            renderChart(data.dbStats.gamesByDay);
-            renderActiveRooms(data.activeGames);
+            // ספירת סך הכל משחקים ושחקנים פעילים (ללא כפילויות של clientIds)
+            const totalGames = recentGames.length > 0 ? recentGames.length : activeGames.length;
+            let uniquePlayers = new Set();
+            activeGames.forEach(g => {
+                if(g.players) g.players.forEach(p => uniquePlayers.add(p.clientId));
+            });
+
+            document.getElementById('totalGames').innerText = totalGames;
+            document.getElementById('totalPlayers').innerText = uniquePlayers.size;
+            document.getElementById('activeGamesCount').innerText = activeGames.length;
+
+            // בניית נתונים לגרף על בסיס תאריכי היצירה מהשרת (במקום dbStats)
+            const daysCount = {};
+            const sourceList = recentGames.length > 0 ? recentGames : activeGames;
+            sourceList.forEach(g => {
+                const d = new Date(g.createdAt || Date.now());
+                const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                daysCount[dateKey] = (daysCount[dateKey] || 0) + 1;
+            });
+
+            const gamesByDay = Object.keys(daysCount).map(k => ({ date: k, count: daysCount[k] }));
+            gamesByDay.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            renderChart(gamesByDay);
+            renderActiveRooms(activeGames);
         } catch (e) { console.error("Dash Error", e); }
     }
 
@@ -274,7 +300,7 @@
         if (chartInstance) chartInstance.destroy();
         chartInstance = new Chart(ctx, {
             type: 'line',
-            data: { labels: labels, datasets: [{ label: 'משחקים', data: counts, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.2)', tension: 0.3, fill: true }] },
+            data: { labels: labels, datasets: [{ label: 'משחקים שנפתחו', data: counts, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.2)', tension: 0.3, fill: true }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } } }
         });
     }
@@ -284,14 +310,15 @@
         if(games.length === 0) { container.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding:20px;">אין חדרים פעילים כרגע</div>'; return; }
         let html = '';
         games.forEach(g => {
-            const playersList = g.players.map(p => `${p.name} (${p.ip})`).join(', ') || 'אין שחקנים';
+            // התאמה למבנה המידע המוחזר מ-server.js
+            const playersList = (g.players || []).map(p => p.name).join(', ') || 'אין שחקנים מחוברים';
             html += `
             <div class="room-item">
                 <div class="room-header">
-                    <div class="room-title">${g.gameTitle || 'ללא שם'} <span style="color:var(--accent);">(${g.code})</span></div>
+                    <div class="room-title">משחק קוד: <span style="color:var(--accent);">${g.code}</span> (יעד: ${g.targetScore} נק')</div>
                     <button class="btn btn-danger" style="padding:6px 12px; font-size:0.8rem;" onclick="closeGame('${g.code}')">סגור חדר</button>
                 </div>
-                <div class="room-meta">מנהל: ${g.hostName} • קבוצות: ${g.teamCount} • שחקנים: ${g.playerCount}</div>
+                <div class="room-meta">מנהל: ${g.hostName || '-'} • קבוצות: ${g.teamCount || 0} • שחקנים: ${g.playerCount || 0}</div>
                 <div class="player-list">שחקנים מחוברים: ${playersList}</div>
             </div>`;
         });
@@ -299,7 +326,7 @@
     }
 
     async function closeGame(code) {
-        if(!confirm('לסגור את החדר? השחקנים ינותקו.')) return;
+        if(!confirm('לסגור את החדר? השחקנים ינותקו והמשחק יימחק.')) return;
         await fetch(`/admin/game/${code}/close?code=${ADMIN_CODE}`, {method:'POST'});
         loadDashboard();
     }
@@ -319,6 +346,10 @@
         container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-secondary);">טוען נתונים...</div>';
         try {
             const res = await fetch(`/admin/reports?code=${ADMIN_CODE}&type=${type}&from=${from}&to=${to}`);
+            if(res.status === 404) {
+                container.innerHTML = '<div style="padding:20px; text-align:center; color:#ef4444;">נתיב הפקת הדוחות טרם הוגדר בשרת הראשי.</div>';
+                return;
+            }
             const json = await res.json();
             const data = json.data || [];
             if(data.length === 0) { container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-secondary);">לא נמצאו נתונים לטווח התאריכים שנבחר.</div>'; return; }
@@ -394,13 +425,17 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ topBannerImg, topBannerLink, bottomBannerImg, bottomBannerLink })
             });
+            if(res.status === 404) {
+                alert("נתיב השמירה להגדרות הכלליות חסר בשרת, לכן הנתונים לא נשמרו.");
+                return;
+            }
             const json = await res.json();
             if (json.ok) {
                 alert('ההגדרות נשמרו בהצלחה!');
             } else {
                 alert('שגיאה בשמירת ההגדרות.');
             }
-        } catch (e) { alert('תקלה ברשת.'); }
+        } catch (e) { alert('תקלה ברשת. ודא שהשרת פועל.'); }
     }
     
     setInterval(() => { if(!document.getElementById('tab-dashboard').classList.contains('hidden')) loadDashboard(); }, 10000);
