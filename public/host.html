@@ -340,6 +340,13 @@
             <input id="hostName" type="text" placeholder="לדוגמה: משה" />
           </div>
           <div>
+            <label for="roomName">שם החדר (אופציונלי)</label>
+            <input id="roomName" type="text" placeholder="למשל: החבר'ה המשוגעים" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
             <label for="numTeams">מספר קבוצות</label>
             <select id="numTeams">
               <option value="2">2 קבוצות</option>
@@ -348,42 +355,39 @@
               <option value="5">5 קבוצות</option>
             </select>
           </div>
-        </div>
-
-        <div class="row">
           <div>
             <label for="targetScore">יעד נקודות לניצחון</label>
             <input id="targetScore" type="number" min="5" max="200" value="30" />
           </div>
+        </div>
+
+        <div class="row">
           <div>
             <label for="roundSeconds">משך סיבוב (שניות)</label>
             <input id="roundSeconds" type="number" min="10" max="300" value="60" />
           </div>
-        </div>
-
-        <div class="row">
           <div>
             <label for="teamNameA">שם קבוצה A</label>
             <input id="teamNameA" type="text" placeholder="למשל: הכחולים" />
           </div>
+        </div>
+
+        <div class="row">
           <div>
             <label for="teamNameB">שם קבוצה B</label>
             <input id="teamNameB" type="text" placeholder="למשל: הוורודים" />
           </div>
-        </div>
-
-        <div class="row">
           <div>
             <label for="teamNameC">שם קבוצה C (אופציונלי)</label>
             <input id="teamNameC" type="text" placeholder="קבוצה נוספת" />
           </div>
+        </div>
+
+        <div class="row">
           <div>
             <label for="teamNameD">שם קבוצה D (אופציונלי)</label>
             <input id="teamNameD" type="text" placeholder="קבוצה נוספת" />
           </div>
-        </div>
-
-        <div class="row">
           <div>
             <label for="teamNameE">שם קבוצה E (אופציונלי)</label>
             <input id="teamNameE" type="text" placeholder="קבוצה נוספת" />
@@ -429,7 +433,7 @@
 
       <div class="card" id="gameCodeRow" style="display:none;">
         <h3 style="margin:0 0 6px;">קוד משחק</h3>
-        <div id="gameCodeDisplay" class="status-text" style="margin-bottom:6px;"></div>
+        <div id="gameCodeDisplay" class="status-text" style="margin-bottom:6px; font-weight: bold; font-size:1.1rem; color: #433362;"></div>
 
         <div class="status-text" style="margin-bottom:4px;">
           שלח הזמנה לשחקנים בוואטסאפ עם קוד המשחק וקבוצה מוגדרת מראש:
@@ -625,7 +629,7 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // --- מערכת מיתוג ועיצוב (SaaS) מתוקנת ---
+    // --- מערכת מיתוג ועיצוב (SaaS) ---
     (function applyBrandingFromUrl() {
       const urlParams = new URLSearchParams(window.location.search);
       const customTitle = urlParams.get('title');
@@ -672,6 +676,7 @@
 
     // מצב מנהל
     const hostNameInput = document.getElementById("hostName");
+    const roomNameInput = document.getElementById("roomName"); // <--- השדה החדש
     const numTeamsSelect = document.getElementById("numTeams");
     const targetScoreInput = document.getElementById("targetScore");
     const roundSecondsInput = document.getElementById("roundSeconds");
@@ -1020,7 +1025,14 @@
       if (game.code) currentGameCode = game.code;
 
       if (gameCodeRow) gameCodeRow.style.display = "block";
-      if (gameCodeDisplay) gameCodeDisplay.textContent = "קוד המשחק: " + currentGameCode;
+      
+      // --- התיקון: הצגת שם החדר (אם יש) ---
+      if (gameCodeDisplay) {
+        let displayTxt = "קוד המשחק: " + currentGameCode;
+        if (game.roomName) displayTxt += ` (חדר: ${game.roomName})`;
+        gameCodeDisplay.textContent = displayTxt;
+      }
+
       if (whatsappInviteBtn) whatsappInviteBtn.disabled = false;
       if (endGameBtn) endGameBtn.disabled = false;
 
@@ -1103,13 +1115,21 @@
     if (createGameBtn) {
       createGameBtn.addEventListener("click", () => {
         const hostName = (hostNameInput.value || "").trim();
+        const roomName = (roomNameInput ? roomNameInput.value : "").trim(); // <--- קליטת שם החדר
+        
         if (!hostName) return alert("נא להזין שם מנהל.");
+        
         const cats = collectCategories();
         const teamNames = { A: teamNameAInput.value.trim(), B: teamNameBInput.value.trim(), C: teamNameCInput.value.trim(), D: teamNameDInput.value.trim(), E: teamNameEInput.value.trim() };
 
         socket.emit("createGame", {
-            hostName, numTeams: parseInt(numTeamsSelect.value || "2", 10), targetScore: parseInt(targetScoreInput.value || "30", 10),
-            roundSeconds: parseInt(roundSecondsInput.value || "60", 10), categories: cats, teamNames
+            hostName, 
+            roomName, // <--- שליחה לשרת
+            numTeams: parseInt(numTeamsSelect.value || "2", 10), 
+            targetScore: parseInt(targetScoreInput.value || "30", 10),
+            roundSeconds: parseInt(roundSecondsInput.value || "60", 10), 
+            categories: cats, 
+            teamNames
           }, (response) => {
             if (!response || !response.ok) return alert(response.error || "שגיאה ביצירת המשחק.");
             currentGameCode = response.gameCode;
@@ -1215,7 +1235,10 @@
         const customTitle = urlParams.get('title');
         const gameName = customTitle ? customTitle : "מילמניה";
 
-        const text = `🔥 יש לנו עכשיו משחק ${gameName} חי!\nאתה מוזמן להצטרף לקבוצה "${team.name}".\nקוד המשחק: ${currentGameCode}\nלהצטרפות לחץ כאן:\n${link}`;
+        // --- התיקון: הוספת שם החדר להודעת הוואטסאפ ---
+        const roomNameText = (lastGameState && lastGameState.roomName) ? ` בחדר "${lastGameState.roomName}"` : "";
+
+        const text = `🔥 יש לנו עכשיו משחק ${gameName} חי${roomNameText}!\nאתה מוזמן להצטרף לקבוצה "${team.name}".\nקוד המשחק: ${currentGameCode}\nלהצטרפות לחץ כאן:\n${link}`;
         window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
       });
     }
