@@ -179,6 +179,7 @@ function sanitizeGame(game) {
 
   return {
     code: game.code,
+    roomName: game.roomName || null, // הוספנו את שם החדר כדי שיעבור ללקוח
     hostName: game.hostName,
     targetScore: game.targetScore,
     defaultRoundSeconds: game.defaultRoundSeconds,
@@ -296,7 +297,8 @@ io.on("connection", (socket) => {
   // יצירת משחק
   socket.on("createGame", async (data, callback) => {
     try {
-      const { hostName, targetScore = 40, defaultRoundSeconds = 60, categories = [], teamNames = {} } = data || {};
+      // הוספנו את roomName לחילוץ הנתונים מהבקשה
+      const { hostName, roomName, targetScore = 40, defaultRoundSeconds = 60, categories = [], teamNames = {} } = data || {};
       if (!hostName || !hostName.trim()) return callback && callback({ ok: false, error: "נא להזין שם מנהל." });
 
       let code; do { code = generateGameCode(); } while (games[code]);
@@ -312,8 +314,13 @@ io.on("connection", (socket) => {
       }
 
       const game = {
-        code, hostSocketId: socket.id, hostName: hostName.trim(), targetScore: parseInt(targetScore, 10) || 40,
-        defaultRoundSeconds: parseInt(defaultRoundSeconds, 10) || 60, categories: Array.isArray(categories) ? categories : [],
+        code, 
+        roomName: (roomName || "").trim(), // שמירת שם החדר
+        hostSocketId: socket.id, 
+        hostName: hostName.trim(), 
+        targetScore: parseInt(targetScore, 10) || 40,
+        defaultRoundSeconds: parseInt(defaultRoundSeconds, 10) || 60, 
+        categories: Array.isArray(categories) ? categories : [],
         createdAt: now, updatedAt: now, lastActivity: now, logoUrl: null, banners: {}, teams, playersByClientId: {}, currentRound: null,
       };
 
@@ -546,7 +553,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // עדכון ניקוד קבוצה חופשי
+  // עדכון ניקוד קבוצה חופשי ע"י מנהל
   socket.on("updateScore", async (data, callback) => {
     try {
       const { gameCode, teamId, delta } = data || {};
@@ -800,7 +807,7 @@ app.post("/admin/game/:gameCode/close", async (req, res) => {
   }
 });
 
-// --- הוספת נתיב: שינוי שם קבוצה ע"י אדמין ראשי ---
+// שינוי שם קבוצה ע"י אדמין ראשי
 app.post("/admin/game/:gameCode/team", async (req, res) => {
   try {
     const adminCode = req.query.code || "";
@@ -813,11 +820,9 @@ app.post("/admin/game/:gameCode/team", async (req, res) => {
     if (!teamId || !newName) return res.status(400).json({ ok: false, error: "Missing parameters." });
     if (!games[code].teams[teamId]) return res.status(404).json({ ok: false, error: "Team not found." });
 
-    // עדכון בזיכרון
     games[code].teams[teamId].name = newName.trim();
     games[code].updatedAt = new Date();
 
-    // עדכון במסד הנתונים
     if (dbReady && pool) {
       try {
         await pool.query(
@@ -829,7 +834,6 @@ app.post("/admin/game/:gameCode/team", async (req, res) => {
       }
     }
 
-    // שידור למסכים
     broadcastGame(games[code]);
     res.json({ ok: true });
   } catch (err) {
